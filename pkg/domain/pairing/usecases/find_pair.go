@@ -19,7 +19,7 @@ type FindPairPayload struct {
 	PartyID uuid.UUID
 	// PeerID  uuid.UUID
 
-	// TODO: region, gameModes etc
+	
 }
 
 func (uc *FindPairUseCase) Execute(p FindPairPayload) (*pairing_entities.Pair, error) {
@@ -30,8 +30,6 @@ func (uc *FindPairUseCase) Execute(p FindPairPayload) (*pairing_entities.Pair, e
 	if pool == nil {
 		// pool := // create pool (according to sharding strategy) 
 	}
-
-
 
 
 

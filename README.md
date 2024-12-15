@@ -70,4 +70,3 @@
 * **Constraint:**
    √ A limitation or restriction on a player's or team's availability or preferences.
 
-By clearly defining these bounded contexts and domain entities, we can build a robust and scalable matchmaking system that meets the needs of players and teams.
