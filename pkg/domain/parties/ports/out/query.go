@@ -1,4 +1,4 @@
-package parties_out_ports
+package parties_out
 
 import (
 	"github.com/google/uuid"
@@ -6,9 +6,9 @@ import (
 )
 
 type PartyReader interface {
-	GetByID(id uuid.UUID) *party_entities.Party
+	GetByID(id uuid.UUID) (*party_entities.Party, error)
 }
 
 type PeerReader interface {
-	GetByID(id uuid.UUID) *party_entities.Peer
+	GetByID(id uuid.UUID) (*party_entities.Peer, error)
 }

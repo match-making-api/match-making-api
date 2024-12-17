@@ -1,14 +1,25 @@
+Tenacity Scheme:
+```sh
+1) Tenant
+2) Client
+3) Group
+4) User
 
-
-
-
-
-
-
-        Schedules --> Parties
-        
-        Pairing ---> Lobbies
-
+         Tenant
+            |
+            |
+           / \
+         /     \
+   Client      Group
+      |        / |
+      |      /   |
+      |    /     |
+      |  /      User
+      |/
+      |
+      |
+      User
+```
 
 ## Domain-Driven Design for a Team-vs-Team Matchmaking System
 
