@@ -1,4 +1,4 @@
-package lobbies_entities
+package entities
 
 import "time"
 

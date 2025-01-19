@@ -1,4 +1,4 @@
-package party_entities
+package entities
 
 import "github.com/google/uuid"
 

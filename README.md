@@ -1,10 +1,3 @@
-
-
-
-
-
-
-
         Schedules --> Parties
         
         Pairing ---> Lobbies

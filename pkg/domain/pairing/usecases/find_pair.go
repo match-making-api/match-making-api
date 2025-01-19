@@ -1,8 +1,7 @@
-package pairing_usecases
+package usecases
 
 import (
 	"github.com/google/uuid"
-	party_entities "github.com/psavelis/match-making-api/pkg/domain/parties/entities"
 )
 
 type FindPairUseCase struct{}
@@ -14,7 +13,7 @@ type FindPairRequest struct {
 }
 
 func (uc *FindPairUseCase) Execute() error {
-	var party *party_entities.Party
+	//var party *entities.Party
 
 	return nil
 }
