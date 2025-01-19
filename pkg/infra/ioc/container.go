@@ -13,6 +13,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+// ContainerBuilder is a container builder for the application.
 type ContainerBuilder struct {
 	Container container.Container
 }
@@ -92,7 +93,6 @@ func (b *ContainerBuilder) WithEnvFile() *ContainerBuilder {
 }
 
 // WithInboundPorts configures the ContainerBuilder with inbound ports for various services.
-// It sets up singleton instances for different commands and readers used in the application.
 //
 // Parameters:
 //   - b: A pointer to the ContainerBuilder instance being configured.
@@ -104,8 +104,6 @@ func (b *ContainerBuilder) WithInboundPorts() *ContainerBuilder {
 }
 
 // InjectMongoDB registers a MongoDB client as a singleton in the provided container.
-// It configures the MongoDB client using the application's configuration and establishes
-// a connection to the MongoDB server.
 //
 // Parameters:
 //   - c: A container.Container instance where the MongoDB client will be registered.

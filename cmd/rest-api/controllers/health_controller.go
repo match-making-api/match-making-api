@@ -8,6 +8,7 @@ import (
 	"github.com/golobby/container/v3"
 )
 
+// HealthCheckResponse represents the response for a health check request.
 type HealthCheckResponse struct {
 	Status string `json:"status"`
 }

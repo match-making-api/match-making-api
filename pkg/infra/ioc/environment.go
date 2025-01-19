@@ -27,6 +27,12 @@ func EnvironmentConfig() (common.Config, error) {
 			Certificate: os.Getenv("MONGO_CERT"),
 			DBName:      os.Getenv("MONGO_DB_NAME"),
 		},
+		Kafka: common.KafkaConfig{
+			Brokers:            os.Getenv("KAFKA_BOOTSTRAP"),
+			Version:            os.Getenv("KAFKA_VERSION"),
+			Group:              os.Getenv("KAFKA_CONSUMER_GROUP_ID"),
+			AssignmentStrategy: os.Getenv("KAFKA_PARTITION_ASSIGNMENT_STRATEGY"),
+		},
 	}
 
 	return config, nil
