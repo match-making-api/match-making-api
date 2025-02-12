@@ -7,6 +7,8 @@ import (
 	"os"
 
 	"github.com/leet-gaming/match-making-api/cmd/rest-api/routing"
+	"github.com/leet-gaming/match-making-api/pkg/domain"
+	"github.com/leet-gaming/match-making-api/pkg/infra"
 	"github.com/leet-gaming/match-making-api/pkg/infra/ioc"
 )
 
@@ -19,7 +21,7 @@ func main() {
 
 	builder := ioc.NewContainerBuilder()
 
-	c := builder.WithEnvFile().With(ioc.InjectMongoDB).WithInboundPorts().Build()
+	c := builder.WithEnvFile().With(infra.Inject).With(domain.Inject).Build()
 
 	defer builder.Close(c)
 

@@ -1,13 +1,19 @@
 package db
 
 import (
+	"context"
 	"fmt"
+	"log/slog"
 	"reflect"
 
 	"github.com/gofrs/uuid"
+	"github.com/golobby/container/v3"
+	common "github.com/leet-gaming/match-making-api/pkg/domain"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/bsoncodec"
 	"go.mongodb.org/mongo-driver/bson/bsonrw"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 var (
@@ -79,5 +85,42 @@ func uuidDecodeValue(dc bsoncodec.DecodeContext, vr bsonrw.ValueReader, val refl
 		return err
 	}
 	val.Set(reflect.ValueOf(uuid2))
+	return nil
+}
+
+// InjectMongoDB registers a MongoDB client as a singleton in the provided container.
+//
+// Parameters:
+//   - c: A container.Container instance where the MongoDB client will be registered.
+//
+// Returns:
+//   - error: An error if the MongoDB client registration or connection fails, nil otherwise.
+func InjectMongoDB(c container.Container) error {
+	err := c.Singleton(func() (*mongo.Client, error) {
+		var config common.Config
+
+		err := c.Resolve(&config)
+		if err != nil {
+			slog.Error("Failed to resolve config for mongo.Client.", "err", err)
+			return nil, err
+		}
+
+		mongoOptions := options.Client().ApplyURI(config.MongoDB.URI).SetRegistry(MongoRegistry).SetMaxPoolSize(100)
+
+		client, err := mongo.Connect(context.TODO(), mongoOptions)
+
+		if err != nil {
+			slog.Error("Failed to connect to MongoDB.", "err", err)
+			return nil, err
+		}
+
+		return client, nil
+	})
+
+	if err != nil {
+		slog.Error("Failed to load mongo.Client.")
+		return err
+	}
+
 	return nil
 }

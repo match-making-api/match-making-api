@@ -3,14 +3,34 @@
 .PHONY: test-kafka
 .PHONY: coverage
 
+# Detect the operating system
+ifeq ($(OS),Windows_NT)
+    DETECTED_OS := Windows
+else
+    DETECTED_OS := $(shell uname -s)
+endif
+
+# Define the output binary name based on the OS
+ifeq ($(DETECTED_OS),Windows)
+    BINARY_NAME := match-making-api-http-service.exe
+else
+    BINARY_NAME := match-making-api-http-service
+endif
+
 build-rest-api:
-	@echo "Building API"
-	CGO_ENABLED=0 go build -o match-making-api-http-service ./cmd/match-making-api/main.go
+    @echo "Building API for $(DETECTED_OS)"
+ifeq ($(DETECTED_OS),Windows)
+    @echo "Building for Windows"
+    @go build -o $(BINARY_NAME) ./cmd/rest-api/main.go
+else
+    @echo "Building for Unix-like system"
+    CGO_ENABLED=0 go build -o $(BINARY_NAME) ./cmd/rest-api/main.go
+endif
 
 start-rest-api:
 	@echo "Running API"
 	@export DEV_ENV="true"
-	@./match-making-api-http-service
+	@./$(BINARY_NAME)
 
 test-docker:
 	@echo "Running tests"

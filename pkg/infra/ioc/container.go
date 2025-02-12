@@ -8,9 +8,7 @@ import (
 	container "github.com/golobby/container/v3"
 	"github.com/joho/godotenv"
 	common "github.com/leet-gaming/match-making-api/pkg/domain"
-	"github.com/leet-gaming/match-making-api/pkg/infra/ioc/db"
 	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // ContainerBuilder is a container builder for the application.
@@ -90,54 +88,6 @@ func (b *ContainerBuilder) WithEnvFile() *ContainerBuilder {
 	}
 
 	return b
-}
-
-// WithInboundPorts configures the ContainerBuilder with inbound ports for various services.
-//
-// Parameters:
-//   - b: A pointer to the ContainerBuilder instance being configured.
-//
-// Returns:
-//   - *ContainerBuilder: The same ContainerBuilder instance, allowing for method chaining.
-func (b *ContainerBuilder) WithInboundPorts() *ContainerBuilder {
-	return b
-}
-
-// InjectMongoDB registers a MongoDB client as a singleton in the provided container.
-//
-// Parameters:
-//   - c: A container.Container instance where the MongoDB client will be registered.
-//
-// Returns:
-//   - error: An error if the MongoDB client registration or connection fails, nil otherwise.
-func InjectMongoDB(c container.Container) error {
-	err := c.Singleton(func() (*mongo.Client, error) {
-		var config common.Config
-
-		err := c.Resolve(&config)
-		if err != nil {
-			slog.Error("Failed to resolve config for mongo.Client.", "err", err)
-			return nil, err
-		}
-
-		mongoOptions := options.Client().ApplyURI(config.MongoDB.URI).SetRegistry(db.MongoRegistry).SetMaxPoolSize(100)
-
-		client, err := mongo.Connect(context.TODO(), mongoOptions)
-
-		if err != nil {
-			slog.Error("Failed to connect to MongoDB.", "err", err)
-			return nil, err
-		}
-
-		return client, nil
-	})
-
-	if err != nil {
-		slog.Error("Failed to load mongo.Client.")
-		return err
-	}
-
-	return nil
 }
 
 // With registers a resolver as a singleton in the container.

@@ -17,6 +17,16 @@ const (
 )
 
 // NewRouter creates and configures a new HTTP router for the application.
+//
+// It sets up middleware, defines routes, and configures Swagger documentation.
+//
+// Parameters:
+//   - ctx: A context.Context that can be used for cancellation or passing values.
+//   - container: A container.Container instance for dependency injection.
+//
+// Returns:
+//
+//	An http.Handler that can be used to serve HTTP requests.
 func NewRouter(ctx context.Context, container container.Container) http.Handler {
 	r := mux.NewRouter()
 

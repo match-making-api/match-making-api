@@ -10,6 +10,8 @@ import (
 
 	"github.com/golobby/container/v3"
 	"github.com/leet-gaming/match-making-api/cmd/rest-api/routing"
+	"github.com/leet-gaming/match-making-api/pkg/domain"
+	"github.com/leet-gaming/match-making-api/pkg/infra"
 	"github.com/leet-gaming/match-making-api/pkg/infra/ioc"
 )
 
@@ -24,8 +26,7 @@ func NewTester() *Tester {
 	os.Setenv("MONGO_DB_NAME", "matchmaking_test")
 	os.Setenv("STEAM_VHASH_SOURCE", "82DA0F0D0135FEA0F5DDF6F96528B48A")
 
-	b := ioc.NewContainerBuilder().WithEnvFile().With(ioc.InjectMongoDB).WithInboundPorts()
-	c := b.Build()
+	c := ioc.NewContainerBuilder().WithEnvFile().With(infra.Inject).With(domain.Inject).Build()
 	return &Tester{
 		Container:      c,
 		RequestHandler: routing.NewRouter(context.Background(), c),
