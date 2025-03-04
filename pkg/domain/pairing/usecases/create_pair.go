@@ -1,12 +1,12 @@
-package pairing_usecases
+package usecases
 
 import (
 	"fmt"
 
 	"github.com/google/uuid"
-	pairing_entities "github.com/psavelis/match-making-api/pkg/domain/pairing/entities"
-	pairing_out "github.com/psavelis/match-making-api/pkg/domain/pairing/ports/out"
-	parties_out "github.com/psavelis/match-making-api/pkg/domain/parties/ports/out"
+	pairing_entities "github.com/leet-gaming/match-making-api/pkg/domain/pairing/entities"
+	pairing_out "github.com/leet-gaming/match-making-api/pkg/domain/pairing/ports/out"
+	parties_out "github.com/leet-gaming/match-making-api/pkg/domain/parties/ports/out"
 )
 
 type CreatePairUseCase struct {

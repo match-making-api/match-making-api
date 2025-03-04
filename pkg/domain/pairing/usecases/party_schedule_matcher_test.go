@@ -1,12 +1,12 @@
-package pairing_usecases_test
+package usecases_test
 
 import (
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
-	pairing_usecases "github.com/psavelis/match-making-api/pkg/domain/pairing/usecases"
-	schedule_entities "github.com/psavelis/match-making-api/pkg/domain/schedules/entities"
+	pairing_usecases "github.com/leet-gaming/match-making-api/pkg/domain/pairing/usecases"
+	schedule_entities "github.com/leet-gaming/match-making-api/pkg/domain/schedules/entities"
 	"github.com/stretchr/testify/assert"
 )
 

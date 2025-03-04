@@ -28,9 +28,9 @@ else
 endif
 
 start-rest-api:
-	@echo "Running API"
-	@export DEV_ENV="true"
-	@./$(BINARY_NAME)
+    @echo "Running API"
+    @export DEV_ENV="true"
+    @./$(BINARY_NAME)
 
 test-docker:
 	@echo "Running tests"

@@ -1,11 +1,11 @@
-package pairing_usecases
+package usecases
 
 import (
 	"fmt"
 	"time"
 
 	"github.com/google/uuid"
-	schedule_entities "github.com/psavelis/match-making-api/pkg/domain/schedules/entities"
+	schedule_entities "github.com/leet-gaming/match-making-api/pkg/domain/schedules/entities"
 )
 
 type PartyScheduleMatcher struct {

@@ -1,8 +1,8 @@
-package pairing_usecases
+package usecases
 
 import (
-	pairing_entities "github.com/psavelis/match-making-api/pkg/domain/pairing/entities"
-	pairing_value_objects "github.com/psavelis/match-making-api/pkg/domain/pairing/value-objects"
+	pairing_entities "github.com/leet-gaming/match-making-api/pkg/domain/pairing/entities"
+	pairing_value_objects "github.com/leet-gaming/match-making-api/pkg/domain/pairing/value-objects"
 )
 
 type CreatePoolUseCase struct{}

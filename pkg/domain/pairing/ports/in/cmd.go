@@ -2,8 +2,8 @@ package pairing_in
 
 import (
 	"github.com/google/uuid"
-	pairing_entities "github.com/psavelis/match-making-api/pkg/domain/pairing/entities"
-	pairing_value_objects "github.com/psavelis/match-making-api/pkg/domain/pairing/value-objects"
+	pairing_entities "github.com/leet-gaming/match-making-api/pkg/domain/pairing/entities"
+	pairing_value_objects "github.com/leet-gaming/match-making-api/pkg/domain/pairing/value-objects"
 )
 
 type PairCreator interface {

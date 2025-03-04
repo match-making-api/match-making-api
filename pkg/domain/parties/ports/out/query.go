@@ -2,7 +2,7 @@ package parties_out
 
 import (
 	"github.com/google/uuid"
-	party_entities "github.com/psavelis/match-making-api/pkg/domain/parties/entities"
+	party_entities "github.com/leet-gaming/match-making-api/pkg/domain/parties/entities"
 )
 
 type PartyReader interface {

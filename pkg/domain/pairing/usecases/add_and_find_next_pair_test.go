@@ -1,4 +1,4 @@
-package pairing_usecases_test
+package usecases_test
 
 // import (
 // 	"testing"
@@ -7,9 +7,9 @@ package pairing_usecases_test
 // 	"github.com/stretchr/testify/assert"
 // 	"github.com/stretchr/testify/mock"
 
-// 	pairing_entities "github.com/psavelis/match-making-api/pkg/domain/pairing/entities"
-// 	pairing_value_objects "github.com/psavelis/match-making-api/pkg/domain/pairing/value-objects"
-// 	party_entities "github.com/psavelis/match-making-api/pkg/domain/parties/entities"
+// 	pairing_entities "github.com/leet-gaming/match-making-api/pkg/domain/pairing/entities"
+// 	pairing_value_objects "github.com/leet-gaming/match-making-api/pkg/domain/pairing/value-objects"
+// 	party_entities "github.com/leet-gaming/match-making-api/pkg/domain/parties/entities"
 // )
 
 // func TestAddAndFindNextPairUseCase_Execute(t *testing.T) {

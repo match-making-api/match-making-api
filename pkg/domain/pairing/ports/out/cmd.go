@@ -1,6 +1,9 @@
 package pairing_out
 
-import pairing_entities "github.com/psavelis/match-making-api/pkg/domain/pairing/entities"
+import (
+	pairing_entities "github.com/leet-gaming/match-making-api/pkg/domain/pairing/entities"
+	pairing_value_objects "github.com/leet-gaming/match-making-api/pkg/domain/pairing/value-objects"
+)
 
 type PoolWriter interface {
 	Save(p *pairing_entities.Pool) (*pairing_entities.Pool, error)
@@ -8,4 +11,8 @@ type PoolWriter interface {
 
 type PairWriter interface {
 	Save(p *pairing_entities.Pair) (*pairing_entities.Pair, error)
+}
+
+type PoolReader interface {
+	FindPool(criteria *pairing_value_objects.Criteria) (*pairing_entities.Pool, error)
 }

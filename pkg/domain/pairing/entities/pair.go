@@ -2,7 +2,7 @@ package entities
 
 import (
 	"github.com/google/uuid"
-	"github.com/leetgaming/match-making-api/pkg/domain/parties/entities"
+	"github.com/leet-gaming/match-making-api/pkg/domain/parties/entities"
 )
 
 type Pair struct {
