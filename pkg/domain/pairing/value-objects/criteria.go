@@ -2,8 +2,8 @@ package pairing_value_objects
 
 import (
 	"github.com/google/uuid"
-	lobbies_entities "github.com/psavelis/match-making-api/pkg/domain/lobbies/entities"
-	schedule_entities "github.com/psavelis/match-making-api/pkg/domain/schedules/entities"
+	lobbies_entities "github.com/leet-gaming/match-making-api/pkg/domain/lobbies/entities"
+	schedule_entities "github.com/leet-gaming/match-making-api/pkg/domain/schedules/entities"
 )
 
 type Criteria struct {

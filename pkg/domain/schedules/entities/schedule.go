@@ -1,10 +1,10 @@
-package schedule_entities
+package entities
 
 import (
 	"time"
 
 	"github.com/google/uuid"
-	p "github.com/psavelis/match-making-api/pkg/domain/parties/entities"
+	"github.com/leet-gaming/match-making-api/pkg/domain/parties/entities"
 )
 
 type ScheduleType = int
@@ -17,8 +17,8 @@ const (
 type Schedule struct {
 	ID      uuid.UUID
 	Type    ScheduleType
-	Party   *p.Party
-	Peer    *p.Peer
+	Party   *entities.Party
+	Peer    *entities.Peer
 	Options map[int]DateOption
 }
 

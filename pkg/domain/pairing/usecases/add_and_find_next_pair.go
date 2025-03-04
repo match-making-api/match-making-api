@@ -1,14 +1,14 @@
-package pairing_usecases
+package usecases
 
 import (
 	"fmt"
 
 	"github.com/google/uuid"
-	pairing_entities "github.com/psavelis/match-making-api/pkg/domain/pairing/entities"
-	pairing_in "github.com/psavelis/match-making-api/pkg/domain/pairing/ports/in"
-	pairing_out "github.com/psavelis/match-making-api/pkg/domain/pairing/ports/out"
-	pairing_value_objects "github.com/psavelis/match-making-api/pkg/domain/pairing/value-objects"
-	schedules_in_ports "github.com/psavelis/match-making-api/pkg/domain/schedules/ports/in"
+	pairing_entities "github.com/leet-gaming/match-making-api/pkg/domain/pairing/entities"
+	pairing_in "github.com/leet-gaming/match-making-api/pkg/domain/pairing/ports/in"
+	pairing_out "github.com/leet-gaming/match-making-api/pkg/domain/pairing/ports/out"
+	pairing_value_objects "github.com/leet-gaming/match-making-api/pkg/domain/pairing/value-objects"
+	schedules_in_ports "github.com/leet-gaming/match-making-api/pkg/domain/schedules/ports/in"
 )
 
 type AddAndFindNextPairUseCase struct {

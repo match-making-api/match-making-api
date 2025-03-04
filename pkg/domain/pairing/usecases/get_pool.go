@@ -1,1 +1,1 @@
-package pairing_usecases
+package usecases

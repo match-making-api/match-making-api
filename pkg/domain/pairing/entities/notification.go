@@ -1,1 +1,1 @@
-package pairing_entities
+package entities

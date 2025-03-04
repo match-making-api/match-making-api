@@ -1,7 +1,7 @@
 // question: many-to-many between party/peers and lobbies
 // fact: shard of a lobby (according to latency, preferences/settings/schedule)
 // fact: when pattern matched, fifo
-package pairing_entities
+package entities
 
 import (
 	"fmt"
@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	lobbies_entities "github.com/psavelis/match-making-api/pkg/domain/lobbies/entities"
-	pairing_value_objects "github.com/psavelis/match-making-api/pkg/domain/pairing/value-objects"
+	lobbies_entities "github.com/leet-gaming/match-making-api/pkg/domain/lobbies/entities"
+	pairing_value_objects "github.com/leet-gaming/match-making-api/pkg/domain/pairing/value-objects"
 )
 
 type Pool struct {

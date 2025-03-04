@@ -1,0 +1,48 @@
+openapi: 3.0.0
+info:
+  title: Match Making API
+  description: This is a match making API server.
+  version: '1.0'
+  contact:
+    name: API Support
+    email: support@leet-gaming.com
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+
+servers:
+  - url: http://localhost:4991
+  - url: https://staging-api.leet-gaming.com/match-making
+  - url: https://api.leet-gaming.com
+
+paths:
+  /health:
+    get:
+      summary: Get Health Check
+      description: Returns an HTTP handler function that performs a health check.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "ok"
+                required:
+                  - status
+      tags:
+        - health
+
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: Authorization
+
+security:
+  - ApiKeyAuth: []

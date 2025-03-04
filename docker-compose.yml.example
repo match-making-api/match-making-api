@@ -1,0 +1,64 @@
+services:
+  match-making-api:
+    container_name: "match-making-api"
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "4991:4991"
+    volumes:
+      - .blob:/app/match_making_files
+    depends_on:
+      - mongodb
+    env_file:
+      - .env
+    environment:
+      - DEV_ENV="docker"
+      - MONGO_URI=mongodb://mongodb:37019/match-making
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+    networks:
+      - svc
+
+  mongodb:
+    container_name: "mongodb"
+    image: mongo:latest
+    ports:
+      - "37019:27017"
+    volumes:
+      - .mongodb:/data/db
+    networks:
+      - default
+      - svc
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "22181:2181"
+    networks:
+      - svc
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    container_name: kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "29092:29092"
+      - "39092:39092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    networks:
+      - svc
+
+networks:
+  svc:
+    driver: bridge
