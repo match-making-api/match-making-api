@@ -1,7 +1,25 @@
-        Schedules --> Parties
-        
-        Pairing ---> Lobbies
+Tenacity Scheme:
+```sh
+1) Tenant
+2) Client
+3) Group
+4) User
 
+         Tenant
+            |
+            |
+           / \
+         /     \
+   Client      Group
+      |        / |
+      |      /   |
+      |    /     |
+      |  /      User
+      |/
+      |
+      |
+      User
+```
 
 ## Domain-Driven Design for a Team-vs-Team Matchmaking System
 
@@ -63,4 +81,3 @@
 * **Constraint:**
    √ A limitation or restriction on a player's or team's availability or preferences.
 
-By clearly defining these bounded contexts and domain entities, we can build a robust and scalable matchmaking system that meets the needs of players and teams.
