@@ -1,4 +1,4 @@
-package domain
+package config
 
 // SteamConfig contains the necessary configuration for connecting to the Steam authentication service.
 type SteamConfig struct {
@@ -26,6 +26,7 @@ type Config struct {
 	Auth    AuthConfig
 	MongoDB MongoDBConfig
 	Kafka   KafkaConfig
+	Api     ApiConfig
 }
 
 // KafkaConfig contains the necessary configuration for connecting to the Kafka service.
@@ -50,4 +51,10 @@ type KafkaConfig struct {
 
 	// Sarama logging (default: false)
 	Verbose bool
+}
+
+type ApiConfig struct {
+	PlayerProfile string
+	Subscription  string
+	RID           string
 }

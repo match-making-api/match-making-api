@@ -1,4 +1,4 @@
-package db
+package mongodb
 
 import (
 	"context"
@@ -8,7 +8,8 @@ import (
 
 	"github.com/gofrs/uuid"
 	"github.com/golobby/container/v3"
-	common "github.com/leet-gaming/match-making-api/pkg/domain"
+	"github.com/leet-gaming/match-making-api/pkg/common"
+	"github.com/leet-gaming/match-making-api/pkg/infra/config"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/bsoncodec"
 	"go.mongodb.org/mongo-driver/bson/bsonrw"
@@ -23,9 +24,30 @@ var (
 	MongoRegistry = bson.NewRegistry()
 )
 
+type CacheItem map[string]string
+
+var Repositories = make(map[common.ResourceType]interface{})
+
 func init() {
 	MongoRegistry.RegisterTypeEncoder(tUUID, bsoncodec.ValueEncoderFunc(uuidEncodeValue))
 	MongoRegistry.RegisterTypeDecoder(tUUID, bsoncodec.ValueDecoderFunc(uuidDecodeValue))
+}
+
+type MongoDBRepository[T common.Entity] struct {
+	mongoClient       *mongo.Client
+	dbName            string
+	mappingCache      map[string]CacheItem
+	entityModel       reflect.Type
+	collectionName    string
+	entityName        string
+	BsonFieldMappings map[string]string
+	QueryableFields   map[string]bool
+	collection        *mongo.Collection
+}
+
+type FieldInfo struct {
+	bool
+	string
 }
 
 // uuidEncodeValue encodes a UUID value into BSON format.
@@ -97,7 +119,7 @@ func uuidDecodeValue(dc bsoncodec.DecodeContext, vr bsonrw.ValueReader, val refl
 //   - error: An error if the MongoDB client registration or connection fails, nil otherwise.
 func InjectMongoDB(c container.Container) error {
 	err := c.Singleton(func() (*mongo.Client, error) {
-		var config common.Config
+		var config config.Config
 
 		err := c.Resolve(&config)
 		if err != nil {
@@ -123,4 +145,48 @@ func InjectMongoDB(c container.Container) error {
 	}
 
 	return nil
+}
+
+// InitQueryableFields initializes the queryable fields for the MongoDB repository.
+// It sets up the QueryableFields and BsonFieldMappings, creates a MongoDB collection,
+// and establishes a text index for full-text search on specified fields.
+//
+// Parameters:
+//   - fieldInfos: A map where keys are field names and values are FieldInfo structs.
+//     The FieldInfo struct contains a boolean indicating if the field is queryable
+//     and a string for custom BSON field mapping.
+//
+// This method does not return any value, but it updates the repository's internal state
+// and creates a MongoDB text index. If there's an error creating the index, it logs the error.
+func (r *MongoDBRepository[T]) InitQueryableFields(fieldInfos map[string]FieldInfo) {
+	r.QueryableFields = make(map[string]bool)
+	r.BsonFieldMappings = make(map[string]string)
+
+	for field, info := range fieldInfos {
+		r.QueryableFields[field] = info.bool
+		if info.string != "" {
+			r.BsonFieldMappings[field] = info.string
+		}
+	}
+
+	r.collection = r.mongoClient.Database(r.dbName).Collection(r.collectionName)
+
+	// Ensure text index is created for full-text search
+	textIndexFields := bson.D{}
+	for field, info := range fieldInfos {
+		if info.bool {
+			textIndexFields = append(textIndexFields, bson.E{Key: field, Value: "text"})
+		}
+	}
+	if len(textIndexFields) > 0 {
+		_, err := r.collection.Indexes().CreateOne(context.TODO(), mongo.IndexModel{
+			Keys:    textIndexFields,
+			Options: nil,
+		})
+		if err != nil {
+			slog.Error("InitQueryableFields: failed to create text index", "err", err)
+		}
+	}
+
+	Repositories[common.ResourceType(r.entityName)] = r
 }

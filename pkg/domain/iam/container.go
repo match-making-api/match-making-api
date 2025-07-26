@@ -1,12 +1,9 @@
-package infra
+package iam
 
 import (
 	"github.com/golobby/container/v3"
 	"github.com/leet-gaming/match-making-api/pkg/common"
-	"github.com/leet-gaming/match-making-api/pkg/infra/billing"
-	"github.com/leet-gaming/match-making-api/pkg/infra/iam"
-	"github.com/leet-gaming/match-making-api/pkg/infra/ioc"
-	"github.com/leet-gaming/match-making-api/pkg/infra/squad"
+	"github.com/leet-gaming/match-making-api/pkg/domain/iam/usecases"
 )
 
 // Inject sets up dependency injection for the application.
@@ -18,5 +15,5 @@ import (
 // Returns:
 //   - error: An error if the injection process fails, nil otherwise.
 func Inject(c container.Container) error {
-	return common.InjectAll(c, ioc.InjectIoc, squad.Inject, billing.Inject, iam.Inject)
+	return common.InjectAll(c, usecases.InjectVerifyRID)
 }

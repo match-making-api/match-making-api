@@ -41,6 +41,7 @@ func NewRouter(ctx context.Context, container container.Container) http.Handler 
 
 	// health
 	r.HandleFunc(Health, healthController.HealthCheck(ctx)).Methods("GET")
+	resourceContextMiddleware.RegisterOperation(Health, "match-making:health:get")
 
 	// Swagger UI
 	r.PathPrefix("/swagger/").Handler(httpSwagger.Handler(
