@@ -36,6 +36,236 @@ paths:
       tags:
         - health
 
+  /games:
+    get:
+      summary: List all games
+      description: Returns a list of all games available for matchmaking.
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: List of games
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Game'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      tags:
+        - games
+
+    post:
+      summary: Create a new game
+      description: Creates a new game and adds it to the matchmaking list.
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GameInput'
+      responses:
+        '201':
+          description: Game created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Game'
+        '400':
+          description: Bad request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      tags:
+        - games
+
+  /games/{id}:
+    get:
+      summary: Get game by ID
+      description: Retrieves a specific game by its ID.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Game ID
+      responses:
+        '200':
+          description: Game found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Game'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Game not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      tags:
+        - games
+
+    put:
+      summary: Update a game
+      description: Updates an existing game's details.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Game ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GameInput'
+      responses:
+        '200':
+          description: Game updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Game'
+        '400':
+          description: Bad request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Game not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      tags:
+        - games
+
+    patch:
+      summary: Partially update a game
+      description: Partially updates an existing game's details.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Game ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GameInput'
+      responses:
+        '200':
+          description: Game updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Game'
+        '400':
+          description: Bad request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Game not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      tags:
+        - games
+
+    delete:
+      summary: Delete a game
+      description: Deletes a game from the matchmaking list. If the game is enabled, it will be disabled first to avoid disrupting ongoing matchmaking sessions.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Game ID
+      responses:
+        '204':
+          description: Game deleted successfully
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Game not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      tags:
+        - games
+
 
 components:
   securitySchemes:
@@ -43,6 +273,153 @@ components:
       type: apiKey
       in: header
       name: Authorization
+
+  schemas:
+    Game:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier for the game
+        name:
+          type: string
+          description: Name of the game
+        description:
+          type: string
+          description: Description of the game
+        min_players_per_team:
+          type: integer
+          minimum: 1
+          description: Minimum number of players per team
+        max_players_per_team:
+          type: integer
+          minimum: 1
+          description: Maximum number of players per team
+        number_of_teams:
+          type: integer
+          minimum: 1
+          description: Number of teams in the game
+        max_duration:
+          type: string
+          format: duration
+          description: Maximum duration of a match (e.g., "30m", "1h")
+        allow_spectators:
+          type: boolean
+          description: Whether spectators are allowed
+        skill_based_matching:
+          type: boolean
+          description: Whether skill-based matchmaking is enabled
+        allowed_regions:
+          type: array
+          items:
+            type: string
+          description: List of allowed regions for matchmaking
+        game_modes:
+          type: array
+          items:
+            type: string
+          description: Available game modes
+        map_pool:
+          type: array
+          items:
+            type: string
+          description: Available maps
+        custom_rules:
+          type: object
+          additionalProperties:
+            type: string
+          description: Custom rules for the game
+        enabled:
+          type: boolean
+          description: Whether the game is enabled for matchmaking
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp
+      required:
+        - id
+        - name
+        - min_players_per_team
+        - max_players_per_team
+        - number_of_teams
+        - enabled
+
+    GameInput:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Name of the game
+        description:
+          type: string
+          description: Description of the game
+        min_players_per_team:
+          type: integer
+          minimum: 1
+          description: Minimum number of players per team
+        max_players_per_team:
+          type: integer
+          minimum: 1
+          description: Maximum number of players per team
+        number_of_teams:
+          type: integer
+          minimum: 1
+          description: Number of teams in the game
+        max_duration:
+          type: string
+          format: duration
+          description: Maximum duration of a match
+        allow_spectators:
+          type: boolean
+          description: Whether spectators are allowed
+        skill_based_matching:
+          type: boolean
+          description: Whether skill-based matchmaking is enabled
+        allowed_regions:
+          type: array
+          items:
+            type: string
+          description: List of allowed regions for matchmaking
+        game_modes:
+          type: array
+          items:
+            type: string
+          description: Available game modes
+        map_pool:
+          type: array
+          items:
+            type: string
+          description: Available maps
+        custom_rules:
+          type: object
+          additionalProperties:
+            type: string
+          description: Custom rules for the game
+        enabled:
+          type: boolean
+          description: Whether the game is enabled for matchmaking
+      required:
+        - name
+        - min_players_per_team
+        - max_players_per_team
+        - number_of_teams
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error code
+        message:
+          type: string
+          description: Error message
+      required:
+        - error
 
 security:
   - ApiKeyAuth: []

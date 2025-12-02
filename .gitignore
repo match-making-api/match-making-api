@@ -69,3 +69,4 @@ $RECYCLE.BIN/
 docker-compose.dev.yml
 ./docker-compose.dev.yml
 .env
+.cursorrules

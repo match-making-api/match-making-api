@@ -80,37 +80,78 @@ func (r *regionRepository) GetByGameID(ctx context.Context, gameID uuid.UUID) ([
 	return regions, nil
 }
 
-// Create implements GameRepository.
-func (r *regionRepository) Create(ctx context.Context, game *entities.Region) (*entities.Region, error) {
-	panic("unimplemented")
+// Create implements RegionRepository.
+func (r *regionRepository) Create(ctx context.Context, region *entities.Region) (*entities.Region, error) {
+	region.ID = uuid.New()
+
+	_, err := r.collection.InsertOne(ctx, region)
+	if err != nil {
+		return nil, err
+	}
+
+	return region, nil
 }
 
-// Update implements GameRepository.
-func (r *regionRepository) Update(ctx context.Context, game *entities.Region) (*entities.Region, error) {
-	panic("unimplemented")
+// Update implements RegionRepository.
+func (r *regionRepository) Update(ctx context.Context, region *entities.Region) (*entities.Region, error) {
+	filter := bson.M{"_id": region.ID}
+	update := bson.M{"$set": region}
+
+	_, err := r.collection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return nil, err
+	}
+
+	return region, nil
 }
 
-// Delete implements GameRepository.
+// Delete implements RegionRepository.
 func (r *regionRepository) Delete(ctx context.Context, id uuid.UUID) error {
-	panic("unimplemented")
+	filter := bson.M{"_id": id}
+
+	_, err := r.collection.DeleteOne(ctx, filter)
+	return err
 }
 
-// Compile implements GameRepository.
+// GetByID implements RegionRepository.
+func (r *regionRepository) GetByID(ctx context.Context, id uuid.UUID) (*entities.Region, error) {
+	filter := bson.M{"_id": id}
+
+	var region entities.Region
+	err := r.collection.FindOne(ctx, filter).Decode(&region)
+	if err != nil {
+		return nil, err
+	}
+
+	return &region, nil
+}
+
+// Search implements RegionRepository.
+func (r *regionRepository) Search(ctx context.Context, s common.Search) ([]*entities.Region, error) {
+	filter := bson.M{}
+
+	// If there are search filters, apply them here
+	// For now, return all regions
+	cursor, err := r.collection.Find(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var regions []*entities.Region
+	if err = cursor.All(ctx, &regions); err != nil {
+		return nil, err
+	}
+
+	return regions, nil
+}
+
+// Compile implements RegionRepository.
 func (r *regionRepository) Compile(ctx context.Context, searchParams []common.SearchAggregation, resultOptions common.SearchResultOptions) (*common.Search, error) {
 	panic("unimplemented")
 }
 
-// GetByID implements GameRepository.
-func (r *regionRepository) GetByID(ctx context.Context, id uuid.UUID) (*entities.Region, error) {
-	panic("unimplemented")
-}
-
-// Put implements GameRepository.
-func (r *regionRepository) Put(ctx context.Context, gameID uuid.UUID, game *entities.Region) (string, error) {
-	panic("unimplemented")
-}
-
-// Search implements GameRepository.
-func (r *regionRepository) Search(ctx context.Context, s common.Search) ([]*entities.Region, error) {
+// Put implements RegionRepository.
+func (r *regionRepository) Put(ctx context.Context, gameID uuid.UUID, region *entities.Region) (string, error) {
 	panic("unimplemented")
 }

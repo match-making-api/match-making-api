@@ -95,7 +95,15 @@ func (r *gameRepository) Compile(ctx context.Context, searchParams []common.Sear
 
 // GetByID implements GameRepository.
 func (r *gameRepository) GetByID(ctx context.Context, id uuid.UUID) (*entities.Game, error) {
-	panic("unimplemented")
+	filter := bson.M{"_id": id}
+
+	var game entities.Game
+	err := r.collection.FindOne(ctx, filter).Decode(&game)
+	if err != nil {
+		return nil, err
+	}
+
+	return &game, nil
 }
 
 // Put implements GameRepository.
@@ -103,7 +111,22 @@ func (r *gameRepository) Put(ctx context.Context, gameID uuid.UUID, game *entiti
 	panic("unimplemented")
 }
 
-// Search implements GameRepository.
+// Search implements GameRepository and common.Searchable.
 func (r *gameRepository) Search(ctx context.Context, s common.Search) ([]*entities.Game, error) {
-	panic("unimplemented")
+	filter := bson.M{}
+
+	// If there are search filters, apply them here
+	// For now, return all games
+	cursor, err := r.collection.Find(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var games []*entities.Game
+	if err = cursor.All(ctx, &games); err != nil {
+		return nil, err
+	}
+
+	return games, nil
 }

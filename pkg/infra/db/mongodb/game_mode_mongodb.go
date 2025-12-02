@@ -80,31 +80,72 @@ func (r *gameModeRepository) Compile(ctx context.Context, searchParams []common.
 }
 
 // Create implements GameModeRepository.
-func (r *gameModeRepository) Create(ctx context.Context, game *entities.GameMode) (*entities.GameMode, error) {
-	panic("unimplemented")
+func (r *gameModeRepository) Create(ctx context.Context, gameMode *entities.GameMode) (*entities.GameMode, error) {
+	gameMode.ID = uuid.New()
+
+	_, err := r.collection.InsertOne(ctx, gameMode)
+	if err != nil {
+		return nil, err
+	}
+
+	return gameMode, nil
+}
+
+// Update implements GameModeRepository.
+func (r *gameModeRepository) Update(ctx context.Context, gameMode *entities.GameMode) (*entities.GameMode, error) {
+	filter := bson.M{"_id": gameMode.ID}
+	update := bson.M{"$set": gameMode}
+
+	_, err := r.collection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return nil, err
+	}
+
+	return gameMode, nil
 }
 
 // Delete implements GameModeRepository.
 func (r *gameModeRepository) Delete(ctx context.Context, id uuid.UUID) error {
-	panic("unimplemented")
+	filter := bson.M{"_id": id}
+
+	_, err := r.collection.DeleteOne(ctx, filter)
+	return err
 }
 
 // GetByID implements GameModeRepository.
 func (r *gameModeRepository) GetByID(ctx context.Context, id uuid.UUID) (*entities.GameMode, error) {
-	panic("unimplemented")
-}
+	filter := bson.M{"_id": id}
 
-// Put implements GameModeRepository.
-func (r *gameModeRepository) Put(ctx context.Context, gameID uuid.UUID, game *entities.GameMode) (string, error) {
-	panic("unimplemented")
+	var gameMode entities.GameMode
+	err := r.collection.FindOne(ctx, filter).Decode(&gameMode)
+	if err != nil {
+		return nil, err
+	}
+
+	return &gameMode, nil
 }
 
 // Search implements GameModeRepository.
 func (r *gameModeRepository) Search(ctx context.Context, s common.Search) ([]*entities.GameMode, error) {
-	panic("unimplemented")
+	filter := bson.M{}
+
+	// If there are search filters, apply them here
+	// For now, return all game modes
+	cursor, err := r.collection.Find(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var gameModes []*entities.GameMode
+	if err = cursor.All(ctx, &gameModes); err != nil {
+		return nil, err
+	}
+
+	return gameModes, nil
 }
 
-// Update implements GameModeRepository.
-func (r *gameModeRepository) Update(ctx context.Context, game *entities.GameMode) (*entities.GameMode, error) {
+// Put implements GameModeRepository.
+func (r *gameModeRepository) Put(ctx context.Context, gameID uuid.UUID, gameMode *entities.GameMode) (string, error) {
 	panic("unimplemented")
 }

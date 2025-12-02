@@ -1,16 +1,39 @@
 package game
 
-import "context"
+import (
+	"github.com/golobby/container/v3"
+	"github.com/leet-gaming/match-making-api/pkg/common"
+	"github.com/leet-gaming/match-making-api/pkg/domain/game/usecases"
+)
 
 // Inject initializes and sets up the game module within the given container.
 //
 // Parameters:
-//   - container: A context.Context that serves as a dependency injection container
-//     for the game module. It may contain configurations or dependencies
-//     required for the module's initialization.
+//   - c: A container.Container instance used for dependency injection.
 //
 // Returns:
 //   - An error if the injection process encounters any issues, or nil if successful.
-func Inject(container context.Context) error {
-	return nil
+func Inject(c container.Container) error {
+	return common.InjectAll(c,
+		// Game usecases
+		usecases.InjectCreateGame,
+		usecases.InjectUpdateGame,
+		usecases.InjectDeleteGame,
+		usecases.InjectGetGameByID,
+		usecases.InjectSearchGames,
+		// GameMode usecases
+		usecases.InjectCreateGameMode,
+		usecases.InjectUpdateGameMode,
+		usecases.InjectDeleteGameMode,
+		usecases.InjectGetGameModeByID,
+		usecases.InjectGetGameModes,
+		usecases.InjectSearchGameModes,
+		// Region usecases
+		usecases.InjectCreateRegion,
+		usecases.InjectUpdateRegion,
+		usecases.InjectDeleteRegion,
+		usecases.InjectGetRegionByID,
+		usecases.InjectGetRegions,
+		usecases.InjectSearchRegions,
+	)
 }

@@ -14,49 +14,43 @@ import (
 	game_in "github.com/leet-gaming/match-making-api/pkg/domain/game/ports/in"
 )
 
-type GameController struct {
+type GameModeController struct {
 	Container container.Container
 }
 
-func NewGameController(container container.Container) *GameController {
-	return &GameController{Container: container}
+func NewGameModeController(container container.Container) *GameModeController {
+	return &GameModeController{Container: container}
 }
 
-// ErrorResponse represents an error response
-type ErrorResponse struct {
-	Error   string `json:"error"`
-	Message string `json:"message,omitempty"`
-}
-
-// Get retrieves a game by ID
-func (gc *GameController) Get(ctx context.Context) http.HandlerFunc {
+// Get retrieves a game mode by ID
+func (gmc *GameModeController) Get(ctx context.Context) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
 		vars := mux.Vars(r)
-		gameIDStr, ok := vars["id"]
+		gameModeIDStr, ok := vars["id"]
 		if !ok {
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(ErrorResponse{
 				Error:   "bad_request",
-				Message: "game ID is required",
+				Message: "game mode ID is required",
 			})
 			return
 		}
 
-		gameID, err := uuid.Parse(gameIDStr)
+		gameModeID, err := uuid.Parse(gameModeIDStr)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(ErrorResponse{
 				Error:   "invalid_id",
-				Message: "invalid game ID format",
+				Message: "invalid game mode ID format",
 			})
 			return
 		}
 
-		var getGameQuery game_in.GetGameByIDQuery
-		if err := gc.Container.Resolve(&getGameQuery); err != nil {
-			slog.ErrorContext(r.Context(), "failed to resolve GetGameByIDQuery", "error", err)
+		var getGameModeQuery game_in.GetGameModeByIDQuery
+		if err := gmc.Container.Resolve(&getGameModeQuery); err != nil {
+			slog.ErrorContext(r.Context(), "failed to resolve GetGameModeByIDQuery", "error", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(ErrorResponse{
 				Error:   "internal_error",
@@ -65,24 +59,24 @@ func (gc *GameController) Get(ctx context.Context) http.HandlerFunc {
 			return
 		}
 
-		game, err := getGameQuery.Execute(r.Context(), gameID)
+		gameMode, err := getGameModeQuery.Execute(r.Context(), gameModeID)
 		if err != nil {
-			slog.ErrorContext(r.Context(), "failed to get game", "error", err, "game_id", gameID)
+			slog.ErrorContext(r.Context(), "failed to get game mode", "error", err, "game_mode_id", gameModeID)
 			w.WriteHeader(http.StatusNotFound)
 			json.NewEncoder(w).Encode(ErrorResponse{
 				Error:   "not_found",
-				Message: fmt.Sprintf("game not found: %v", err),
+				Message: fmt.Sprintf("game mode not found: %v", err),
 			})
 			return
 		}
 
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(game)
+		json.NewEncoder(w).Encode(gameMode)
 	}
 }
 
-// Create creates a new game
-func (gc *GameController) Create(ctx context.Context) http.HandlerFunc {
+// Create creates a new game mode
+func (gmc *GameModeController) Create(ctx context.Context) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
@@ -95,8 +89,8 @@ func (gc *GameController) Create(ctx context.Context) http.HandlerFunc {
 			return
 		}
 
-		var game game_entities.Game
-		if err := json.NewDecoder(r.Body).Decode(&game); err != nil {
+		var gameMode game_entities.GameMode
+		if err := json.NewDecoder(r.Body).Decode(&gameMode); err != nil {
 			slog.ErrorContext(r.Context(), "failed to decode request body", "error", err)
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(ErrorResponse{
@@ -106,9 +100,9 @@ func (gc *GameController) Create(ctx context.Context) http.HandlerFunc {
 			return
 		}
 
-		var createGameCmd game_in.CreateGameCommand
-		if err := gc.Container.Resolve(&createGameCmd); err != nil {
-			slog.ErrorContext(r.Context(), "failed to resolve CreateGameCommand", "error", err)
+		var createGameModeCmd game_in.CreateGameModeCommand
+		if err := gmc.Container.Resolve(&createGameModeCmd); err != nil {
+			slog.ErrorContext(r.Context(), "failed to resolve CreateGameModeCommand", "error", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(ErrorResponse{
 				Error:   "internal_error",
@@ -117,9 +111,9 @@ func (gc *GameController) Create(ctx context.Context) http.HandlerFunc {
 			return
 		}
 
-		createdGame, err := createGameCmd.Execute(r.Context(), &game)
+		createdGameMode, err := createGameModeCmd.Execute(r.Context(), &gameMode)
 		if err != nil {
-			slog.ErrorContext(r.Context(), "failed to create game", "error", err)
+			slog.ErrorContext(r.Context(), "failed to create game mode", "error", err)
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(ErrorResponse{
 				Error:   "validation_error",
@@ -129,12 +123,12 @@ func (gc *GameController) Create(ctx context.Context) http.HandlerFunc {
 		}
 
 		w.WriteHeader(http.StatusCreated)
-		json.NewEncoder(w).Encode(createdGame)
+		json.NewEncoder(w).Encode(createdGameMode)
 	}
 }
 
-// Update updates an existing game
-func (gc *GameController) Update(ctx context.Context) http.HandlerFunc {
+// Update updates an existing game mode
+func (gmc *GameModeController) Update(ctx context.Context) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
@@ -148,28 +142,28 @@ func (gc *GameController) Update(ctx context.Context) http.HandlerFunc {
 		}
 
 		vars := mux.Vars(r)
-		gameIDStr, ok := vars["id"]
+		gameModeIDStr, ok := vars["id"]
 		if !ok {
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(ErrorResponse{
 				Error:   "bad_request",
-				Message: "game ID is required",
+				Message: "game mode ID is required",
 			})
 			return
 		}
 
-		gameID, err := uuid.Parse(gameIDStr)
+		gameModeID, err := uuid.Parse(gameModeIDStr)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(ErrorResponse{
 				Error:   "invalid_id",
-				Message: "invalid game ID format",
+				Message: "invalid game mode ID format",
 			})
 			return
 		}
 
-		var game game_entities.Game
-		if err := json.NewDecoder(r.Body).Decode(&game); err != nil {
+		var gameMode game_entities.GameMode
+		if err := json.NewDecoder(r.Body).Decode(&gameMode); err != nil {
 			slog.ErrorContext(r.Context(), "failed to decode request body", "error", err)
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(ErrorResponse{
@@ -179,9 +173,9 @@ func (gc *GameController) Update(ctx context.Context) http.HandlerFunc {
 			return
 		}
 
-		var updateGameCmd game_in.UpdateGameCommand
-		if err := gc.Container.Resolve(&updateGameCmd); err != nil {
-			slog.ErrorContext(r.Context(), "failed to resolve UpdateGameCommand", "error", err)
+		var updateGameModeCmd game_in.UpdateGameModeCommand
+		if err := gmc.Container.Resolve(&updateGameModeCmd); err != nil {
+			slog.ErrorContext(r.Context(), "failed to resolve UpdateGameModeCommand", "error", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(ErrorResponse{
 				Error:   "internal_error",
@@ -190,9 +184,9 @@ func (gc *GameController) Update(ctx context.Context) http.HandlerFunc {
 			return
 		}
 
-		updatedGame, err := updateGameCmd.Execute(r.Context(), gameID, &game)
+		updatedGameMode, err := updateGameModeCmd.Execute(r.Context(), gameModeID, &gameMode)
 		if err != nil {
-			slog.ErrorContext(r.Context(), "failed to update game", "error", err, "game_id", gameID)
+			slog.ErrorContext(r.Context(), "failed to update game mode", "error", err, "game_mode_id", gameModeID)
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(ErrorResponse{
 				Error:   "validation_error",
@@ -202,12 +196,12 @@ func (gc *GameController) Update(ctx context.Context) http.HandlerFunc {
 		}
 
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(updatedGame)
+		json.NewEncoder(w).Encode(updatedGameMode)
 	}
 }
 
-// Delete deletes a game (or disables it if enabled)
-func (gc *GameController) Delete(ctx context.Context) http.HandlerFunc {
+// Delete deletes a game mode
+func (gmc *GameModeController) Delete(ctx context.Context) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
@@ -221,29 +215,29 @@ func (gc *GameController) Delete(ctx context.Context) http.HandlerFunc {
 		}
 
 		vars := mux.Vars(r)
-		gameIDStr, ok := vars["id"]
+		gameModeIDStr, ok := vars["id"]
 		if !ok {
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(ErrorResponse{
 				Error:   "bad_request",
-				Message: "game ID is required",
+				Message: "game mode ID is required",
 			})
 			return
 		}
 
-		gameID, err := uuid.Parse(gameIDStr)
+		gameModeID, err := uuid.Parse(gameModeIDStr)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(ErrorResponse{
 				Error:   "invalid_id",
-				Message: "invalid game ID format",
+				Message: "invalid game mode ID format",
 			})
 			return
 		}
 
-		var deleteGameCmd game_in.DeleteGameCommand
-		if err := gc.Container.Resolve(&deleteGameCmd); err != nil {
-			slog.ErrorContext(r.Context(), "failed to resolve DeleteGameCommand", "error", err)
+		var deleteGameModeCmd game_in.DeleteGameModeCommand
+		if err := gmc.Container.Resolve(&deleteGameModeCmd); err != nil {
+			slog.ErrorContext(r.Context(), "failed to resolve DeleteGameModeCommand", "error", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(ErrorResponse{
 				Error:   "internal_error",
@@ -252,8 +246,8 @@ func (gc *GameController) Delete(ctx context.Context) http.HandlerFunc {
 			return
 		}
 
-		if err := deleteGameCmd.Execute(r.Context(), gameID); err != nil {
-			slog.ErrorContext(r.Context(), "failed to delete game", "error", err, "game_id", gameID)
+		if err := deleteGameModeCmd.Execute(r.Context(), gameModeID); err != nil {
+			slog.ErrorContext(r.Context(), "failed to delete game mode", "error", err, "game_mode_id", gameModeID)
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(ErrorResponse{
 				Error:   "delete_error",
@@ -266,14 +260,14 @@ func (gc *GameController) Delete(ctx context.Context) http.HandlerFunc {
 	}
 }
 
-// List lists all games
-func (gc *GameController) List(ctx context.Context) http.HandlerFunc {
+// List lists all game modes
+func (gmc *GameModeController) List(ctx context.Context) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
-		var searchGamesQuery game_in.SearchGamesQuery
-		if err := gc.Container.Resolve(&searchGamesQuery); err != nil {
-			slog.ErrorContext(r.Context(), "failed to resolve SearchGamesQuery", "error", err)
+		var searchGameModesQuery game_in.SearchGameModesQuery
+		if err := gmc.Container.Resolve(&searchGameModesQuery); err != nil {
+			slog.ErrorContext(r.Context(), "failed to resolve SearchGameModesQuery", "error", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(ErrorResponse{
 				Error:   "internal_error",
@@ -282,18 +276,18 @@ func (gc *GameController) List(ctx context.Context) http.HandlerFunc {
 			return
 		}
 
-		games, err := searchGamesQuery.Execute(r.Context())
+		gameModes, err := searchGameModesQuery.Execute(r.Context())
 		if err != nil {
-			slog.ErrorContext(r.Context(), "failed to list games", "error", err)
+			slog.ErrorContext(r.Context(), "failed to list game modes", "error", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(ErrorResponse{
 				Error:   "internal_error",
-				Message: "failed to retrieve games",
+				Message: "failed to retrieve game modes",
 			})
 			return
 		}
 
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(games)
+		json.NewEncoder(w).Encode(gameModes)
 	}
 }

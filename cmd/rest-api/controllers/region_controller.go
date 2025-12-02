@@ -14,49 +14,43 @@ import (
 	game_in "github.com/leet-gaming/match-making-api/pkg/domain/game/ports/in"
 )
 
-type GameController struct {
+type RegionController struct {
 	Container container.Container
 }
 
-func NewGameController(container container.Container) *GameController {
-	return &GameController{Container: container}
+func NewRegionController(container container.Container) *RegionController {
+	return &RegionController{Container: container}
 }
 
-// ErrorResponse represents an error response
-type ErrorResponse struct {
-	Error   string `json:"error"`
-	Message string `json:"message,omitempty"`
-}
-
-// Get retrieves a game by ID
-func (gc *GameController) Get(ctx context.Context) http.HandlerFunc {
+// Get retrieves a region by ID
+func (rc *RegionController) Get(ctx context.Context) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
 		vars := mux.Vars(r)
-		gameIDStr, ok := vars["id"]
+		regionIDStr, ok := vars["id"]
 		if !ok {
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(ErrorResponse{
 				Error:   "bad_request",
-				Message: "game ID is required",
+				Message: "region ID is required",
 			})
 			return
 		}
 
-		gameID, err := uuid.Parse(gameIDStr)
+		regionID, err := uuid.Parse(regionIDStr)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(ErrorResponse{
 				Error:   "invalid_id",
-				Message: "invalid game ID format",
+				Message: "invalid region ID format",
 			})
 			return
 		}
 
-		var getGameQuery game_in.GetGameByIDQuery
-		if err := gc.Container.Resolve(&getGameQuery); err != nil {
-			slog.ErrorContext(r.Context(), "failed to resolve GetGameByIDQuery", "error", err)
+		var getRegionQuery game_in.GetRegionByIDQuery
+		if err := rc.Container.Resolve(&getRegionQuery); err != nil {
+			slog.ErrorContext(r.Context(), "failed to resolve GetRegionByIDQuery", "error", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(ErrorResponse{
 				Error:   "internal_error",
@@ -65,24 +59,24 @@ func (gc *GameController) Get(ctx context.Context) http.HandlerFunc {
 			return
 		}
 
-		game, err := getGameQuery.Execute(r.Context(), gameID)
+		region, err := getRegionQuery.Execute(r.Context(), regionID)
 		if err != nil {
-			slog.ErrorContext(r.Context(), "failed to get game", "error", err, "game_id", gameID)
+			slog.ErrorContext(r.Context(), "failed to get region", "error", err, "region_id", regionID)
 			w.WriteHeader(http.StatusNotFound)
 			json.NewEncoder(w).Encode(ErrorResponse{
 				Error:   "not_found",
-				Message: fmt.Sprintf("game not found: %v", err),
+				Message: fmt.Sprintf("region not found: %v", err),
 			})
 			return
 		}
 
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(game)
+		json.NewEncoder(w).Encode(region)
 	}
 }
 
-// Create creates a new game
-func (gc *GameController) Create(ctx context.Context) http.HandlerFunc {
+// Create creates a new region
+func (rc *RegionController) Create(ctx context.Context) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
@@ -95,8 +89,8 @@ func (gc *GameController) Create(ctx context.Context) http.HandlerFunc {
 			return
 		}
 
-		var game game_entities.Game
-		if err := json.NewDecoder(r.Body).Decode(&game); err != nil {
+		var region game_entities.Region
+		if err := json.NewDecoder(r.Body).Decode(&region); err != nil {
 			slog.ErrorContext(r.Context(), "failed to decode request body", "error", err)
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(ErrorResponse{
@@ -106,9 +100,9 @@ func (gc *GameController) Create(ctx context.Context) http.HandlerFunc {
 			return
 		}
 
-		var createGameCmd game_in.CreateGameCommand
-		if err := gc.Container.Resolve(&createGameCmd); err != nil {
-			slog.ErrorContext(r.Context(), "failed to resolve CreateGameCommand", "error", err)
+		var createRegionCmd game_in.CreateRegionCommand
+		if err := rc.Container.Resolve(&createRegionCmd); err != nil {
+			slog.ErrorContext(r.Context(), "failed to resolve CreateRegionCommand", "error", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(ErrorResponse{
 				Error:   "internal_error",
@@ -117,9 +111,9 @@ func (gc *GameController) Create(ctx context.Context) http.HandlerFunc {
 			return
 		}
 
-		createdGame, err := createGameCmd.Execute(r.Context(), &game)
+		createdRegion, err := createRegionCmd.Execute(r.Context(), &region)
 		if err != nil {
-			slog.ErrorContext(r.Context(), "failed to create game", "error", err)
+			slog.ErrorContext(r.Context(), "failed to create region", "error", err)
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(ErrorResponse{
 				Error:   "validation_error",
@@ -129,12 +123,12 @@ func (gc *GameController) Create(ctx context.Context) http.HandlerFunc {
 		}
 
 		w.WriteHeader(http.StatusCreated)
-		json.NewEncoder(w).Encode(createdGame)
+		json.NewEncoder(w).Encode(createdRegion)
 	}
 }
 
-// Update updates an existing game
-func (gc *GameController) Update(ctx context.Context) http.HandlerFunc {
+// Update updates an existing region
+func (rc *RegionController) Update(ctx context.Context) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
@@ -148,28 +142,28 @@ func (gc *GameController) Update(ctx context.Context) http.HandlerFunc {
 		}
 
 		vars := mux.Vars(r)
-		gameIDStr, ok := vars["id"]
+		regionIDStr, ok := vars["id"]
 		if !ok {
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(ErrorResponse{
 				Error:   "bad_request",
-				Message: "game ID is required",
+				Message: "region ID is required",
 			})
 			return
 		}
 
-		gameID, err := uuid.Parse(gameIDStr)
+		regionID, err := uuid.Parse(regionIDStr)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(ErrorResponse{
 				Error:   "invalid_id",
-				Message: "invalid game ID format",
+				Message: "invalid region ID format",
 			})
 			return
 		}
 
-		var game game_entities.Game
-		if err := json.NewDecoder(r.Body).Decode(&game); err != nil {
+		var region game_entities.Region
+		if err := json.NewDecoder(r.Body).Decode(&region); err != nil {
 			slog.ErrorContext(r.Context(), "failed to decode request body", "error", err)
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(ErrorResponse{
@@ -179,9 +173,9 @@ func (gc *GameController) Update(ctx context.Context) http.HandlerFunc {
 			return
 		}
 
-		var updateGameCmd game_in.UpdateGameCommand
-		if err := gc.Container.Resolve(&updateGameCmd); err != nil {
-			slog.ErrorContext(r.Context(), "failed to resolve UpdateGameCommand", "error", err)
+		var updateRegionCmd game_in.UpdateRegionCommand
+		if err := rc.Container.Resolve(&updateRegionCmd); err != nil {
+			slog.ErrorContext(r.Context(), "failed to resolve UpdateRegionCommand", "error", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(ErrorResponse{
 				Error:   "internal_error",
@@ -190,9 +184,9 @@ func (gc *GameController) Update(ctx context.Context) http.HandlerFunc {
 			return
 		}
 
-		updatedGame, err := updateGameCmd.Execute(r.Context(), gameID, &game)
+		updatedRegion, err := updateRegionCmd.Execute(r.Context(), regionID, &region)
 		if err != nil {
-			slog.ErrorContext(r.Context(), "failed to update game", "error", err, "game_id", gameID)
+			slog.ErrorContext(r.Context(), "failed to update region", "error", err, "region_id", regionID)
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(ErrorResponse{
 				Error:   "validation_error",
@@ -202,12 +196,12 @@ func (gc *GameController) Update(ctx context.Context) http.HandlerFunc {
 		}
 
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(updatedGame)
+		json.NewEncoder(w).Encode(updatedRegion)
 	}
 }
 
-// Delete deletes a game (or disables it if enabled)
-func (gc *GameController) Delete(ctx context.Context) http.HandlerFunc {
+// Delete deletes a region
+func (rc *RegionController) Delete(ctx context.Context) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
@@ -221,29 +215,29 @@ func (gc *GameController) Delete(ctx context.Context) http.HandlerFunc {
 		}
 
 		vars := mux.Vars(r)
-		gameIDStr, ok := vars["id"]
+		regionIDStr, ok := vars["id"]
 		if !ok {
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(ErrorResponse{
 				Error:   "bad_request",
-				Message: "game ID is required",
+				Message: "region ID is required",
 			})
 			return
 		}
 
-		gameID, err := uuid.Parse(gameIDStr)
+		regionID, err := uuid.Parse(regionIDStr)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(ErrorResponse{
 				Error:   "invalid_id",
-				Message: "invalid game ID format",
+				Message: "invalid region ID format",
 			})
 			return
 		}
 
-		var deleteGameCmd game_in.DeleteGameCommand
-		if err := gc.Container.Resolve(&deleteGameCmd); err != nil {
-			slog.ErrorContext(r.Context(), "failed to resolve DeleteGameCommand", "error", err)
+		var deleteRegionCmd game_in.DeleteRegionCommand
+		if err := rc.Container.Resolve(&deleteRegionCmd); err != nil {
+			slog.ErrorContext(r.Context(), "failed to resolve DeleteRegionCommand", "error", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(ErrorResponse{
 				Error:   "internal_error",
@@ -252,8 +246,8 @@ func (gc *GameController) Delete(ctx context.Context) http.HandlerFunc {
 			return
 		}
 
-		if err := deleteGameCmd.Execute(r.Context(), gameID); err != nil {
-			slog.ErrorContext(r.Context(), "failed to delete game", "error", err, "game_id", gameID)
+		if err := deleteRegionCmd.Execute(r.Context(), regionID); err != nil {
+			slog.ErrorContext(r.Context(), "failed to delete region", "error", err, "region_id", regionID)
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(ErrorResponse{
 				Error:   "delete_error",
@@ -266,14 +260,14 @@ func (gc *GameController) Delete(ctx context.Context) http.HandlerFunc {
 	}
 }
 
-// List lists all games
-func (gc *GameController) List(ctx context.Context) http.HandlerFunc {
+// List lists all regions
+func (rc *RegionController) List(ctx context.Context) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
-		var searchGamesQuery game_in.SearchGamesQuery
-		if err := gc.Container.Resolve(&searchGamesQuery); err != nil {
-			slog.ErrorContext(r.Context(), "failed to resolve SearchGamesQuery", "error", err)
+		var searchRegionsQuery game_in.SearchRegionsQuery
+		if err := rc.Container.Resolve(&searchRegionsQuery); err != nil {
+			slog.ErrorContext(r.Context(), "failed to resolve SearchRegionsQuery", "error", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(ErrorResponse{
 				Error:   "internal_error",
@@ -282,18 +276,18 @@ func (gc *GameController) List(ctx context.Context) http.HandlerFunc {
 			return
 		}
 
-		games, err := searchGamesQuery.Execute(r.Context())
+		regions, err := searchRegionsQuery.Execute(r.Context())
 		if err != nil {
-			slog.ErrorContext(r.Context(), "failed to list games", "error", err)
+			slog.ErrorContext(r.Context(), "failed to list regions", "error", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(ErrorResponse{
 				Error:   "internal_error",
-				Message: "failed to retrieve games",
+				Message: "failed to retrieve regions",
 			})
 			return
 		}
 
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(games)
+		json.NewEncoder(w).Encode(regions)
 	}
 }

@@ -15,7 +15,7 @@ type GameMode struct {
 	Description string    `json:"description" bson:"description"` // Description of the game mode
 }
 
-func NewSearchGameModeByGameID(ctx context.Context, gameID uuid.UUID) common.Search {
+func NewSearchGameModeByGameID(ctx context.Context, gameID string) common.Search {
 	params := []common.SearchAggregation{
 		{
 			Params: []common.SearchParameter{
