@@ -22,16 +22,6 @@ type DeleteGameCommand interface {
 	Execute(ctx context.Context, id uuid.UUID) error
 }
 
-// GetGameByIDQuery interface for reading game information by ID
-type GetGameByIDQuery interface {
-	Execute(ctx context.Context, id uuid.UUID) (*game_entities.Game, error)
-}
-
-// SearchGamesQuery interface for search games
-type SearchGamesQuery interface {
-	Execute(ctx context.Context) ([]*game_entities.Game, error)
-}
-
 // CreateGameModeCommand interface for creating a new game mode
 type CreateGameModeCommand interface {
 	Execute(ctx context.Context, game *game_entities.GameMode) (*game_entities.GameMode, error)

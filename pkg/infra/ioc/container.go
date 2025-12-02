@@ -9,7 +9,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/leet-gaming/match-making-api/pkg/common"
 	"github.com/leet-gaming/match-making-api/pkg/infra/config"
-	"github.com/leet-gaming/match-making-api/pkg/infra/ioc/db/mongodb"
+	"github.com/leet-gaming/match-making-api/pkg/infra/db/mongodb"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 

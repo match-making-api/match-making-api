@@ -9,8 +9,15 @@ import (
 	"github.com/google/uuid"
 )
 
-type BaseQueryService[T any] struct {
-	Reader          Searchable[T]
+type QueryService[T any] interface {
+	GetName() string
+	GetByID(ctx context.Context, id uuid.UUID) (*T, error)
+	Search(ctx context.Context, s Search) ([]*T, error)
+	Compile(ctx context.Context, searchParams []SearchAggregation, resultOptions SearchResultOptions) (*Search, error)
+}
+
+type BaseQueryService[T any, R Searchable[T]] struct {
+	Repository      R
 	QueryableFields map[string]bool
 	ReadableFields  map[string]bool
 	MaxPageSize     uint
@@ -18,7 +25,7 @@ type BaseQueryService[T any] struct {
 	name            string
 }
 
-func (service *BaseQueryService[T]) GetName() string {
+func (service *BaseQueryService[T, R]) GetName() string {
 	if service.name != "" {
 		return service.name
 	}
@@ -29,8 +36,8 @@ func (service *BaseQueryService[T]) GetName() string {
 }
 
 // / GetByID returns a single entity by its ID using ClientApplicationAudienceIDKey as the intended audience.
-func (service *BaseQueryService[T]) GetByID(ctx context.Context, id uuid.UUID) (*T, error) {
-	entity, err := service.Reader.GetByID(ctx, id)
+func (service *BaseQueryService[T, R]) GetByID(ctx context.Context, id uuid.UUID) (*T, error) {
+	entity, err := service.Repository.GetByID(ctx, id)
 
 	if err != nil {
 		var typeDef T
@@ -42,7 +49,7 @@ func (service *BaseQueryService[T]) GetByID(ctx context.Context, id uuid.UUID) (
 	return entity, nil
 }
 
-func (service *BaseQueryService[T]) Search(ctx context.Context, s Search) ([]*T, error) {
+func (service *BaseQueryService[T, R]) Search(ctx context.Context, s Search) ([]*T, error) {
 	var omitFields []string
 	var pickFields []string
 	for fieldName, isReadable := range service.ReadableFields {
@@ -61,7 +68,7 @@ func (service *BaseQueryService[T]) Search(ctx context.Context, s Search) ([]*T,
 	s.ResultOptions.OmitFields = omitFields
 	s.ResultOptions.PickFields = pickFields
 
-	entities, err := service.Reader.Search(ctx, s)
+	entities, err := service.Repository.Search(ctx, s)
 
 	if err != nil {
 		var typeDef T
@@ -73,7 +80,7 @@ func (service *BaseQueryService[T]) Search(ctx context.Context, s Search) ([]*T,
 	return entities, nil
 }
 
-func (svc *BaseQueryService[T]) Compile(ctx context.Context, searchParams []SearchAggregation, resultOptions SearchResultOptions) (*Search, error) {
+func (svc *BaseQueryService[T, R]) Compile(ctx context.Context, searchParams []SearchAggregation, resultOptions SearchResultOptions) (*Search, error) {
 	err := ValidateSearchParameters(searchParams, svc.QueryableFields)
 	if err != nil {
 		return nil, fmt.Errorf("error validating search parameters: %v", err)

@@ -1,14 +1,13 @@
 package entities
 
 import (
-	"github.com/google/uuid"
 	"github.com/leet-gaming/match-making-api/pkg/common"
 )
 
+// Region represents a geographical region where a game can be played.
 type Region struct {
 	common.BaseEntity
-	ID          uuid.UUID `json:"id" bson:"_id"`
-	Name        string    `json:"name" bson:"name"`
-	Slug        string    `json:"slug" bson:"slug"`
-	Description string    `json:"description" bson:"description"`
+	Name        string `json:"name" bson:"name"`               // Unique name for the region
+	Slug        string `json:"slug" bson:"slug"`               // Slug for the region (e.g., "eu-west-1")
+	Description string `json:"description" bson:"description"` // Description of the region
 }
