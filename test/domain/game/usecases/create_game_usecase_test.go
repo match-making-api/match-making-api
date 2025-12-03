@@ -13,60 +13,14 @@ import (
 	"github.com/leet-gaming/match-making-api/pkg/common"
 	game_entities "github.com/leet-gaming/match-making-api/pkg/domain/game/entities"
 	"github.com/leet-gaming/match-making-api/pkg/domain/game/usecases"
+	"github.com/leet-gaming/match-making-api/test/mocks"
 )
-
-// MockGameWriter is a mock implementation of out.GameWriter
-type MockGameWriter struct {
-	mock.Mock
-}
-
-func (m *MockGameWriter) Create(ctx context.Context, game *game_entities.Game) (*game_entities.Game, error) {
-	args := m.Called(ctx, game)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*game_entities.Game), args.Error(1)
-}
-
-func (m *MockGameWriter) Update(ctx context.Context, game *game_entities.Game) (*game_entities.Game, error) {
-	args := m.Called(ctx, game)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*game_entities.Game), args.Error(1)
-}
-
-func (m *MockGameWriter) Delete(ctx context.Context, id uuid.UUID) error {
-	args := m.Called(ctx, id)
-	return args.Error(0)
-}
-
-// MockGameReader is a mock implementation of out.GameReader
-type MockGameReader struct {
-	mock.Mock
-}
-
-func (m *MockGameReader) GetByID(ctx context.Context, id uuid.UUID) (*game_entities.Game, error) {
-	args := m.Called(ctx, id)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*game_entities.Game), args.Error(1)
-}
-
-func (m *MockGameReader) Search(ctx context.Context, query interface{}) ([]*game_entities.Game, error) {
-	args := m.Called(ctx, query)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).([]*game_entities.Game), args.Error(1)
-}
 
 func TestCreateGameUseCase_Execute(t *testing.T) {
 	tests := []struct {
 		name          string
 		game          *game_entities.Game
-		setupMocks    func(*MockGameWriter, *MockGameReader)
+		setupMocks    func(*mocks.MockGameWriter, *mocks.MockGameReader)
 		expectedError string
 		validate      func(*testing.T, *game_entities.Game)
 	}{
@@ -80,7 +34,7 @@ func TestCreateGameUseCase_Execute(t *testing.T) {
 				NumberOfTeams:     2,
 				MaxDuration:       30 * time.Minute,
 			},
-			setupMocks: func(writer *MockGameWriter, reader *MockGameReader) {
+			setupMocks: func(writer *mocks.MockGameWriter, reader *mocks.MockGameReader) {
 				reader.On("Search", mock.Anything, mock.Anything).Return([]*game_entities.Game{}, nil)
 				writer.On("Create", mock.Anything, mock.AnythingOfType("*entities.Game")).Return(func(ctx context.Context, game *game_entities.Game) *game_entities.Game {
 					game.ID = uuid.New()
@@ -101,7 +55,7 @@ func TestCreateGameUseCase_Execute(t *testing.T) {
 				MaxPlayersPerTeam: 5,
 				NumberOfTeams:     2,
 			},
-			setupMocks: func(writer *MockGameWriter, reader *MockGameReader) {
+			setupMocks: func(writer *mocks.MockGameWriter, reader *mocks.MockGameReader) {
 				// No mocks needed as validation fails before repository calls
 			},
 			expectedError: "game name is required",
@@ -114,7 +68,7 @@ func TestCreateGameUseCase_Execute(t *testing.T) {
 				MaxPlayersPerTeam: 5,
 				NumberOfTeams:     2,
 			},
-			setupMocks: func(writer *MockGameWriter, reader *MockGameReader) {
+			setupMocks: func(writer *mocks.MockGameWriter, reader *mocks.MockGameReader) {
 				existingGame := &game_entities.Game{
 					BaseEntity: common.BaseEntity{ID: uuid.New()},
 					Name:       "Existing Game",
@@ -131,7 +85,7 @@ func TestCreateGameUseCase_Execute(t *testing.T) {
 				MaxPlayersPerTeam: 5,
 				NumberOfTeams:     2,
 			},
-			setupMocks: func(writer *MockGameWriter, reader *MockGameReader) {
+			setupMocks: func(writer *mocks.MockGameWriter, reader *mocks.MockGameReader) {
 				// No mocks needed as validation fails before repository calls
 			},
 			expectedError: "min_players_per_team cannot be greater than max_players_per_team",
@@ -144,7 +98,7 @@ func TestCreateGameUseCase_Execute(t *testing.T) {
 				MaxPlayersPerTeam: 5,
 				NumberOfTeams:     2,
 			},
-			setupMocks: func(writer *MockGameWriter, reader *MockGameReader) {
+			setupMocks: func(writer *mocks.MockGameWriter, reader *mocks.MockGameReader) {
 				reader.On("Search", mock.Anything, mock.Anything).Return([]*game_entities.Game{}, nil)
 				writer.On("Create", mock.Anything, mock.AnythingOfType("*entities.Game")).Return(nil, errors.New("database error"))
 			},
@@ -154,8 +108,8 @@ func TestCreateGameUseCase_Execute(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockWriter := new(MockGameWriter)
-			mockReader := new(MockGameReader)
+			mockWriter := new(mocks.MockGameWriter)
+			mockReader := new(mocks.MockGameReader)
 			tt.setupMocks(mockWriter, mockReader)
 
 			useCase := usecases.NewCreateGameUseCase(mockWriter, mockReader)

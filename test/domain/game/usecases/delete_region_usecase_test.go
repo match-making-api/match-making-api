@@ -12,19 +12,20 @@ import (
 	"github.com/leet-gaming/match-making-api/pkg/common"
 	game_entities "github.com/leet-gaming/match-making-api/pkg/domain/game/entities"
 	"github.com/leet-gaming/match-making-api/pkg/domain/game/usecases"
+	"github.com/leet-gaming/match-making-api/test/mocks"
 )
 
 func TestDeleteRegionUseCase_Execute(t *testing.T) {
 	tests := []struct {
 		name          string
 		regionID      uuid.UUID
-		setupMocks    func(*MockRegionWriter, *MockRegionReader)
+		setupMocks    func(*mocks.MockRegionWriter, *mocks.MockRegionReader)
 		expectedError string
 	}{
 		{
 			name:     "successfully delete region",
 			regionID: uuid.New(),
-			setupMocks: func(writer *MockRegionWriter, reader *MockRegionReader) {
+			setupMocks: func(writer *mocks.MockRegionWriter, reader *mocks.MockRegionReader) {
 				existingRegion := &game_entities.Region{
 					BaseEntity: common.BaseEntity{ID: uuid.New()},
 					Name:       "Test Region",
@@ -36,7 +37,7 @@ func TestDeleteRegionUseCase_Execute(t *testing.T) {
 		{
 			name:     "fail when region not found",
 			regionID: uuid.New(),
-			setupMocks: func(writer *MockRegionWriter, reader *MockRegionReader) {
+			setupMocks: func(writer *mocks.MockRegionWriter, reader *mocks.MockRegionReader) {
 				reader.On("GetByID", mock.Anything, mock.Anything).Return(nil, errors.New("not found"))
 			},
 			expectedError: "region not found",
@@ -44,7 +45,7 @@ func TestDeleteRegionUseCase_Execute(t *testing.T) {
 		{
 			name:     "fail when delete fails",
 			regionID: uuid.New(),
-			setupMocks: func(writer *MockRegionWriter, reader *MockRegionReader) {
+			setupMocks: func(writer *mocks.MockRegionWriter, reader *mocks.MockRegionReader) {
 				existingRegion := &game_entities.Region{
 					BaseEntity: common.BaseEntity{ID: uuid.New()},
 					Name:       "Test Region",
@@ -58,8 +59,8 @@ func TestDeleteRegionUseCase_Execute(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockWriter := new(MockRegionWriter)
-			mockReader := new(MockRegionReader)
+			mockWriter := new(mocks.MockRegionWriter)
+			mockReader := new(mocks.MockRegionReader)
 			tt.setupMocks(mockWriter, mockReader)
 
 			useCase := usecases.NewDeleteRegionUseCase(mockWriter, mockReader)

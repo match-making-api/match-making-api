@@ -13,6 +13,7 @@ import (
 	"github.com/leet-gaming/match-making-api/pkg/common"
 	game_entities "github.com/leet-gaming/match-making-api/pkg/domain/game/entities"
 	"github.com/leet-gaming/match-making-api/pkg/domain/game/usecases"
+	"github.com/leet-gaming/match-making-api/test/mocks"
 )
 
 func TestUpdateGameUseCase_Execute(t *testing.T) {
@@ -20,7 +21,7 @@ func TestUpdateGameUseCase_Execute(t *testing.T) {
 		name          string
 		gameID        uuid.UUID
 		game          *game_entities.Game
-		setupMocks    func(*MockGameWriter, *MockGameReader)
+		setupMocks    func(*mocks.MockGameWriter, *mocks.MockGameReader)
 		expectedError string
 		validate      func(*testing.T, *game_entities.Game)
 	}{
@@ -35,7 +36,7 @@ func TestUpdateGameUseCase_Execute(t *testing.T) {
 				NumberOfTeams:     2,
 				MaxDuration:       45 * time.Minute,
 			},
-			setupMocks: func(writer *MockGameWriter, reader *MockGameReader) {
+			setupMocks: func(writer *mocks.MockGameWriter, reader *mocks.MockGameReader) {
 				existingGame := &game_entities.Game{
 					BaseEntity:        common.BaseEntity{ID: uuid.New()},
 					Name:              "Original Game",
@@ -66,7 +67,7 @@ func TestUpdateGameUseCase_Execute(t *testing.T) {
 				MaxPlayersPerTeam: 5,
 				NumberOfTeams:     2,
 			},
-			setupMocks: func(writer *MockGameWriter, reader *MockGameReader) {
+			setupMocks: func(writer *mocks.MockGameWriter, reader *mocks.MockGameReader) {
 				reader.On("GetByID", mock.Anything, mock.Anything).Return(nil, errors.New("not found"))
 			},
 			expectedError: "game not found",
@@ -80,7 +81,7 @@ func TestUpdateGameUseCase_Execute(t *testing.T) {
 				MaxPlayersPerTeam: 5,
 				NumberOfTeams:     2,
 			},
-			setupMocks: func(writer *MockGameWriter, reader *MockGameReader) {
+			setupMocks: func(writer *mocks.MockGameWriter, reader *mocks.MockGameReader) {
 				existingGame := &game_entities.Game{
 					BaseEntity: common.BaseEntity{ID: uuid.New()},
 					Name:       "Original Game",
@@ -98,8 +99,8 @@ func TestUpdateGameUseCase_Execute(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockWriter := new(MockGameWriter)
-			mockReader := new(MockGameReader)
+			mockWriter := new(mocks.MockGameWriter)
+			mockReader := new(mocks.MockGameReader)
 			tt.setupMocks(mockWriter, mockReader)
 
 			useCase := usecases.NewUpdateGameUseCase(mockWriter, mockReader)

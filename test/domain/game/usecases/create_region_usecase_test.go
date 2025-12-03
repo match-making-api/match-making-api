@@ -12,60 +12,14 @@ import (
 	"github.com/leet-gaming/match-making-api/pkg/common"
 	game_entities "github.com/leet-gaming/match-making-api/pkg/domain/game/entities"
 	"github.com/leet-gaming/match-making-api/pkg/domain/game/usecases"
+	"github.com/leet-gaming/match-making-api/test/mocks"
 )
-
-// MockRegionWriter is a mock implementation of out.RegionWriter
-type MockRegionWriter struct {
-	mock.Mock
-}
-
-func (m *MockRegionWriter) Create(ctx context.Context, region *game_entities.Region) (*game_entities.Region, error) {
-	args := m.Called(ctx, region)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*game_entities.Region), args.Error(1)
-}
-
-func (m *MockRegionWriter) Update(ctx context.Context, region *game_entities.Region) (*game_entities.Region, error) {
-	args := m.Called(ctx, region)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*game_entities.Region), args.Error(1)
-}
-
-func (m *MockRegionWriter) Delete(ctx context.Context, id uuid.UUID) error {
-	args := m.Called(ctx, id)
-	return args.Error(0)
-}
-
-// MockRegionReader is a mock implementation of out.RegionReader
-type MockRegionReader struct {
-	mock.Mock
-}
-
-func (m *MockRegionReader) GetByID(ctx context.Context, id uuid.UUID) (*game_entities.Region, error) {
-	args := m.Called(ctx, id)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*game_entities.Region), args.Error(1)
-}
-
-func (m *MockRegionReader) Search(ctx context.Context, query interface{}) ([]*game_entities.Region, error) {
-	args := m.Called(ctx, query)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).([]*game_entities.Region), args.Error(1)
-}
 
 func TestCreateRegionUseCase_Execute(t *testing.T) {
 	tests := []struct {
 		name          string
 		region        *game_entities.Region
-		setupMocks    func(*MockRegionWriter, *MockRegionReader)
+		setupMocks    func(*mocks.MockRegionWriter, *mocks.MockRegionReader)
 		expectedError string
 		validate      func(*testing.T, *game_entities.Region)
 	}{
@@ -76,7 +30,7 @@ func TestCreateRegionUseCase_Execute(t *testing.T) {
 				Slug:        "test-region",
 				Description: "Test Description",
 			},
-			setupMocks: func(writer *MockRegionWriter, reader *MockRegionReader) {
+			setupMocks: func(writer *mocks.MockRegionWriter, reader *mocks.MockRegionReader) {
 				reader.On("Search", mock.Anything, mock.Anything).Return([]*game_entities.Region{}, nil)
 				writer.On("Create", mock.Anything, mock.AnythingOfType("*entities.Region")).Return(func(ctx context.Context, region *game_entities.Region) *game_entities.Region {
 					region.ID = uuid.New()
@@ -95,7 +49,7 @@ func TestCreateRegionUseCase_Execute(t *testing.T) {
 				Name: "",
 				Slug: "test-region",
 			},
-			setupMocks: func(writer *MockRegionWriter, reader *MockRegionReader) {
+			setupMocks: func(writer *mocks.MockRegionWriter, reader *mocks.MockRegionReader) {
 				// No mocks needed as validation fails before repository calls
 			},
 			expectedError: "region name is required",
@@ -106,7 +60,7 @@ func TestCreateRegionUseCase_Execute(t *testing.T) {
 				Name: "Existing Region",
 				Slug: "existing-region",
 			},
-			setupMocks: func(writer *MockRegionWriter, reader *MockRegionReader) {
+			setupMocks: func(writer *mocks.MockRegionWriter, reader *mocks.MockRegionReader) {
 				existingRegion := &game_entities.Region{
 					BaseEntity: common.BaseEntity{ID: uuid.New()},
 					Name:       "Existing Region",
@@ -122,7 +76,7 @@ func TestCreateRegionUseCase_Execute(t *testing.T) {
 				Name: "New Region",
 				Slug: "existing-slug",
 			},
-			setupMocks: func(writer *MockRegionWriter, reader *MockRegionReader) {
+			setupMocks: func(writer *mocks.MockRegionWriter, reader *mocks.MockRegionReader) {
 				existingRegion := &game_entities.Region{
 					BaseEntity: common.BaseEntity{ID: uuid.New()},
 					Name:       "Existing Region",
@@ -138,7 +92,7 @@ func TestCreateRegionUseCase_Execute(t *testing.T) {
 				Name: "Test Region",
 				Slug: "test-region",
 			},
-			setupMocks: func(writer *MockRegionWriter, reader *MockRegionReader) {
+			setupMocks: func(writer *mocks.MockRegionWriter, reader *mocks.MockRegionReader) {
 				reader.On("Search", mock.Anything, mock.Anything).Return([]*game_entities.Region{}, nil)
 				writer.On("Create", mock.Anything, mock.AnythingOfType("*entities.Region")).Return(nil, errors.New("database error"))
 			},
@@ -148,8 +102,8 @@ func TestCreateRegionUseCase_Execute(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockWriter := new(MockRegionWriter)
-			mockReader := new(MockRegionReader)
+			mockWriter := new(mocks.MockRegionWriter)
+			mockReader := new(mocks.MockRegionReader)
 			tt.setupMocks(mockWriter, mockReader)
 
 			useCase := usecases.NewCreateRegionUseCase(mockWriter, mockReader)

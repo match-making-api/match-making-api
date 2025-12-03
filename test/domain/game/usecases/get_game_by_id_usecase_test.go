@@ -12,20 +12,21 @@ import (
 	"github.com/leet-gaming/match-making-api/pkg/common"
 	game_entities "github.com/leet-gaming/match-making-api/pkg/domain/game/entities"
 	"github.com/leet-gaming/match-making-api/pkg/domain/game/usecases"
+	"github.com/leet-gaming/match-making-api/test/mocks"
 )
 
 func TestGetGameByIDUseCase_Execute(t *testing.T) {
 	tests := []struct {
 		name          string
 		gameID        uuid.UUID
-		setupMocks    func(*MockGameReader)
+		setupMocks    func(*mocks.MockGameReader)
 		expectedError string
 		validate      func(*testing.T, *game_entities.Game)
 	}{
 		{
 			name:   "successfully get game by id",
 			gameID: uuid.New(),
-			setupMocks: func(reader *MockGameReader) {
+			setupMocks: func(reader *mocks.MockGameReader) {
 				game := &game_entities.Game{
 					BaseEntity: common.BaseEntity{ID: uuid.New()},
 					Name:       "Test Game",
@@ -40,7 +41,7 @@ func TestGetGameByIDUseCase_Execute(t *testing.T) {
 		{
 			name:   "fail when game not found",
 			gameID: uuid.New(),
-			setupMocks: func(reader *MockGameReader) {
+			setupMocks: func(reader *mocks.MockGameReader) {
 				reader.On("GetByID", mock.Anything, mock.Anything).Return(nil, errors.New("not found"))
 			},
 			expectedError: "failed to get game",
@@ -49,7 +50,7 @@ func TestGetGameByIDUseCase_Execute(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockReader := new(MockGameReader)
+			mockReader := new(mocks.MockGameReader)
 			tt.setupMocks(mockReader)
 
 			useCase := usecases.NewGetGameByIDUseCase(mockReader)

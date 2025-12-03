@@ -13,60 +13,14 @@ import (
 	"github.com/leet-gaming/match-making-api/pkg/common"
 	game_entities "github.com/leet-gaming/match-making-api/pkg/domain/game/entities"
 	"github.com/leet-gaming/match-making-api/pkg/domain/game/usecases"
+	"github.com/leet-gaming/match-making-api/test/mocks"
 )
-
-// MockGameModeWriter is a mock implementation of out.GameModeWriter
-type MockGameModeWriter struct {
-	mock.Mock
-}
-
-func (m *MockGameModeWriter) Create(ctx context.Context, gameMode *game_entities.GameMode) (*game_entities.GameMode, error) {
-	args := m.Called(ctx, gameMode)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*game_entities.GameMode), args.Error(1)
-}
-
-func (m *MockGameModeWriter) Update(ctx context.Context, gameMode *game_entities.GameMode) (*game_entities.GameMode, error) {
-	args := m.Called(ctx, gameMode)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*game_entities.GameMode), args.Error(1)
-}
-
-func (m *MockGameModeWriter) Delete(ctx context.Context, id google_uuid.UUID) error {
-	args := m.Called(ctx, id)
-	return args.Error(0)
-}
-
-// MockGameModeReader is a mock implementation of out.GameModeReader
-type MockGameModeReader struct {
-	mock.Mock
-}
-
-func (m *MockGameModeReader) GetByID(ctx context.Context, id google_uuid.UUID) (*game_entities.GameMode, error) {
-	args := m.Called(ctx, id)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*game_entities.GameMode), args.Error(1)
-}
-
-func (m *MockGameModeReader) Search(ctx context.Context, query interface{}) ([]*game_entities.GameMode, error) {
-	args := m.Called(ctx, query)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).([]*game_entities.GameMode), args.Error(1)
-}
 
 func TestCreateGameModeUseCase_Execute(t *testing.T) {
 	tests := []struct {
 		name          string
 		gameMode      *game_entities.GameMode
-		setupMocks    func(*MockGameModeWriter, *MockGameModeReader)
+		setupMocks    func(*mocks.MockGameModeWriter, *mocks.MockGameModeReader)
 		expectedError string
 		validate      func(*testing.T, *game_entities.GameMode)
 	}{
@@ -77,7 +31,7 @@ func TestCreateGameModeUseCase_Execute(t *testing.T) {
 				Name:        "Test Game Mode",
 				Description: "Test Description",
 			},
-			setupMocks: func(writer *MockGameModeWriter, reader *MockGameModeReader) {
+			setupMocks: func(writer *mocks.MockGameModeWriter, reader *mocks.MockGameModeReader) {
 				reader.On("Search", mock.Anything, mock.Anything).Return([]*game_entities.GameMode{}, nil)
 				writer.On("Create", mock.Anything, mock.AnythingOfType("*entities.GameMode")).Return(func(ctx context.Context, gameMode *game_entities.GameMode) *game_entities.GameMode {
 					gameMode.ID = google_uuid.New()
@@ -96,7 +50,7 @@ func TestCreateGameModeUseCase_Execute(t *testing.T) {
 				GameID: uuid.FromStringOrNil(google_uuid.New().String()),
 				Name:   "",
 			},
-			setupMocks: func(writer *MockGameModeWriter, reader *MockGameModeReader) {
+			setupMocks: func(writer *mocks.MockGameModeWriter, reader *mocks.MockGameModeReader) {
 				// No mocks needed as validation fails before repository calls
 			},
 			expectedError: "game mode name is required",
@@ -107,7 +61,7 @@ func TestCreateGameModeUseCase_Execute(t *testing.T) {
 				GameID: uuid.Nil,
 				Name:   "Test Game Mode",
 			},
-			setupMocks: func(writer *MockGameModeWriter, reader *MockGameModeReader) {
+			setupMocks: func(writer *mocks.MockGameModeWriter, reader *mocks.MockGameModeReader) {
 				// No mocks needed as validation fails before repository calls
 			},
 			expectedError: "game_id is required",
@@ -118,7 +72,7 @@ func TestCreateGameModeUseCase_Execute(t *testing.T) {
 				GameID: uuid.FromStringOrNil(google_uuid.New().String()),
 				Name:   "Existing Game Mode",
 			},
-			setupMocks: func(writer *MockGameModeWriter, reader *MockGameModeReader) {
+			setupMocks: func(writer *mocks.MockGameModeWriter, reader *mocks.MockGameModeReader) {
 				existingGameMode := &game_entities.GameMode{
 					BaseEntity: common.BaseEntity{ID: google_uuid.New()},
 					GameID:     uuid.FromStringOrNil(google_uuid.New().String()),
@@ -134,7 +88,7 @@ func TestCreateGameModeUseCase_Execute(t *testing.T) {
 				GameID: uuid.FromStringOrNil(google_uuid.New().String()),
 				Name:   "Test Game Mode",
 			},
-			setupMocks: func(writer *MockGameModeWriter, reader *MockGameModeReader) {
+			setupMocks: func(writer *mocks.MockGameModeWriter, reader *mocks.MockGameModeReader) {
 				reader.On("Search", mock.Anything, mock.Anything).Return([]*game_entities.GameMode{}, nil)
 				writer.On("Create", mock.Anything, mock.AnythingOfType("*entities.GameMode")).Return(nil, errors.New("database error"))
 			},
@@ -144,8 +98,8 @@ func TestCreateGameModeUseCase_Execute(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockWriter := new(MockGameModeWriter)
-			mockReader := new(MockGameModeReader)
+			mockWriter := new(mocks.MockGameModeWriter)
+			mockReader := new(mocks.MockGameModeReader)
 			tt.setupMocks(mockWriter, mockReader)
 
 			useCase := usecases.NewCreateGameModeUseCase(mockWriter, mockReader)

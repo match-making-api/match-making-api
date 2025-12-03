@@ -12,20 +12,21 @@ import (
 	"github.com/leet-gaming/match-making-api/pkg/common"
 	game_entities "github.com/leet-gaming/match-making-api/pkg/domain/game/entities"
 	"github.com/leet-gaming/match-making-api/pkg/domain/game/usecases"
+	"github.com/leet-gaming/match-making-api/test/mocks"
 )
 
 func TestGetRegionByIDUseCase_Execute(t *testing.T) {
 	tests := []struct {
 		name          string
 		regionID      uuid.UUID
-		setupMocks    func(*MockRegionReader)
+		setupMocks    func(*mocks.MockRegionReader)
 		expectedError string
 		validate      func(*testing.T, *game_entities.Region)
 	}{
 		{
 			name:     "successfully get region by id",
 			regionID: uuid.New(),
-			setupMocks: func(reader *MockRegionReader) {
+			setupMocks: func(reader *mocks.MockRegionReader) {
 				region := &game_entities.Region{
 					BaseEntity: common.BaseEntity{ID: uuid.New()},
 					Name:       "Test Region",
@@ -42,7 +43,7 @@ func TestGetRegionByIDUseCase_Execute(t *testing.T) {
 		{
 			name:     "fail when region not found",
 			regionID: uuid.New(),
-			setupMocks: func(reader *MockRegionReader) {
+			setupMocks: func(reader *mocks.MockRegionReader) {
 				reader.On("GetByID", mock.Anything, mock.Anything).Return(nil, errors.New("not found"))
 			},
 			expectedError: "failed to get region",
@@ -51,7 +52,7 @@ func TestGetRegionByIDUseCase_Execute(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockReader := new(MockRegionReader)
+			mockReader := new(mocks.MockRegionReader)
 			tt.setupMocks(mockReader)
 
 			useCase := usecases.NewGetRegionByIDUseCase(mockReader)

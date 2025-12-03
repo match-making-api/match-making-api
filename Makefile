@@ -133,10 +133,13 @@ endif
 
 .PHONY: mocks-generate
 mocks-generate:
-	@echo "Generating mocks..."
+	@echo "Generating mocks for MongoDB repositories..."
 	@mockgen -source="pkg/infra/db/mongodb/game_mode_mongodb.go" -destination="test/mocks/game_mode_repository_mock.go" -package=mocks
 	@mockgen -source="pkg/infra/db/mongodb/game_mongodb.go" -destination="test/mocks/game_repository_mock.go" -package=mocks
 	@mockgen -source="pkg/infra/db/mongodb/region_mongodb.go" -destination="test/mocks/region_repository_mock.go" -package=mocks
+	@echo "Note: Port interface mocks (test/mocks/port_interfaces_testify_mock.go) are manually maintained"
+	@echo "      using testify/mock for compatibility with existing tests."
+	@echo "      Update them manually when port interfaces change."
 	@echo "Mocks generated successfully!"
 
 .PHONY: mocks-test

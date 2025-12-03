@@ -12,18 +12,19 @@ import (
 	"github.com/leet-gaming/match-making-api/pkg/common"
 	game_entities "github.com/leet-gaming/match-making-api/pkg/domain/game/entities"
 	"github.com/leet-gaming/match-making-api/pkg/domain/game/usecases"
+	"github.com/leet-gaming/match-making-api/test/mocks"
 )
 
 func TestSearchGameModesUseCase_Execute(t *testing.T) {
 	tests := []struct {
 		name          string
-		setupMocks    func(*MockGameModeReader)
+		setupMocks    func(*mocks.MockGameModeReader)
 		expectedError string
 		validate      func(*testing.T, []*game_entities.GameMode)
 	}{
 		{
 			name: "successfully search game modes",
-			setupMocks: func(reader *MockGameModeReader) {
+			setupMocks: func(reader *mocks.MockGameModeReader) {
 				gameModes := []*game_entities.GameMode{
 					{
 						BaseEntity: common.BaseEntity{ID: uuid.New()},
@@ -43,7 +44,7 @@ func TestSearchGameModesUseCase_Execute(t *testing.T) {
 		},
 		{
 			name: "return empty list when no game modes found",
-			setupMocks: func(reader *MockGameModeReader) {
+			setupMocks: func(reader *mocks.MockGameModeReader) {
 				reader.On("Search", mock.Anything, mock.AnythingOfType("common.Search")).Return([]*game_entities.GameMode{}, nil)
 			},
 			validate: func(t *testing.T, gameModes []*game_entities.GameMode) {
@@ -53,7 +54,7 @@ func TestSearchGameModesUseCase_Execute(t *testing.T) {
 		},
 		{
 			name: "fail when repository returns error",
-			setupMocks: func(reader *MockGameModeReader) {
+			setupMocks: func(reader *mocks.MockGameModeReader) {
 				reader.On("Search", mock.Anything, mock.AnythingOfType("common.Search")).Return(nil, errors.New("database error"))
 			},
 			expectedError: "database error",
@@ -62,7 +63,7 @@ func TestSearchGameModesUseCase_Execute(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockReader := new(MockGameModeReader)
+			mockReader := new(mocks.MockGameModeReader)
 			tt.setupMocks(mockReader)
 
 			useCase := usecases.NewSearchGameModesUseCase(mockReader)
