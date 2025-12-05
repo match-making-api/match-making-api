@@ -37,7 +37,6 @@ func (am *AuthMiddleware) Handler(next http.Handler) http.Handler {
 			return
 		}
 
-		// ctx := context.WithValue(r.Context(), "steamID", steamID)
 		next.ServeHTTP(w, r.WithContext(context.Background()))
 	})
 }

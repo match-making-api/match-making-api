@@ -36,6 +36,696 @@ paths:
       tags:
         - health
 
+  /games:
+    get:
+      summary: List all games
+      description: Returns a list of all games available for matchmaking.
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: List of games
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Game'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      tags:
+        - games
+
+    post:
+      summary: Create a new game
+      description: Creates a new game and adds it to the matchmaking list.
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GameInput'
+      responses:
+        '201':
+          description: Game created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Game'
+        '400':
+          description: Bad request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      tags:
+        - games
+
+  /games/{id}:
+    get:
+      summary: Get game by ID
+      description: Retrieves a specific game by its ID.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Game ID
+      responses:
+        '200':
+          description: Game found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Game'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Game not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      tags:
+        - games
+
+    put:
+      summary: Update a game
+      description: Updates an existing game's details.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Game ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GameInput'
+      responses:
+        '200':
+          description: Game updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Game'
+        '400':
+          description: Bad request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Game not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      tags:
+        - games
+
+    patch:
+      summary: Partially update a game
+      description: Partially updates an existing game's details.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Game ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GameInput'
+      responses:
+        '200':
+          description: Game updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Game'
+        '400':
+          description: Bad request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Game not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      tags:
+        - games
+
+    delete:
+      summary: Delete a game
+      description: Deletes a game from the matchmaking list. If the game is enabled, it will be disabled first to avoid disrupting ongoing matchmaking sessions.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Game ID
+      responses:
+        '204':
+          description: Game deleted successfully
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Game not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      tags:
+        - games
+
+  /game-modes:
+    get:
+      summary: List all game modes
+      description: Returns a list of all game modes available in the system.
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: List of game modes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/GameMode'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      tags:
+        - game-modes
+
+    post:
+      summary: Create a new game mode
+      description: Creates a new game mode and associates it with a game.
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GameModeInput'
+      responses:
+        '201':
+          description: Game mode created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameMode'
+        '400':
+          description: Bad request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      tags:
+        - game-modes
+
+  /game-modes/{id}:
+    get:
+      summary: Get game mode by ID
+      description: Retrieves a specific game mode by its ID.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Game mode ID
+      responses:
+        '200':
+          description: Game mode found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameMode'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Game mode not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      tags:
+        - game-modes
+
+    put:
+      summary: Update a game mode
+      description: Updates an existing game mode's details.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Game mode ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GameModeInput'
+      responses:
+        '200':
+          description: Game mode updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameMode'
+        '400':
+          description: Bad request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Game mode not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      tags:
+        - game-modes
+
+    patch:
+      summary: Partially update a game mode
+      description: Partially updates an existing game mode's details.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Game mode ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GameModeInput'
+      responses:
+        '200':
+          description: Game mode updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameMode'
+        '400':
+          description: Bad request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Game mode not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      tags:
+        - game-modes
+
+    delete:
+      summary: Delete a game mode
+      description: Deletes a game mode from the system.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Game mode ID
+      responses:
+        '204':
+          description: Game mode deleted successfully
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Game mode not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      tags:
+        - game-modes
+
+  /regions:
+    get:
+      summary: List all regions
+      description: Returns a list of all regions available in the system.
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: List of regions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Region'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      tags:
+        - regions
+
+    post:
+      summary: Create a new region
+      description: Creates a new region with a unique name and slug.
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegionInput'
+      responses:
+        '201':
+          description: Region created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Region'
+        '400':
+          description: Bad request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      tags:
+        - regions
+
+  /regions/{id}:
+    get:
+      summary: Get region by ID
+      description: Retrieves a specific region by its ID.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Region ID
+      responses:
+        '200':
+          description: Region found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Region'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Region not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      tags:
+        - regions
+
+    put:
+      summary: Update a region
+      description: Updates an existing region's details.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Region ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegionInput'
+      responses:
+        '200':
+          description: Region updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Region'
+        '400':
+          description: Bad request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Region not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      tags:
+        - regions
+
+    patch:
+      summary: Partially update a region
+      description: Partially updates an existing region's details.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Region ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegionInput'
+      responses:
+        '200':
+          description: Region updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Region'
+        '400':
+          description: Bad request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Region not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      tags:
+        - regions
+
+    delete:
+      summary: Delete a region
+      description: Deletes a region from the system.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Region ID
+      responses:
+        '204':
+          description: Region deleted successfully
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Region not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      tags:
+        - regions
+
 
 components:
   securitySchemes:
@@ -43,6 +733,245 @@ components:
       type: apiKey
       in: header
       name: Authorization
+
+  schemas:
+    Game:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier for the game
+        name:
+          type: string
+          description: Name of the game
+        description:
+          type: string
+          description: Description of the game
+        min_players_per_team:
+          type: integer
+          minimum: 1
+          description: Minimum number of players per team
+        max_players_per_team:
+          type: integer
+          minimum: 1
+          description: Maximum number of players per team
+        number_of_teams:
+          type: integer
+          minimum: 1
+          description: Number of teams in the game
+        max_duration:
+          type: string
+          format: duration
+          description: Maximum duration of a match (e.g., "30m", "1h")
+        allow_spectators:
+          type: boolean
+          description: Whether spectators are allowed
+        skill_based_matching:
+          type: boolean
+          description: Whether skill-based matchmaking is enabled
+        allowed_regions:
+          type: array
+          items:
+            type: string
+          description: List of allowed regions for matchmaking
+        game_modes:
+          type: array
+          items:
+            type: string
+          description: Available game modes
+        map_pool:
+          type: array
+          items:
+            type: string
+          description: Available maps
+        custom_rules:
+          type: object
+          additionalProperties:
+            type: string
+          description: Custom rules for the game
+        enabled:
+          type: boolean
+          description: Whether the game is enabled for matchmaking
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp
+      required:
+        - id
+        - name
+        - min_players_per_team
+        - max_players_per_team
+        - number_of_teams
+        - enabled
+
+    GameInput:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Name of the game
+        description:
+          type: string
+          description: Description of the game
+        min_players_per_team:
+          type: integer
+          minimum: 1
+          description: Minimum number of players per team
+        max_players_per_team:
+          type: integer
+          minimum: 1
+          description: Maximum number of players per team
+        number_of_teams:
+          type: integer
+          minimum: 1
+          description: Number of teams in the game
+        max_duration:
+          type: string
+          format: duration
+          description: Maximum duration of a match
+        allow_spectators:
+          type: boolean
+          description: Whether spectators are allowed
+        skill_based_matching:
+          type: boolean
+          description: Whether skill-based matchmaking is enabled
+        allowed_regions:
+          type: array
+          items:
+            type: string
+          description: List of allowed regions for matchmaking
+        game_modes:
+          type: array
+          items:
+            type: string
+          description: Available game modes
+        map_pool:
+          type: array
+          items:
+            type: string
+          description: Available maps
+        custom_rules:
+          type: object
+          additionalProperties:
+            type: string
+          description: Custom rules for the game
+        enabled:
+          type: boolean
+          description: Whether the game is enabled for matchmaking
+      required:
+        - name
+        - min_players_per_team
+        - max_players_per_team
+        - number_of_teams
+
+    GameMode:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier for the game mode
+        game_id:
+          type: string
+          format: uuid
+          description: ID of the game this mode belongs to
+        name:
+          type: string
+          description: Name of the game mode
+        description:
+          type: string
+          description: Description of the game mode
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp
+      required:
+        - id
+        - game_id
+        - name
+
+    GameModeInput:
+      type: object
+      properties:
+        game_id:
+          type: string
+          format: uuid
+          description: ID of the game this mode belongs to
+        name:
+          type: string
+          description: Name of the game mode
+        description:
+          type: string
+          description: Description of the game mode
+      required:
+        - game_id
+        - name
+
+    Region:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier for the region
+        name:
+          type: string
+          description: Unique name for the region
+        slug:
+          type: string
+          description: Slug for the region (e.g., "eu-west-1")
+        description:
+          type: string
+          description: Description of the region
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp
+      required:
+        - id
+        - name
+        - slug
+
+    RegionInput:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Unique name for the region
+        slug:
+          type: string
+          description: Slug for the region (e.g., "eu-west-1")
+        description:
+          type: string
+          description: Description of the region
+      required:
+        - name
+        - slug
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error code
+        message:
+          type: string
+          description: Error message
+      required:
+        - error
 
 security:
   - ApiKeyAuth: []

@@ -5,32 +5,32 @@
 
 # Detect the operating system
 ifeq ($(OS),Windows_NT)
-    DETECTED_OS := Windows
+	DETECTED_OS := Windows
 else
-    DETECTED_OS := $(shell uname -s)
+	DETECTED_OS := $(shell uname -s)
 endif
 
 # Define the output binary name based on the OS
 ifeq ($(DETECTED_OS),Windows)
-    BINARY_NAME := match-making-api-http-service.exe
+	BINARY_NAME := match-making-api-http-service.exe
 else
-    BINARY_NAME := match-making-api-http-service
+	BINARY_NAME := match-making-api-http-service
 endif
 
 build-rest-api:
-    @echo "Building API for $(DETECTED_OS)"
+	@echo "Building API for $(DETECTED_OS)"
 ifeq ($(DETECTED_OS),Windows)
-    @echo "Building for Windows"
-    @go build -o $(BINARY_NAME) ./cmd/rest-api/main.go
+	@echo "Building for Windows"
+	@go build -o $(BINARY_NAME) ./cmd/rest-api/main.go
 else
-    @echo "Building for Unix-like system"
-    CGO_ENABLED=0 go build -o $(BINARY_NAME) ./cmd/rest-api/main.go
+	@echo "Building for Unix-like system"
+	CGO_ENABLED=0 go build -o $(BINARY_NAME) ./cmd/rest-api/main.go
 endif
 
 start-rest-api:
-    @echo "Running API"
-    @export DEV_ENV="true"
-    @./$(BINARY_NAME)
+	@echo "Running API"
+	@export DEV_ENV="true"
+	@./$(BINARY_NAME)
 
 test-docker:
 	@echo "Running tests"
@@ -75,10 +75,10 @@ LOGO = "\n\t$(CR)⦿ Match Making$(CEND)API\n\n"
 
 # --- Project Configuration ---
 
-PROJECT_NAME     := match-making-api
-LICENSE_FILE     := LICENSE
-IGNORE_DIRS      := vendor test         # Directories to exclude from license checks
-ALLOWED_LICENSES := Apache-2.0 MIT      # Specify allowed licenses (comma-separated)
+PROJECT_NAME	 := match-making-api
+LICENSE_FILE	 := LICENSE
+IGNORE_DIRS	  := vendor test		 # Directories to exclude from license checks
+ALLOWED_LICENSES := Apache-2.0 MIT	  # Specify allowed licenses (comma-separated)
 
 # --- Go Tools ---
 
@@ -89,7 +89,7 @@ GO_LICENSES ?= go-licenses
 
 .PHONY: help
 help: ## Display this help message
-	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "\033[36m%-20s\033[0m %s\n", $1, $2}' $(MAKEFILE_LIST)
 
 .PHONY: licenses-check
 licenses-check: ## Check dependencies for allowed licenses
@@ -114,6 +114,44 @@ install-tools: ## Install required Go tools (if not already installed)
 .PHONY: licenses-report # Example: Generate a custom report 
 licenses-report: licenses-csv
 	# Process the licenses.csv file (e.g., using a script or another tool) to create a custom report
+
+
+.PHONY: mocks
+mocks: mocks-clean mocks-generate
+
+.PHONY: mocks-clean
+mocks-clean:
+ifeq ($(DETECTED_OS),Windows)
+	@if exist test\mocks rmdir /s /q test\mocks
+	@if not exist test mkdir test
+	@mkdir test\mocks
+else
+	@rm -rf test/mocks
+	@mkdir -p test/mocks
+endif
+
+
+.PHONY: mocks-generate
+mocks-generate:
+	@echo "Generating mocks for MongoDB repositories..."
+	@mockgen -source="pkg/infra/db/mongodb/game_mode_mongodb.go" -destination="test/mocks/game_mode_repository_mock.go" -package=mocks
+	@mockgen -source="pkg/infra/db/mongodb/game_mongodb.go" -destination="test/mocks/game_repository_mock.go" -package=mocks
+	@mockgen -source="pkg/infra/db/mongodb/region_mongodb.go" -destination="test/mocks/region_repository_mock.go" -package=mocks
+	@echo "Note: Port interface mocks (test/mocks/port_interfaces_testify_mock.go) are manually maintained"
+	@echo "      using testify/mock for compatibility with existing tests."
+	@echo "      Update them manually when port interfaces change."
+	@echo "Mocks generated successfully!"
+
+.PHONY: mocks-test
+mocks-test:
+	@echo "Testing mock generation..."
+	@mockgen -source="./pkg/infra/db/mongodb/game_mongodb.go" -destination="./test/mocks/test_mock.go" -package=mocks
+	@echo "Test mock generated successfully!"
+ifeq ($(DETECTED_OS),Windows)
+	@if exist test\mocks\test_mock.go del test\mocks\test_mock.go
+else
+	@rm -f test/mocks/test_mock.go
+endif
 
 # --- Default Target ---
 

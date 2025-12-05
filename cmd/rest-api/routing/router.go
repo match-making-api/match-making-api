@@ -38,9 +38,49 @@ func NewRouter(ctx context.Context, container container.Container) http.Handler 
 
 	// controllers
 	healthController := controllers.NewHealthController(container)
+	gameController := controllers.NewGameController(container)
+	gameModeController := controllers.NewGameModeController(container)
+	regionController := controllers.NewRegionController(container)
 
 	// health
 	r.HandleFunc(Health, healthController.HealthCheck(ctx)).Methods("GET")
+	resourceContextMiddleware.RegisterOperation(Health, "match-making:health:get")
+
+	// games
+	r.HandleFunc("/games", gameController.List(ctx)).Methods("GET")
+	r.HandleFunc("/games", gameController.Create(ctx)).Methods("POST")
+	r.HandleFunc("/games/{id}", gameController.Get(ctx)).Methods("GET")
+	r.HandleFunc("/games/{id}", gameController.Update(ctx)).Methods("PUT", "PATCH")
+	r.HandleFunc("/games/{id}", gameController.Delete(ctx)).Methods("DELETE")
+	resourceContextMiddleware.RegisterOperation("/games", "match-making:games:list")
+	resourceContextMiddleware.RegisterOperation("/games", "match-making:games:create")
+	resourceContextMiddleware.RegisterOperation("/games/{id}", "match-making:games:get")
+	resourceContextMiddleware.RegisterOperation("/games/{id}", "match-making:games:update")
+	resourceContextMiddleware.RegisterOperation("/games/{id}", "match-making:games:delete")
+
+	// game modes
+	r.HandleFunc("/game-modes", gameModeController.List(ctx)).Methods("GET")
+	r.HandleFunc("/game-modes", gameModeController.Create(ctx)).Methods("POST")
+	r.HandleFunc("/game-modes/{id}", gameModeController.Get(ctx)).Methods("GET")
+	r.HandleFunc("/game-modes/{id}", gameModeController.Update(ctx)).Methods("PUT", "PATCH")
+	r.HandleFunc("/game-modes/{id}", gameModeController.Delete(ctx)).Methods("DELETE")
+	resourceContextMiddleware.RegisterOperation("/game-modes", "match-making:game-modes:list")
+	resourceContextMiddleware.RegisterOperation("/game-modes", "match-making:game-modes:create")
+	resourceContextMiddleware.RegisterOperation("/game-modes/{id}", "match-making:game-modes:get")
+	resourceContextMiddleware.RegisterOperation("/game-modes/{id}", "match-making:game-modes:update")
+	resourceContextMiddleware.RegisterOperation("/game-modes/{id}", "match-making:game-modes:delete")
+
+	// regions
+	r.HandleFunc("/regions", regionController.List(ctx)).Methods("GET")
+	r.HandleFunc("/regions", regionController.Create(ctx)).Methods("POST")
+	r.HandleFunc("/regions/{id}", regionController.Get(ctx)).Methods("GET")
+	r.HandleFunc("/regions/{id}", regionController.Update(ctx)).Methods("PUT", "PATCH")
+	r.HandleFunc("/regions/{id}", regionController.Delete(ctx)).Methods("DELETE")
+	resourceContextMiddleware.RegisterOperation("/regions", "match-making:regions:list")
+	resourceContextMiddleware.RegisterOperation("/regions", "match-making:regions:create")
+	resourceContextMiddleware.RegisterOperation("/regions/{id}", "match-making:regions:get")
+	resourceContextMiddleware.RegisterOperation("/regions/{id}", "match-making:regions:update")
+	resourceContextMiddleware.RegisterOperation("/regions/{id}", "match-making:regions:delete")
 
 	// Swagger UI
 	r.PathPrefix("/swagger/").Handler(httpSwagger.Handler(

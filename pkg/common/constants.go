@@ -1,4 +1,4 @@
-package domain
+package common
 
 import "github.com/google/uuid"
 
@@ -11,4 +11,10 @@ var (
 
 	// Default ClientID for the server (random and valid UUID)
 	ServerClientID = uuid.MustParse("ff96c01f-a741-4429-a0cd-2868d408c42f")
+)
+
+const (
+	// semantic aliases
+	ALLOW = true
+	DENY  = false
 )

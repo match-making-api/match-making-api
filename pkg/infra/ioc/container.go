@@ -7,7 +7,9 @@ import (
 
 	container "github.com/golobby/container/v3"
 	"github.com/joho/godotenv"
-	common "github.com/leet-gaming/match-making-api/pkg/domain"
+	"github.com/leet-gaming/match-making-api/pkg/common"
+	"github.com/leet-gaming/match-making-api/pkg/infra/config"
+	"github.com/leet-gaming/match-making-api/pkg/infra/db/mongodb"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -78,7 +80,7 @@ func (b *ContainerBuilder) WithEnvFile() *ContainerBuilder {
 		}
 	}
 
-	err := b.Container.Singleton(func() (common.Config, error) {
+	err := b.Container.Singleton(func() (config.Config, error) {
 		return EnvironmentConfig()
 	})
 
@@ -126,4 +128,8 @@ func (b *ContainerBuilder) Close(c container.Container) {
 	if client != nil && err == nil {
 		client.Disconnect(context.TODO())
 	}
+}
+
+func InjectIoc(c container.Container) error {
+	return common.InjectAll(c, mongodb.InjectMongoDB)
 }
