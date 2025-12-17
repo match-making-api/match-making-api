@@ -19,13 +19,13 @@ func TestDeleteRegionUseCase_Execute(t *testing.T) {
 	tests := []struct {
 		name          string
 		regionID      uuid.UUID
-		setupMocks    func(*mocks.MockRegionWriter, *mocks.MockRegionReader)
+		setupMocks    func(*mocks.MockPortRegionWriter, *mocks.MockPortRegionReader)
 		expectedError string
 	}{
 		{
 			name:     "successfully delete region",
 			regionID: uuid.New(),
-			setupMocks: func(writer *mocks.MockRegionWriter, reader *mocks.MockRegionReader) {
+			setupMocks: func(writer *mocks.MockPortRegionWriter, reader *mocks.MockPortRegionReader) {
 				existingRegion := &game_entities.Region{
 					BaseEntity: common.BaseEntity{ID: uuid.New()},
 					Name:       "Test Region",
@@ -37,7 +37,7 @@ func TestDeleteRegionUseCase_Execute(t *testing.T) {
 		{
 			name:     "fail when region not found",
 			regionID: uuid.New(),
-			setupMocks: func(writer *mocks.MockRegionWriter, reader *mocks.MockRegionReader) {
+			setupMocks: func(writer *mocks.MockPortRegionWriter, reader *mocks.MockPortRegionReader) {
 				reader.On("GetByID", mock.Anything, mock.Anything).Return(nil, errors.New("not found"))
 			},
 			expectedError: "region not found",
@@ -45,7 +45,7 @@ func TestDeleteRegionUseCase_Execute(t *testing.T) {
 		{
 			name:     "fail when delete fails",
 			regionID: uuid.New(),
-			setupMocks: func(writer *mocks.MockRegionWriter, reader *mocks.MockRegionReader) {
+			setupMocks: func(writer *mocks.MockPortRegionWriter, reader *mocks.MockPortRegionReader) {
 				existingRegion := &game_entities.Region{
 					BaseEntity: common.BaseEntity{ID: uuid.New()},
 					Name:       "Test Region",
@@ -59,8 +59,8 @@ func TestDeleteRegionUseCase_Execute(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockWriter := new(mocks.MockRegionWriter)
-			mockReader := new(mocks.MockRegionReader)
+			mockWriter := new(mocks.MockPortRegionWriter)
+			mockReader := new(mocks.MockPortRegionReader)
 			tt.setupMocks(mockWriter, mockReader)
 
 			useCase := usecases.NewDeleteRegionUseCase(mockWriter, mockReader)

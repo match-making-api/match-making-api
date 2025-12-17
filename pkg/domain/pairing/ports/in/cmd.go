@@ -15,5 +15,5 @@ type PoolInitiator interface {
 }
 
 type PartyScheduleMatcher interface {
-	Execute(pids []uuid.UUID, qty int, matched []uuid.UUID) (bool, error)
+	Execute(pids []uuid.UUID, qty int, matched []uuid.UUID) ([]uuid.UUID, error)
 }

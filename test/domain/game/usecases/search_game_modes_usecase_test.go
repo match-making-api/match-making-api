@@ -18,13 +18,13 @@ import (
 func TestSearchGameModesUseCase_Execute(t *testing.T) {
 	tests := []struct {
 		name          string
-		setupMocks    func(*mocks.MockGameModeReader)
+		setupMocks    func(*mocks.MockPortGameModeReader)
 		expectedError string
 		validate      func(*testing.T, []*game_entities.GameMode)
 	}{
 		{
 			name: "successfully search game modes",
-			setupMocks: func(reader *mocks.MockGameModeReader) {
+			setupMocks: func(reader *mocks.MockPortGameModeReader) {
 				gameModes := []*game_entities.GameMode{
 					{
 						BaseEntity: common.BaseEntity{ID: uuid.New()},
@@ -44,7 +44,7 @@ func TestSearchGameModesUseCase_Execute(t *testing.T) {
 		},
 		{
 			name: "return empty list when no game modes found",
-			setupMocks: func(reader *mocks.MockGameModeReader) {
+			setupMocks: func(reader *mocks.MockPortGameModeReader) {
 				reader.On("Search", mock.Anything, mock.AnythingOfType("common.Search")).Return([]*game_entities.GameMode{}, nil)
 			},
 			validate: func(t *testing.T, gameModes []*game_entities.GameMode) {
@@ -54,7 +54,7 @@ func TestSearchGameModesUseCase_Execute(t *testing.T) {
 		},
 		{
 			name: "fail when repository returns error",
-			setupMocks: func(reader *mocks.MockGameModeReader) {
+			setupMocks: func(reader *mocks.MockPortGameModeReader) {
 				reader.On("Search", mock.Anything, mock.AnythingOfType("common.Search")).Return(nil, errors.New("database error"))
 			},
 			expectedError: "database error",
@@ -63,7 +63,7 @@ func TestSearchGameModesUseCase_Execute(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockReader := new(mocks.MockGameModeReader)
+			mockReader := new(mocks.MockPortGameModeReader)
 			tt.setupMocks(mockReader)
 
 			useCase := usecases.NewSearchGameModesUseCase(mockReader)

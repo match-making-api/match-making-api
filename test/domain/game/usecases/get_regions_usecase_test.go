@@ -18,13 +18,13 @@ func TestGetRegionsUseCase_Execute(t *testing.T) {
 	tests := []struct {
 		name       string
 		gameID     uuid.UUID
-		setupMocks func(*mocks.MockRegionReader)
+		setupMocks func(*mocks.MockPortRegionReader)
 		validate   func(*testing.T, []*game_entities.Region)
 	}{
 		{
 			name:   "successfully get regions",
 			gameID: uuid.New(),
-			setupMocks: func(reader *mocks.MockRegionReader) {
+			setupMocks: func(reader *mocks.MockPortRegionReader) {
 				regions := []*game_entities.Region{
 					{
 						BaseEntity: common.BaseEntity{ID: uuid.New()},
@@ -47,7 +47,7 @@ func TestGetRegionsUseCase_Execute(t *testing.T) {
 		{
 			name:   "return empty list when no regions found",
 			gameID: uuid.New(),
-			setupMocks: func(reader *mocks.MockRegionReader) {
+			setupMocks: func(reader *mocks.MockPortRegionReader) {
 				reader.On("Search", mock.Anything, mock.Anything).Return([]*game_entities.Region{}, nil)
 			},
 			validate: func(t *testing.T, regions []*game_entities.Region) {
@@ -59,7 +59,7 @@ func TestGetRegionsUseCase_Execute(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockReader := new(mocks.MockRegionReader)
+			mockReader := new(mocks.MockPortRegionReader)
 			tt.setupMocks(mockReader)
 
 			useCase := usecases.NewGetRegionsUseCase(mockReader)

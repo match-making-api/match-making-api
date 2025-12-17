@@ -19,13 +19,13 @@ func TestGetGameModesUseCase_Execute(t *testing.T) {
 	tests := []struct {
 		name       string
 		gameID     google_uuid.UUID
-		setupMocks func(*mocks.MockGameModeReader)
+		setupMocks func(*mocks.MockPortGameModeReader)
 		validate   func(*testing.T, []*game_entities.GameMode)
 	}{
 		{
 			name:   "successfully get game modes by game id",
 			gameID: google_uuid.New(),
-			setupMocks: func(reader *mocks.MockGameModeReader) {
+			setupMocks: func(reader *mocks.MockPortGameModeReader) {
 				gameModes := []*game_entities.GameMode{
 					{
 						BaseEntity: common.BaseEntity{ID: google_uuid.New()},
@@ -48,7 +48,7 @@ func TestGetGameModesUseCase_Execute(t *testing.T) {
 		{
 			name:   "return empty list when no game modes found",
 			gameID: google_uuid.New(),
-			setupMocks: func(reader *mocks.MockGameModeReader) {
+			setupMocks: func(reader *mocks.MockPortGameModeReader) {
 				reader.On("Search", mock.Anything, mock.Anything).Return([]*game_entities.GameMode{}, nil)
 			},
 			validate: func(t *testing.T, gameModes []*game_entities.GameMode) {
@@ -60,7 +60,7 @@ func TestGetGameModesUseCase_Execute(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockReader := new(mocks.MockGameModeReader)
+			mockReader := new(mocks.MockPortGameModeReader)
 			tt.setupMocks(mockReader)
 
 			useCase := usecases.NewGetGameModesUseCase(mockReader)

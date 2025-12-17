@@ -19,14 +19,14 @@ func TestGetRegionByIDUseCase_Execute(t *testing.T) {
 	tests := []struct {
 		name          string
 		regionID      uuid.UUID
-		setupMocks    func(*mocks.MockRegionReader)
+		setupMocks    func(*mocks.MockPortRegionReader)
 		expectedError string
 		validate      func(*testing.T, *game_entities.Region)
 	}{
 		{
 			name:     "successfully get region by id",
 			regionID: uuid.New(),
-			setupMocks: func(reader *mocks.MockRegionReader) {
+			setupMocks: func(reader *mocks.MockPortRegionReader) {
 				region := &game_entities.Region{
 					BaseEntity: common.BaseEntity{ID: uuid.New()},
 					Name:       "Test Region",
@@ -43,7 +43,7 @@ func TestGetRegionByIDUseCase_Execute(t *testing.T) {
 		{
 			name:     "fail when region not found",
 			regionID: uuid.New(),
-			setupMocks: func(reader *mocks.MockRegionReader) {
+			setupMocks: func(reader *mocks.MockPortRegionReader) {
 				reader.On("GetByID", mock.Anything, mock.Anything).Return(nil, errors.New("not found"))
 			},
 			expectedError: "failed to get region",
@@ -52,7 +52,7 @@ func TestGetRegionByIDUseCase_Execute(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockReader := new(mocks.MockRegionReader)
+			mockReader := new(mocks.MockPortRegionReader)
 			tt.setupMocks(mockReader)
 
 			useCase := usecases.NewGetRegionByIDUseCase(mockReader)

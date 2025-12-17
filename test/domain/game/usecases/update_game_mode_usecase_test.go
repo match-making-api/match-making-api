@@ -21,7 +21,7 @@ func TestUpdateGameModeUseCase_Execute(t *testing.T) {
 		name          string
 		gameModeID    google_uuid.UUID
 		gameMode      *game_entities.GameMode
-		setupMocks    func(*mocks.MockGameModeWriter, *mocks.MockGameModeReader)
+		setupMocks    func(*mocks.MockPortGameModeWriter, *mocks.MockPortGameModeReader)
 		expectedError string
 		validate      func(*testing.T, *game_entities.GameMode)
 	}{
@@ -33,7 +33,7 @@ func TestUpdateGameModeUseCase_Execute(t *testing.T) {
 				Name:        "Updated Game Mode",
 				Description: "Updated Description",
 			},
-			setupMocks: func(writer *mocks.MockGameModeWriter, reader *mocks.MockGameModeReader) {
+			setupMocks: func(writer *mocks.MockPortGameModeWriter, reader *mocks.MockPortGameModeReader) {
 				existingGameMode := &game_entities.GameMode{
 					BaseEntity:  common.BaseEntity{ID: google_uuid.New()},
 					GameID:      uuid.FromStringOrNil(google_uuid.New().String()),
@@ -56,7 +56,7 @@ func TestUpdateGameModeUseCase_Execute(t *testing.T) {
 				GameID: uuid.FromStringOrNil(google_uuid.New().String()),
 				Name:   "Test Game Mode",
 			},
-			setupMocks: func(writer *mocks.MockGameModeWriter, reader *mocks.MockGameModeReader) {
+			setupMocks: func(writer *mocks.MockPortGameModeWriter, reader *mocks.MockPortGameModeReader) {
 				reader.On("GetByID", mock.Anything, mock.Anything).Return(nil, errors.New("not found"))
 			},
 			expectedError: "game mode not found",
@@ -68,7 +68,7 @@ func TestUpdateGameModeUseCase_Execute(t *testing.T) {
 				GameID: uuid.FromStringOrNil(google_uuid.New().String()),
 				Name:   "Duplicate Name",
 			},
-			setupMocks: func(writer *mocks.MockGameModeWriter, reader *mocks.MockGameModeReader) {
+			setupMocks: func(writer *mocks.MockPortGameModeWriter, reader *mocks.MockPortGameModeReader) {
 				existingGameMode := &game_entities.GameMode{
 					BaseEntity: common.BaseEntity{ID: google_uuid.New()},
 					GameID:     uuid.FromStringOrNil(google_uuid.New().String()),
@@ -88,8 +88,8 @@ func TestUpdateGameModeUseCase_Execute(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockWriter := new(mocks.MockGameModeWriter)
-			mockReader := new(mocks.MockGameModeReader)
+			mockWriter := new(mocks.MockPortGameModeWriter)
+			mockReader := new(mocks.MockPortGameModeReader)
 			tt.setupMocks(mockWriter, mockReader)
 
 			useCase := usecases.NewUpdateGameModeUseCase(mockWriter, mockReader)
