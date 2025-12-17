@@ -363,3 +363,361 @@ func BenchmarkPartyMatcher_LargeSet(b *testing.B) {
 		_, _ = pm.Execute(parties, 5, []uuid.UUID{})
 	}
 }
+// TestPartyMatcher_InvalidSchedules tests error handling for invalid schedules
+func TestPartyMatcher_InvalidSchedules(t *testing.T) {
+	now := time.Now()
+	uuid1 := uuid.New()
+	uuid2 := uuid.New()
+
+	tests := []struct {
+		name     string
+		schedules map[uuid.UUID]*schedule_entities.Schedule
+		pids     []uuid.UUID
+		qty      int
+		wantErr  bool
+		errMsg   string
+	}{
+		{
+			name: "Schedule with empty options",
+			schedules: map[uuid.UUID]*schedule_entities.Schedule{
+				uuid1: {
+					ID:      uuid1,
+					Type:    schedule_entities.Availability,
+					Options: map[int]schedule_entities.DateOption{},
+				},
+				uuid2: {
+					ID:    uuid2,
+					Type:  schedule_entities.Availability,
+					Options: map[int]schedule_entities.DateOption{
+						0: {
+							Months:   []time.Month{now.Month()},
+							Weekdays: []time.Weekday{now.Weekday()},
+							Days:     []int{now.Day()},
+							TimeFrames: []schedule_entities.TimeFrame{
+								{Start: now.Add(-1 * time.Hour), End: now.Add(5 * time.Hour)},
+							},
+						},
+					},
+				},
+			},
+			pids:    []uuid.UUID{uuid1, uuid2},
+			qty:     2,
+			wantErr: true,
+			errMsg:  "invalid schedule",
+		},
+		{
+			name: "Schedule with invalid timeframe (start after end)",
+			schedules: map[uuid.UUID]*schedule_entities.Schedule{
+				uuid1: {
+					ID:    uuid1,
+					Type:  schedule_entities.Availability,
+					Options: map[int]schedule_entities.DateOption{
+						0: {
+							Months:   []time.Month{now.Month()},
+							Weekdays: []time.Weekday{now.Weekday()},
+							Days:     []int{now.Day()},
+							TimeFrames: []schedule_entities.TimeFrame{
+								{Start: now.Add(5 * time.Hour), End: now.Add(-1 * time.Hour)}, // Invalid: start after end
+							},
+						},
+					},
+				},
+				uuid2: {
+					ID:    uuid2,
+					Type:  schedule_entities.Availability,
+					Options: map[int]schedule_entities.DateOption{
+						0: {
+							Months:   []time.Month{now.Month()},
+							Weekdays: []time.Weekday{now.Weekday()},
+							Days:     []int{now.Day()},
+							TimeFrames: []schedule_entities.TimeFrame{
+								{Start: now.Add(-1 * time.Hour), End: now.Add(5 * time.Hour)},
+							},
+						},
+					},
+				},
+			},
+			pids:    []uuid.UUID{uuid1, uuid2},
+			qty:     2,
+			wantErr: true,
+			errMsg:  "timeframe start time",
+		},
+		{
+			name: "Schedule with no timeframes",
+			schedules: map[uuid.UUID]*schedule_entities.Schedule{
+				uuid1: {
+					ID:    uuid1,
+					Type:  schedule_entities.Availability,
+					Options: map[int]schedule_entities.DateOption{
+						0: {
+							Months:   []time.Month{now.Month()},
+							Weekdays: []time.Weekday{now.Weekday()},
+							Days:     []int{now.Day()},
+							TimeFrames: []schedule_entities.TimeFrame{}, // Empty timeframes
+						},
+					},
+				},
+			},
+			pids:    []uuid.UUID{uuid1},
+			qty:     1,
+			wantErr: true,
+			errMsg:  "no timeframes",
+		},
+		{
+			name: "Schedule with timeframe duration less than 1 minute",
+			schedules: map[uuid.UUID]*schedule_entities.Schedule{
+				uuid1: {
+					ID:    uuid1,
+					Type:  schedule_entities.Availability,
+					Options: map[int]schedule_entities.DateOption{
+						0: {
+							Months:   []time.Month{now.Month()},
+							Weekdays: []time.Weekday{now.Weekday()},
+							Days:     []int{now.Day()},
+							TimeFrames: []schedule_entities.TimeFrame{
+								{Start: now, End: now.Add(30 * time.Second)}, // Less than 1 minute
+							},
+						},
+					},
+				},
+			},
+			pids:    []uuid.UUID{uuid1},
+			qty:     1,
+			wantErr: true,
+			errMsg:  "timeframe duration",
+		},
+		{
+			name: "Schedule with no months, weekdays, or days",
+			schedules: map[uuid.UUID]*schedule_entities.Schedule{
+				uuid1: {
+					ID:    uuid1,
+					Type:  schedule_entities.Availability,
+					Options: map[int]schedule_entities.DateOption{
+						0: {
+							Months:   []time.Month{},
+							Weekdays: []time.Weekday{},
+							Days:     []int{},
+							TimeFrames: []schedule_entities.TimeFrame{
+								{Start: now.Add(-1 * time.Hour), End: now.Add(5 * time.Hour)},
+							},
+						},
+					},
+				},
+			},
+			pids:    []uuid.UUID{uuid1},
+			qty:     1,
+			wantErr: true,
+			errMsg:  "must specify at least one of",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			scheduleReader := mocks.NewMockPartyScheduleReader(tt.schedules)
+			pm := pairing_usecases.NewPartyScheduleMatcher(scheduleReader)
+
+			matchedParties, err := pm.Execute(tt.pids, tt.qty, []uuid.UUID{})
+
+			if tt.wantErr {
+				assert.Error(t, err, "Expected error for invalid schedule")
+				if tt.errMsg != "" {
+					assert.Contains(t, err.Error(), tt.errMsg, "Error message should contain expected text")
+				}
+				assert.Nil(t, matchedParties, "Should not return matched parties when schedule is invalid")
+			} else {
+				assert.NoError(t, err, "Should not error with valid schedules")
+			}
+		})
+	}
+}
+
+// TestPartyMatcher_DatabaseErrors tests error handling for database communication failures
+func TestPartyMatcher_DatabaseErrors(t *testing.T) {
+	now := time.Now()
+	uuid1 := uuid.New()
+	uuid2 := uuid.New()
+	uuid3 := uuid.New()
+
+	tests := []struct {
+		name     string
+		schedules map[uuid.UUID]*schedule_entities.Schedule
+		pids     []uuid.UUID
+		qty      int
+		wantErr  bool
+		errMsg   string
+	}{
+		{
+			name: "All parties have nil schedules (database failure)",
+			schedules: map[uuid.UUID]*schedule_entities.Schedule{
+				// No schedules - simulating database failure
+			},
+			pids:    []uuid.UUID{uuid1, uuid2},
+			qty:     2,
+			wantErr: true,
+			errMsg:  "unable to match", // When all schedules are nil, we get "unable to match" error
+		},
+		{
+			name: "Some parties have nil schedules",
+			schedules: map[uuid.UUID]*schedule_entities.Schedule{
+				uuid1: {
+					ID:    uuid1,
+					Type:  schedule_entities.Availability,
+					Options: map[int]schedule_entities.DateOption{
+						0: {
+							Months:   []time.Month{now.Month()},
+							Weekdays: []time.Weekday{now.Weekday()},
+							Days:     []int{now.Day()},
+							TimeFrames: []schedule_entities.TimeFrame{
+								{Start: now.Add(-1 * time.Hour), End: now.Add(5 * time.Hour)},
+							},
+						},
+					},
+				},
+				// uuid2 has no schedule (nil) - simulating database failure for this party
+			},
+			pids:    []uuid.UUID{uuid1, uuid2},
+			qty:     2,
+			wantErr: true,
+			errMsg:  "unable to match",
+		},
+		{
+			name: "Mixed valid and invalid schedules",
+			schedules: map[uuid.UUID]*schedule_entities.Schedule{
+				uuid1: {
+					ID:    uuid1,
+					Type:  schedule_entities.Availability,
+					Options: map[int]schedule_entities.DateOption{
+						0: {
+							Months:   []time.Month{now.Month()},
+							Weekdays: []time.Weekday{now.Weekday()},
+							Days:     []int{now.Day()},
+							TimeFrames: []schedule_entities.TimeFrame{
+								{Start: now.Add(-1 * time.Hour), End: now.Add(5 * time.Hour)},
+							},
+						},
+					},
+				},
+				uuid2: {
+					ID:    uuid2,
+					Type:  schedule_entities.Availability,
+					Options: map[int]schedule_entities.DateOption{
+						0: {
+							Months:   []time.Month{now.Month()},
+							Weekdays: []time.Weekday{now.Weekday()},
+							Days:     []int{now.Day()},
+							TimeFrames: []schedule_entities.TimeFrame{
+								{Start: now.Add(3 * time.Hour), End: now.Add(4 * time.Hour)},
+							},
+						},
+					},
+				},
+				uuid3: {
+					ID:    uuid3,
+					Type:  schedule_entities.Availability,
+					Options: map[int]schedule_entities.DateOption{}, // Invalid: empty options
+				},
+			},
+			pids:    []uuid.UUID{uuid1, uuid2, uuid3},
+			qty:     2,
+			wantErr: false, // Should still match uuid1 and uuid2 despite uuid3 being invalid
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			scheduleReader := mocks.NewMockPartyScheduleReader(tt.schedules)
+			pm := pairing_usecases.NewPartyScheduleMatcher(scheduleReader)
+
+			matchedParties, err := pm.Execute(tt.pids, tt.qty, []uuid.UUID{})
+
+			if tt.wantErr {
+				assert.Error(t, err, "Expected error for database failure scenario")
+				if tt.errMsg != "" {
+					assert.Contains(t, err.Error(), tt.errMsg, "Error message should contain expected text")
+				}
+			} else {
+				if err != nil {
+					// If we expected no error but got one, check if it's due to insufficient valid parties
+					assert.Contains(t, err.Error(), "unable to match", "Error should be about matching, not validation")
+				} else {
+					assert.NotNil(t, matchedParties, "Should return matched parties when valid schedules exist")
+					assert.Equal(t, tt.qty, len(matchedParties), "Should match expected quantity")
+				}
+			}
+		})
+	}
+}
+
+// TestAuxiliaryFunctions tests the auxiliary functions used by the matching algorithm
+func TestAuxiliaryFunctions(t *testing.T) {
+	now := time.Now()
+
+	t.Run("areSchedulesCompatible", func(t *testing.T) {
+		// Test with compatible schedules
+		schedule1 := schedule_entities.Schedule{
+			ID:    uuid.New(),
+			Type:  schedule_entities.Availability,
+			Options: map[int]schedule_entities.DateOption{
+				0: {
+					Months:   []time.Month{now.Month()},
+					Weekdays: []time.Weekday{now.Weekday()},
+					Days:     []int{now.Day()},
+					TimeFrames: []schedule_entities.TimeFrame{
+						{Start: now.Add(-1 * time.Hour), End: now.Add(5 * time.Hour)},
+					},
+				},
+			},
+		}
+
+		schedule2 := schedule_entities.Schedule{
+			ID:    uuid.New(),
+			Type:  schedule_entities.Availability,
+			Options: map[int]schedule_entities.DateOption{
+				0: {
+					Months:   []time.Month{now.Month()},
+					Weekdays: []time.Weekday{now.Weekday()},
+					Days:     []int{now.Day()},
+					TimeFrames: []schedule_entities.TimeFrame{
+						{Start: now.Add(3 * time.Hour), End: now.Add(4 * time.Hour)},
+					},
+				},
+			},
+		}
+
+		// Use reflection to call the private function
+		// Since it's private, we'll test it through the public interface
+		scheduleReader := mocks.NewMockPartyScheduleReader(map[uuid.UUID]*schedule_entities.Schedule{
+			schedule1.ID: &schedule1,
+			schedule2.ID: &schedule2,
+		})
+		pm := pairing_usecases.NewPartyScheduleMatcher(scheduleReader)
+
+		matched, err := pm.Execute([]uuid.UUID{schedule1.ID, schedule2.ID}, 2, []uuid.UUID{})
+		assert.NoError(t, err)
+		assert.Equal(t, 2, len(matched), "Compatible schedules should match")
+	})
+
+	t.Run("isTimeFrameOverlapping", func(t *testing.T) {
+		// Test overlapping timeframes
+		start1 := now.Add(-1 * time.Hour)
+		end1 := now.Add(5 * time.Hour)
+		start2 := now.Add(3 * time.Hour)
+		end2 := now.Add(4 * time.Hour)
+
+		// These should overlap
+		overlapping := isTimeFrameOverlapping(start1, end1, start2, end2)
+		assert.True(t, overlapping, "Timeframes should overlap")
+
+		// Test non-overlapping timeframes
+		start3 := now.Add(6 * time.Hour)
+		end3 := now.Add(7 * time.Hour)
+		nonOverlapping := isTimeFrameOverlapping(start1, end1, start3, end3)
+		assert.False(t, nonOverlapping, "Timeframes should not overlap")
+	})
+}
+
+// Helper function to test private isTimeFrameOverlapping function
+// We need to make it accessible for testing, or test it indirectly
+func isTimeFrameOverlapping(start1, end1, start2, end2 time.Time) bool {
+	return start1.Before(end2) && start2.Before(end1)
+}

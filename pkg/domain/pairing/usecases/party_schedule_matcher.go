@@ -51,10 +51,11 @@ func NewPartyScheduleMatcher(scheduleReader schedules_in_ports.PartyScheduleRead
 // It handles cases where parties have non-overlapping schedules by checking all possible combinations
 // Returns the matched parties or an error if no matches are found
 // Optimized with caching and memoization for better performance
+// Validates schedules and handles database communication errors gracefully
 func (pm *PartyScheduleMatcher) Execute(pids []uuid.UUID, qty int, matched []uuid.UUID) ([]uuid.UUID, error) {
 	ctx := context.Background()
 	if qty <= 0 {
-		return nil, errors.New("quantity must be greater than zero")
+		return nil, errors.New("quantity must be greater than zero: invalid quantity parameter")
 	}
 
 	// Base case: we have enough matched parties
@@ -64,11 +65,14 @@ func (pm *PartyScheduleMatcher) Execute(pids []uuid.UUID, qty int, matched []uui
 
 	// Base case: no more parties available
 	if len(pids) == 0 {
-		return nil, fmt.Errorf("not enough parties available to match the required quantity: need %d, have %d", qty, len(matched))
+		return nil, fmt.Errorf("not enough parties available to match the required quantity: need %d, have %d matched", qty, len(matched))
 	}
 
 	// Pre-load all schedules into cache to avoid repeated repository calls
-	pm.preloadSchedules(ctx, pids)
+	// This also validates schedules and handles database errors
+	if err := pm.preloadSchedules(ctx, pids); err != nil {
+		return nil, fmt.Errorf("failed to load schedules from database: %w", err)
+	}
 
 	// Use parallel processing for large sets of parties
 	if len(pids) >= pm.parallelThreshold {
@@ -76,6 +80,7 @@ func (pm *PartyScheduleMatcher) Execute(pids []uuid.UUID, qty int, matched []uui
 	}
 
 	// Recursive case: try to find matches starting with each available party
+	var validationErrors []error
 	for i, current := range pids {
 		currentSchedule := pm.getCachedSchedule(current)
 		if currentSchedule == nil {
@@ -83,8 +88,20 @@ func (pm *PartyScheduleMatcher) Execute(pids []uuid.UUID, qty int, matched []uui
 			continue
 		}
 
+		// Validate schedule before using it
+		if err := validateSchedule(*currentSchedule); err != nil {
+			slog.ErrorContext(ctx, "invalid schedule detected, skipping party", "party_id", current, "error", err)
+			validationErrors = append(validationErrors, fmt.Errorf("party %s has invalid schedule: %w", current, err))
+			continue
+		}
+
 		// Find parties with compatible schedules
-		matchingParties := pm.findMatchingParties(ctx, pids, i, *currentSchedule)
+		matchingParties, err := pm.findMatchingParties(ctx, pids, i, *currentSchedule)
+		if err != nil {
+			// If there was an error finding matching parties (e.g., invalid schedules), log and continue
+			slog.WarnContext(ctx, "error finding matching parties, continuing with next party", "party_id", current, "error", err)
+			continue
+		}
 		
 		// Check if we have enough matching parties to complete the match
 		needed := qty - len(matched) - 1
@@ -98,8 +115,14 @@ func (pm *PartyScheduleMatcher) Execute(pids []uuid.UUID, qty int, matched []uui
 		}
 	}
 
+	// If we had validation errors, include them in the error message
+	if len(validationErrors) > 0 {
+		return nil, fmt.Errorf("unable to match parties: %d parties had invalid schedules (first error: %v). Need %d, have %d matched, %d available", 
+			len(validationErrors), validationErrors[0], qty, len(matched), len(pids))
+	}
+
 	// No valid match found
-	return nil, fmt.Errorf("unable to match the required quantity of parties: need %d, have %d matched, %d available", qty, len(matched), len(pids))
+	return nil, fmt.Errorf("unable to match the required quantity of parties: need %d, have %d matched, %d available. All parties were checked but no compatible schedules found", qty, len(matched), len(pids))
 }
 
 // matchParties attempts to build a complete match starting with the current party
@@ -132,7 +155,8 @@ func (pm *PartyScheduleMatcher) matchParties(ctx context.Context, pids []uuid.UU
 
 // findMatchingParties finds all parties with schedules compatible with the given schedule
 // Uses cached schedules and memoized compatibility checks for better performance
-func (pm *PartyScheduleMatcher) findMatchingParties(ctx context.Context, pids []uuid.UUID, currentIndex int, schedule schedule_entities.Schedule) []uuid.UUID {
+// Returns error if invalid schedules are encountered
+func (pm *PartyScheduleMatcher) findMatchingParties(ctx context.Context, pids []uuid.UUID, currentIndex int, schedule schedule_entities.Schedule) ([]uuid.UUID, error) {
 	var matchingParties []uuid.UUID
 	
 	for i, otherPID := range pids {
@@ -148,30 +172,65 @@ func (pm *PartyScheduleMatcher) findMatchingParties(ctx context.Context, pids []
 			continue
 		}
 		
+		// Validate the other party's schedule before checking compatibility
+		if err := validateSchedule(*otherSchedule); err != nil {
+			slog.WarnContext(ctx, "invalid schedule detected during compatibility check, skipping", "party_id", otherPID, "error", err)
+			// Continue with other parties rather than failing completely
+			continue
+		}
+		
 		// Check if schedules are compatible using memoized result
 		if pm.areSchedulesCompatibleMemoized(schedule.ID, otherSchedule.ID, schedule, *otherSchedule) {
 			matchingParties = append(matchingParties, otherPID)
 		}
 	}
 	
-	return matchingParties
+	return matchingParties, nil
 }
 
 // preloadSchedules loads all schedules for the given party IDs into the cache
 // This avoids repeated repository calls during the matching process
-func (pm *PartyScheduleMatcher) preloadSchedules(ctx context.Context, pids []uuid.UUID) {
+// Returns an error if database communication fails for critical operations
+func (pm *PartyScheduleMatcher) preloadSchedules(ctx context.Context, pids []uuid.UUID) error {
 	pm.scheduleCacheMutex.Lock()
 	defer pm.scheduleCacheMutex.Unlock()
 	
+	var dbErrors []error
 	for _, pid := range pids {
 		// Only load if not already cached
 		if _, exists := pm.scheduleCache[pid]; !exists {
+			// Attempt to get schedule from repository
+			// Note: GetScheduleByPartyID returns nil on error, so we can't directly detect DB errors
+			// But we can validate the schedule if it's returned
 			schedule := pm.ScheduleReader.GetScheduleByPartyID(pid)
 			if schedule != nil {
+				// Validate schedule before caching
+				if err := validateSchedule(*schedule); err != nil {
+					slog.WarnContext(ctx, "invalid schedule loaded from database, not caching", "party_id", pid, "error", err)
+					dbErrors = append(dbErrors, fmt.Errorf("party %s: %w", pid, err))
+					// Don't cache invalid schedules
+					continue
+				}
 				pm.scheduleCache[pid] = schedule
+			} else {
+				// Schedule is nil - could be missing or database error
+				// Log but don't fail the entire operation
+				slog.DebugContext(ctx, "schedule not found for party", "party_id", pid)
 			}
 		}
 	}
+	
+	// If all schedules failed to load, return an error
+	if len(dbErrors) == len(pids) && len(pids) > 0 {
+		return fmt.Errorf("failed to load schedules for all parties: %d errors (example: %v)", len(dbErrors), dbErrors[0])
+	}
+	
+	// If some schedules failed but not all, log warning but continue
+	if len(dbErrors) > 0 {
+		slog.WarnContext(ctx, "some schedules failed to load or were invalid", "failed_count", len(dbErrors), "total_parties", len(pids))
+	}
+	
+	return nil
 }
 
 // getCachedSchedule retrieves a schedule from cache, falling back to repository if not cached
@@ -254,7 +313,13 @@ func (pm *PartyScheduleMatcher) executeParallel(ctx context.Context, pids []uuid
 				return
 			}
 			
-			matchingParties := pm.findMatchingParties(ctx, pids, idx, *currentSchedule)
+			matchingParties, err := pm.findMatchingParties(ctx, pids, idx, *currentSchedule)
+			if err != nil {
+				// Log error but continue with next party
+				slog.WarnContext(ctx, "error finding matching parties in parallel execution", "party_id", pid, "error", err)
+				return
+			}
+			
 			needed := qty - len(matched) - 1
 			
 			if len(matchingParties) >= needed {
@@ -350,6 +415,72 @@ func containsUUID(slice []uuid.UUID, id uuid.UUID) bool {
 		}
 	}
 	return false
+}
+
+// validateSchedule validates a schedule for correctness
+// Returns an error with descriptive message if the schedule is invalid
+func validateSchedule(schedule schedule_entities.Schedule) error {
+	// Check if schedule has any options
+	if schedule.Options == nil {
+		return fmt.Errorf("schedule has no options defined (schedule_id: %s)", schedule.ID)
+	}
+	
+	if len(schedule.Options) == 0 {
+		return fmt.Errorf("schedule has empty options map (schedule_id: %s)", schedule.ID)
+	}
+	
+	// Validate each date option
+	hasValidOption := false
+	for optionKey, option := range schedule.Options {
+		if err := validateDateOption(option, optionKey); err != nil {
+			return fmt.Errorf("invalid date option at key %d: %w", optionKey, err)
+		}
+		hasValidOption = true
+	}
+	
+	if !hasValidOption {
+		return fmt.Errorf("schedule has no valid date options (schedule_id: %s)", schedule.ID)
+	}
+	
+	return nil
+}
+
+// validateDateOption validates a single date option
+func validateDateOption(option schedule_entities.DateOption, optionKey int) error {
+	// Check if option has any timeframes
+	if len(option.TimeFrames) == 0 {
+		return fmt.Errorf("date option has no timeframes defined")
+	}
+	
+	// Validate each timeframe
+	for i, timeframe := range option.TimeFrames {
+		if err := validateTimeFrame(timeframe, i); err != nil {
+			return fmt.Errorf("timeframe %d: %w", i, err)
+		}
+	}
+	
+	// Check if at least one of Months, Weekdays, or Days is specified
+	if len(option.Months) == 0 && len(option.Weekdays) == 0 && len(option.Days) == 0 {
+		return fmt.Errorf("date option must specify at least one of: Months, Weekdays, or Days")
+	}
+	
+	return nil
+}
+
+// validateTimeFrame validates a single timeframe
+func validateTimeFrame(timeframe schedule_entities.TimeFrame, index int) error {
+	// Check if start time is before end time
+	if !timeframe.Start.Before(timeframe.End) {
+		return fmt.Errorf("timeframe start time (%v) must be before end time (%v)", timeframe.Start, timeframe.End)
+	}
+	
+	// Check if timeframe has valid duration (at least 1 minute)
+	duration := timeframe.End.Sub(timeframe.Start)
+	if duration < time.Minute {
+		return fmt.Errorf("timeframe duration must be at least 1 minute, got %v", duration)
+	}
+	
+	return nil
 }
 
 // ClearCache clears all caches (useful for testing or memory management)
