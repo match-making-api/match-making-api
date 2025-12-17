@@ -26,13 +26,17 @@ func NewMockPartyScheduleReader(schedules map[uuid.UUID]*schedule_entities.Sched
 
 // GetScheduleByPartyID returns the schedule for the given party ID
 func (m *MockPartyScheduleReader) GetScheduleByPartyID(id uuid.UUID) *schedule_entities.Schedule {
-	args := m.Called(id)
-	if args.Get(0) == nil {
-		// Fallback to internal map if no mock expectation is set
-		if m.schedules != nil {
-			return m.schedules[id]
+	// Check if there are any expectations set
+	if len(m.ExpectedCalls) > 0 {
+		args := m.Called(id)
+		if args.Get(0) != nil {
+			return args.Get(0).(*schedule_entities.Schedule)
 		}
-		return nil
 	}
-	return args.Get(0).(*schedule_entities.Schedule)
+	
+	// Fallback to internal map if no mock expectation is set or expectation returned nil
+	if m.schedules != nil {
+		return m.schedules[id]
+	}
+	return nil
 }

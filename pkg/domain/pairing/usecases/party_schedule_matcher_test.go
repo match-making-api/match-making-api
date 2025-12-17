@@ -110,7 +110,7 @@ func TestPartyMatcher_Execute(t *testing.T) {
 					Weekdays: []time.Weekday{now.Weekday()},
 					Days:     []int{now.Day()},
 					TimeFrames: []schedule_entities.TimeFrame{
-						{Start: now.Add(6 * time.Hour), End: now.Add(7 * time.Hour)},
+						{Start: now.Add(4 * time.Hour), End: now.Add(5 * time.Hour)},
 					},
 				},
 			},
@@ -224,5 +224,142 @@ func TestPartyMatcher_Execute(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+// TestPartyMatcher_Cache verifies that schedule caching works correctly
+func TestPartyMatcher_Cache(t *testing.T) {
+	now := time.Now()
+	uuid1 := uuid.New()
+	uuid2 := uuid.New()
+
+	schedules := map[uuid.UUID]schedule_entities.Schedule{
+		uuid1: {
+			ID:    uuid1,
+			Type:  schedule_entities.Availability,
+			Party: nil,
+			Options: map[int]schedule_entities.DateOption{
+				0: {
+					Months:   []time.Month{now.Month()},
+					Weekdays: []time.Weekday{now.Weekday()},
+					Days:     []int{now.Day()},
+					TimeFrames: []schedule_entities.TimeFrame{
+						{Start: now.Add(-1 * time.Hour), End: now.Add(5 * time.Hour)},
+					},
+				},
+			},
+		},
+		uuid2: {
+			ID:    uuid2,
+			Type:  schedule_entities.Availability,
+			Party: nil,
+			Options: map[int]schedule_entities.DateOption{
+				0: {
+					Months:   []time.Month{now.Month()},
+					Weekdays: []time.Weekday{now.Weekday()},
+					Days:     []int{now.Day()},
+					TimeFrames: []schedule_entities.TimeFrame{
+						{Start: now.Add(3 * time.Hour), End: now.Add(4 * time.Hour)},
+					},
+				},
+			},
+		},
+	}
+
+	scheduleMap := make(map[uuid.UUID]*schedule_entities.Schedule)
+	for k, v := range schedules {
+		scheduleCopy := v
+		scheduleMap[k] = &scheduleCopy
+	}
+
+	scheduleReader := mocks.NewMockPartyScheduleReader(scheduleMap)
+	pm := pairing_usecases.NewPartyScheduleMatcher(scheduleReader)
+
+	// First execution should load schedules into cache
+	matchedParties, err := pm.Execute([]uuid.UUID{uuid1, uuid2}, 2, []uuid.UUID{})
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(matchedParties))
+
+	// Clear cache and verify it can be cleared
+	if matcher, ok := pm.(*pairing_usecases.PartyScheduleMatcher); ok {
+		matcher.ClearCache()
+	}
+
+	// Execute again - should still work (will reload from repository)
+	matchedParties2, err2 := pm.Execute([]uuid.UUID{uuid1, uuid2}, 2, []uuid.UUID{})
+	assert.NoError(t, err2)
+	assert.Equal(t, 2, len(matchedParties2))
+}
+
+// BenchmarkPartyMatcher_SmallSet benchmarks the matcher with a small set of parties
+func BenchmarkPartyMatcher_SmallSet(b *testing.B) {
+	now := time.Now()
+	parties := make([]uuid.UUID, 5)
+	schedules := make(map[uuid.UUID]*schedule_entities.Schedule)
+
+	for i := 0; i < 5; i++ {
+		parties[i] = uuid.New()
+		schedules[parties[i]] = &schedule_entities.Schedule{
+			ID:    parties[i],
+			Type:  schedule_entities.Availability,
+			Party: nil,
+			Options: map[int]schedule_entities.DateOption{
+				0: {
+					Months:   []time.Month{now.Month()},
+					Weekdays: []time.Weekday{now.Weekday()},
+					Days:     []int{now.Day()},
+					TimeFrames: []schedule_entities.TimeFrame{
+						{Start: now.Add(time.Duration(i) * time.Hour), End: now.Add(time.Duration(i+2) * time.Hour)},
+					},
+				},
+			},
+		}
+	}
+
+	scheduleReader := mocks.NewMockPartyScheduleReader(schedules)
+	pm := pairing_usecases.NewPartyScheduleMatcher(scheduleReader)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		if matcher, ok := pm.(*pairing_usecases.PartyScheduleMatcher); ok {
+			matcher.ClearCache()
+		}
+		_, _ = pm.Execute(parties, 3, []uuid.UUID{})
+	}
+}
+
+// BenchmarkPartyMatcher_LargeSet benchmarks the matcher with a large set of parties (triggers parallel processing)
+func BenchmarkPartyMatcher_LargeSet(b *testing.B) {
+	now := time.Now()
+	parties := make([]uuid.UUID, 20)
+	schedules := make(map[uuid.UUID]*schedule_entities.Schedule)
+
+	for i := 0; i < 20; i++ {
+		parties[i] = uuid.New()
+		schedules[parties[i]] = &schedule_entities.Schedule{
+			ID:    parties[i],
+			Type:  schedule_entities.Availability,
+			Party: nil,
+			Options: map[int]schedule_entities.DateOption{
+				0: {
+					Months:   []time.Month{now.Month()},
+					Weekdays: []time.Weekday{now.Weekday()},
+					Days:     []int{now.Day()},
+					TimeFrames: []schedule_entities.TimeFrame{
+						{Start: now.Add(time.Duration(i) * time.Hour), End: now.Add(time.Duration(i+2) * time.Hour)},
+					},
+				},
+			},
+		}
+	}
+
+	scheduleReader := mocks.NewMockPartyScheduleReader(schedules)
+	pm := pairing_usecases.NewPartyScheduleMatcher(scheduleReader)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		if matcher, ok := pm.(*pairing_usecases.PartyScheduleMatcher); ok {
+			matcher.ClearCache()
+		}
+		_, _ = pm.Execute(parties, 5, []uuid.UUID{})
 	}
 }
