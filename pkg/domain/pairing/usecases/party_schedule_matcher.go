@@ -1,69 +1,134 @@
 package usecases
 
 import (
+	"context"
+	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
+	pairing_in "github.com/leet-gaming/match-making-api/pkg/domain/pairing/ports/in"
 	schedule_entities "github.com/leet-gaming/match-making-api/pkg/domain/schedules/entities"
+	schedules_in_ports "github.com/leet-gaming/match-making-api/pkg/domain/schedules/ports/in"
 )
 
+// PartyScheduleMatcher implements the recursive matching algorithm for parties based on schedule compatibility
 type PartyScheduleMatcher struct {
-	Schedules map[uuid.UUID]schedule_entities.Schedule
+	ScheduleReader schedules_in_ports.PartyScheduleReader
 }
 
-func (uc *PartyScheduleMatcher) Execute(pids []uuid.UUID, qty int, matched []uuid.UUID) (bool, []uuid.UUID, error) {
-	fmt.Printf("Executing with pids: %v, qty: %d, matched: %v\n", pids, qty, matched)
-	if len(matched) == qty {
-		return true, matched, nil
+// NewPartyScheduleMatcher creates a new instance of PartyScheduleMatcher
+func NewPartyScheduleMatcher(scheduleReader schedules_in_ports.PartyScheduleReader) pairing_in.PartyScheduleMatcher {
+	return &PartyScheduleMatcher{
+		ScheduleReader: scheduleReader,
+	}
+}
+
+// Execute identifies compatible matches between parties recursively
+// It handles cases where parties have non-overlapping schedules by checking all possible combinations
+// Returns the matched parties or an error if no matches are found
+func (pm *PartyScheduleMatcher) Execute(pids []uuid.UUID, qty int, matched []uuid.UUID) ([]uuid.UUID, error) {
+	ctx := context.Background()
+	if qty <= 0 {
+		return nil, errors.New("quantity must be greater than zero")
 	}
 
+	// Base case: we have enough matched parties
+	if len(matched) >= qty {
+		return matched, nil
+	}
+
+	// Base case: no more parties available
 	if len(pids) == 0 {
-		return false, matched, fmt.Errorf("not enough parties available to match the required quantity")
+		return nil, fmt.Errorf("not enough parties available to match the required quantity: need %d, have %d", qty, len(matched))
 	}
 
+	// Recursive case: try to find matches starting with each available party
 	for i, current := range pids {
-		if schedule, ok := uc.Schedules[current]; ok {
-			matchingParties := uc.findMatchingParties(pids, i, schedule)
-			fmt.Printf("Matching parties for %v: %v\n", current, matchingParties)
-			if len(matchingParties) >= qty-len(matched)-1 {
-				return uc.matchParties(pids, i, qty, matched, current, matchingParties)
+		currentSchedule := pm.ScheduleReader.GetScheduleByPartyID(current)
+		if currentSchedule == nil {
+			slog.WarnContext(ctx, "party has no schedule, skipping", "party_id", current)
+			continue
+		}
+
+		// Find parties with compatible schedules
+		matchingParties := pm.findMatchingParties(ctx, pids, i, *currentSchedule)
+		
+		// Check if we have enough matching parties to complete the match
+		needed := qty - len(matched) - 1
+		if len(matchingParties) >= needed {
+			// Try to build a match starting with this party
+			result, err := pm.matchParties(ctx, pids, i, qty, matched, current, matchingParties)
+			if err == nil {
+				return result, nil
 			}
+			// If this combination didn't work, continue to next party
 		}
 	}
 
-	return false, matched, fmt.Errorf("unable to match the required quantity of parties")
+	// No valid match found
+	return nil, fmt.Errorf("unable to match the required quantity of parties: need %d, have %d matched, %d available", qty, len(matched), len(pids))
 }
 
-func (pm *PartyScheduleMatcher) matchParties(pids []uuid.UUID, currentIndex, qty int, matched []uuid.UUID, current uuid.UUID, matchingParties []uuid.UUID) (bool, []uuid.UUID, error) {
+// matchParties attempts to build a complete match starting with the current party
+func (pm *PartyScheduleMatcher) matchParties(ctx context.Context, pids []uuid.UUID, currentIndex, qty int, matched []uuid.UUID, current uuid.UUID, matchingParties []uuid.UUID) ([]uuid.UUID, error) {
+	// Add current party to matched list
 	newMatched := append(matched, current)
+	
+	// Remove current party from available list
 	remainingPids := append(pids[:currentIndex], pids[currentIndex+1:]...)
+	
+	// Try to add matching parties until we reach the required quantity
 	for _, match := range matchingParties {
+		// Check if this party is still available (might have been used in a recursive call)
+		if !containsUUID(remainingPids, match) {
+			continue
+		}
+		
 		newMatched = append(newMatched, match)
 		remainingPids = removeUUID(remainingPids, match)
-		if len(newMatched) == qty {
-			return true, newMatched, nil
+		
+		// If we have enough parties, return success
+		if len(newMatched) >= qty {
+			return newMatched[:qty], nil
 		}
 	}
+	
+		// Recursively try to find remaining parties
 	return pm.Execute(remainingPids, qty, newMatched)
 }
 
-func (pm *PartyScheduleMatcher) findMatchingParties(pids []uuid.UUID, currentIndex int, schedule schedule_entities.Schedule) []uuid.UUID {
+// findMatchingParties finds all parties with schedules compatible with the given schedule
+func (pm *PartyScheduleMatcher) findMatchingParties(ctx context.Context, pids []uuid.UUID, currentIndex int, schedule schedule_entities.Schedule) []uuid.UUID {
 	var matchingParties []uuid.UUID
+	
 	for i, otherPID := range pids {
+		// Skip the current party
 		if i == currentIndex {
 			continue
 		}
-		if otherSchedule, ok := pm.Schedules[otherPID]; ok {
-			if AreAvailable(schedule, otherSchedule) {
-				matchingParties = append(matchingParties, otherPID)
-			}
+		
+		// Get the other party's schedule
+		otherSchedule := pm.ScheduleReader.GetScheduleByPartyID(otherPID)
+		if otherSchedule == nil {
+			slog.DebugContext(ctx, "party has no schedule, skipping compatibility check", "party_id", otherPID)
+			continue
+		}
+		
+		// Check if schedules are compatible (have overlapping availability)
+		if areSchedulesCompatible(schedule, *otherSchedule) {
+			matchingParties = append(matchingParties, otherPID)
 		}
 	}
+	
 	return matchingParties
 }
 
-func AreAvailable(schedule1 schedule_entities.Schedule, schedule2 schedule_entities.Schedule) bool {
+// areSchedulesCompatible checks if two schedules have any overlapping availability
+// This handles cases where parties have non-overlapping schedules by returning false
+func areSchedulesCompatible(schedule1 schedule_entities.Schedule, schedule2 schedule_entities.Schedule) bool {
+	// Check all combinations of date options from both schedules
 	for _, option1 := range schedule1.Options {
 		for _, option2 := range schedule2.Options {
 			if hasMatchingAvailability(option1, option2) {
@@ -108,6 +173,7 @@ func isTimeFrameOverlapping(start1, end1, start2, end2 time.Time) bool {
 	return start1.Before(end2) && start2.Before(end1)
 }
 
+// removeUUID removes the first occurrence of the given UUID from the slice
 func removeUUID(slice []uuid.UUID, id uuid.UUID) []uuid.UUID {
 	for i, v := range slice {
 		if v == id {
@@ -115,4 +181,14 @@ func removeUUID(slice []uuid.UUID, id uuid.UUID) []uuid.UUID {
 		}
 	}
 	return slice
+}
+
+// containsUUID checks if the slice contains the given UUID
+func containsUUID(slice []uuid.UUID, id uuid.UUID) bool {
+	for _, v := range slice {
+		if v == id {
+			return true
+		}
+	}
+	return false
 }

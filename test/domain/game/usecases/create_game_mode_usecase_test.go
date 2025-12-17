@@ -20,7 +20,7 @@ func TestCreateGameModeUseCase_Execute(t *testing.T) {
 	tests := []struct {
 		name          string
 		gameMode      *game_entities.GameMode
-		setupMocks    func(*mocks.MockGameModeWriter, *mocks.MockGameModeReader)
+		setupMocks    func(*mocks.MockPortGameModeWriter, *mocks.MockPortGameModeReader)
 		expectedError string
 		validate      func(*testing.T, *game_entities.GameMode)
 	}{
@@ -31,7 +31,7 @@ func TestCreateGameModeUseCase_Execute(t *testing.T) {
 				Name:        "Test Game Mode",
 				Description: "Test Description",
 			},
-			setupMocks: func(writer *mocks.MockGameModeWriter, reader *mocks.MockGameModeReader) {
+			setupMocks: func(writer *mocks.MockPortGameModeWriter, reader *mocks.MockPortGameModeReader) {
 				reader.On("Search", mock.Anything, mock.Anything).Return([]*game_entities.GameMode{}, nil)
 				writer.On("Create", mock.Anything, mock.AnythingOfType("*entities.GameMode")).Return(func(ctx context.Context, gameMode *game_entities.GameMode) *game_entities.GameMode {
 					gameMode.ID = google_uuid.New()
@@ -50,7 +50,7 @@ func TestCreateGameModeUseCase_Execute(t *testing.T) {
 				GameID: uuid.FromStringOrNil(google_uuid.New().String()),
 				Name:   "",
 			},
-			setupMocks: func(writer *mocks.MockGameModeWriter, reader *mocks.MockGameModeReader) {
+			setupMocks: func(writer *mocks.MockPortGameModeWriter, reader *mocks.MockPortGameModeReader) {
 				// No mocks needed as validation fails before repository calls
 			},
 			expectedError: "game mode name is required",
@@ -61,7 +61,7 @@ func TestCreateGameModeUseCase_Execute(t *testing.T) {
 				GameID: uuid.Nil,
 				Name:   "Test Game Mode",
 			},
-			setupMocks: func(writer *mocks.MockGameModeWriter, reader *mocks.MockGameModeReader) {
+			setupMocks: func(writer *mocks.MockPortGameModeWriter, reader *mocks.MockPortGameModeReader) {
 				// No mocks needed as validation fails before repository calls
 			},
 			expectedError: "game_id is required",
@@ -72,7 +72,7 @@ func TestCreateGameModeUseCase_Execute(t *testing.T) {
 				GameID: uuid.FromStringOrNil(google_uuid.New().String()),
 				Name:   "Existing Game Mode",
 			},
-			setupMocks: func(writer *mocks.MockGameModeWriter, reader *mocks.MockGameModeReader) {
+			setupMocks: func(writer *mocks.MockPortGameModeWriter, reader *mocks.MockPortGameModeReader) {
 				existingGameMode := &game_entities.GameMode{
 					BaseEntity: common.BaseEntity{ID: google_uuid.New()},
 					GameID:     uuid.FromStringOrNil(google_uuid.New().String()),
@@ -88,7 +88,7 @@ func TestCreateGameModeUseCase_Execute(t *testing.T) {
 				GameID: uuid.FromStringOrNil(google_uuid.New().String()),
 				Name:   "Test Game Mode",
 			},
-			setupMocks: func(writer *mocks.MockGameModeWriter, reader *mocks.MockGameModeReader) {
+			setupMocks: func(writer *mocks.MockPortGameModeWriter, reader *mocks.MockPortGameModeReader) {
 				reader.On("Search", mock.Anything, mock.Anything).Return([]*game_entities.GameMode{}, nil)
 				writer.On("Create", mock.Anything, mock.AnythingOfType("*entities.GameMode")).Return(nil, errors.New("database error"))
 			},
@@ -98,8 +98,8 @@ func TestCreateGameModeUseCase_Execute(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockWriter := new(mocks.MockGameModeWriter)
-			mockReader := new(mocks.MockGameModeReader)
+			mockWriter := new(mocks.MockPortGameModeWriter)
+			mockReader := new(mocks.MockPortGameModeReader)
 			tt.setupMocks(mockWriter, mockReader)
 
 			useCase := usecases.NewCreateGameModeUseCase(mockWriter, mockReader)

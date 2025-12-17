@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	pairing_usecases "github.com/leet-gaming/match-making-api/pkg/domain/pairing/usecases"
 	schedule_entities "github.com/leet-gaming/match-making-api/pkg/domain/schedules/entities"
+	"github.com/leet-gaming/match-making-api/test/mocks"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -131,57 +132,95 @@ func TestPartyMatcher_Execute(t *testing.T) {
 		},
 	}
 
+	// Convert schedules map to pointer map for mock
+	scheduleMap := make(map[uuid.UUID]*schedule_entities.Schedule)
+	for k, v := range schedules {
+		scheduleCopy := v
+		scheduleMap[k] = &scheduleCopy
+	}
+
 	tests := []struct {
-		name    string
-		pids    []uuid.UUID
-		qty     int
-		matched []uuid.UUID
-		want    bool
-		wantErr bool
+		name      string
+		pids      []uuid.UUID
+		qty       int
+		matched   []uuid.UUID
+		wantMatch bool
+		wantErr   bool
 	}{
-		{"No parties available", []uuid.UUID{}, 1, []uuid.UUID{}, false, true},
-		{"Insufficient parties available", []uuid.UUID{uuid1}, 2, []uuid.UUID{}, false, true},
-		// {"Exact parties available (overlapping timeframes)", []uuid.UUID{uuid1, uuid2}, 2, []uuid.UUID{}, true, false},
-		{"More parties than needed, all available", []uuid.UUID{uuid1, uuid2, uuid3}, 2, []uuid.UUID{}, false, true},
-		{"More parties than needed, some unavailable", []uuid.UUID{uuid2, uuid3}, 2, []uuid.UUID{}, false, true},
-		{"No exact match, but partial matches possible", []uuid.UUID{uuid1, uuid3, uuid4}, 2, []uuid.UUID{uuid1, uuid4}, true, false},
-		// {"Three parties required, all available", []uuid.UUID{uuid1, uuid2, uuid3}, 3, []uuid.UUID{}, true, false},
-		// {"Four parties required, all available", []uuid.UUID{uuid1, uuid2, uuid3, uuid4}, 4, []uuid.UUID{}, true, false},
-		// {"Five parties required, all available", []uuid.UUID{uuid1, uuid2, uuid3, uuid4, uuid5}, 5, []uuid.UUID{}, true, false},
-		{"Three parties required, some unavailable", []uuid.UUID{uuid2, uuid3, uuid4}, 3, []uuid.UUID{}, false, true},
-		{"Three parties required, some unavailable, partial matches possible", []uuid.UUID{uuid1, uuid2, uuid3, uuid4}, 3, []uuid.UUID{uuid1, uuid4}, true, false},
-		{"Three parties required, some unavailable, no partial matches possible", []uuid.UUID{uuid1, uuid2, uuid3, uuid4}, 3, []uuid.UUID{}, false, true},
-		{"Three parties required, some unavailable, partial matches possible", []uuid.UUID{uuid1, uuid2, uuid3, uuid4, uuid5}, 3, []uuid.UUID{uuid1, uuid4, uuid5}, true, false},
-		{"Three parties required, some unavailable, no partial matches possible", []uuid.UUID{uuid1, uuid2, uuid3, uuid4, uuid5}, 3, []uuid.UUID{}, false, true},
-		{"Three parties required, some unavailable, partial matches possible", []uuid.UUID{uuid1, uuid2, uuid3, uuid4, uuid5, uuid6}, 3, []uuid.UUID{uuid1, uuid4, uuid5}, true, false},
-		{"Three parties required, some unavailable, no partial matches possible", []uuid.UUID{uuid1, uuid2, uuid3, uuid4, uuid5, uuid6}, 3, []uuid.UUID{}, false, true},
-		{"Three parties required, some unavailable, partial matches possible", []uuid.UUID{uuid1, uuid2, uuid3, uuid4, uuid5, uuid6, uuid7}, 3, []uuid.UUID{uuid1, uuid4, uuid5}, true, false},
-		{"Three parties required, some unavailable, no partial matches possible", []uuid.UUID{uuid1, uuid2, uuid3, uuid4, uuid5, uuid6, uuid7}, 3, []uuid.UUID{}, false, true},
+		{
+			name:      "No parties available",
+			pids:      []uuid.UUID{},
+			qty:       1,
+			matched:   []uuid.UUID{},
+			wantMatch: false,
+			wantErr:   true,
+		},
+		{
+			name:      "Insufficient parties available",
+			pids:      []uuid.UUID{uuid1},
+			qty:       2,
+			matched:   []uuid.UUID{},
+			wantMatch: false,
+			wantErr:   true,
+		},
+		{
+			name:      "Parties with overlapping schedules should match",
+			pids:      []uuid.UUID{uuid1, uuid5},
+			qty:       2,
+			matched:   []uuid.UUID{},
+			wantMatch: true,
+			wantErr:   false,
+		},
+		{
+			name:      "Parties with non-overlapping schedules should not match",
+			pids:      []uuid.UUID{uuid2, uuid3},
+			qty:       2,
+			matched:   []uuid.UUID{},
+			wantMatch: false,
+			wantErr:   true,
+		},
+		{
+			name:      "Three parties with compatible schedules",
+			pids:      []uuid.UUID{uuid1, uuid5, uuid6},
+			qty:       3,
+			matched:   []uuid.UUID{},
+			wantMatch: true,
+			wantErr:   false,
+		},
+		{
+			name:      "Already matched parties should return immediately",
+			pids:      []uuid.UUID{uuid1, uuid2},
+			qty:       2,
+			matched:   []uuid.UUID{uuid1, uuid5},
+			wantMatch: true,
+			wantErr:   false,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			pm := &pairing_usecases.PartyScheduleMatcher{Schedules: schedules}
-			success, matchedParties, err := pm.Execute(tt.pids, tt.qty, tt.matched)
+			scheduleReader := mocks.NewMockPartyScheduleReader(scheduleMap)
+			pm := pairing_usecases.NewPartyScheduleMatcher(scheduleReader)
+			
+			matchedParties, err := pm.Execute(tt.pids, tt.qty, tt.matched)
+			
 			if (err != nil) != tt.wantErr {
 				t.Errorf("PartyScheduleMatcher.Execute() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if success != tt.want {
-				t.Errorf("PartyScheduleMatcher.Execute() = %v, want %v", success, tt.want)
-			}
-			// Additional assertions for matched parties
-			if success && len(tt.matched) > 0 {
-				for _, pid := range tt.matched {
-					_, ok := schedules[pid]
-					assert.True(t, ok, "Matched party not found in schedules")
-				}
-			}
-			// Additional assertions for matched parties returned by pm.Execute
-			if success && len(matchedParties) > 0 {
+			
+			if tt.wantMatch {
+				assert.NotNil(t, matchedParties, "Expected matched parties but got nil")
+				assert.Equal(t, tt.qty, len(matchedParties), "Expected %d matched parties, got %d", tt.qty, len(matchedParties))
+				
+				// Verify all matched parties have schedules
 				for _, pid := range matchedParties {
-					_, ok := schedules[pid]
-					assert.True(t, ok, "Matched party not found in returned parties")
+					schedule := scheduleReader.GetScheduleByPartyID(pid)
+					assert.NotNil(t, schedule, "Matched party %v should have a schedule", pid)
+				}
+			} else {
+				if !tt.wantErr {
+					assert.Nil(t, matchedParties, "Expected no match but got matched parties")
 				}
 			}
 		})

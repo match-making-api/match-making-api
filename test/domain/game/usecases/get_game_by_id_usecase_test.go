@@ -19,14 +19,14 @@ func TestGetGameByIDUseCase_Execute(t *testing.T) {
 	tests := []struct {
 		name          string
 		gameID        uuid.UUID
-		setupMocks    func(*mocks.MockGameReader)
+		setupMocks    func(*mocks.MockPortGameReader)
 		expectedError string
 		validate      func(*testing.T, *game_entities.Game)
 	}{
 		{
 			name:   "successfully get game by id",
 			gameID: uuid.New(),
-			setupMocks: func(reader *mocks.MockGameReader) {
+			setupMocks: func(reader *mocks.MockPortGameReader) {
 				game := &game_entities.Game{
 					BaseEntity: common.BaseEntity{ID: uuid.New()},
 					Name:       "Test Game",
@@ -41,7 +41,7 @@ func TestGetGameByIDUseCase_Execute(t *testing.T) {
 		{
 			name:   "fail when game not found",
 			gameID: uuid.New(),
-			setupMocks: func(reader *mocks.MockGameReader) {
+			setupMocks: func(reader *mocks.MockPortGameReader) {
 				reader.On("GetByID", mock.Anything, mock.Anything).Return(nil, errors.New("not found"))
 			},
 			expectedError: "failed to get game",
@@ -50,7 +50,7 @@ func TestGetGameByIDUseCase_Execute(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockReader := new(mocks.MockGameReader)
+			mockReader := new(mocks.MockPortGameReader)
 			tt.setupMocks(mockReader)
 
 			useCase := usecases.NewGetGameByIDUseCase(mockReader)

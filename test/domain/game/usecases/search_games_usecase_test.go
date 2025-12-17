@@ -18,13 +18,13 @@ import (
 func TestSearchGamesUseCase_Execute(t *testing.T) {
 	tests := []struct {
 		name          string
-		setupMocks    func(*mocks.MockGameReader)
+		setupMocks    func(*mocks.MockPortGameReader)
 		expectedError string
 		validate      func(*testing.T, []*game_entities.Game)
 	}{
 		{
 			name: "successfully search games",
-			setupMocks: func(reader *mocks.MockGameReader) {
+			setupMocks: func(reader *mocks.MockPortGameReader) {
 				games := []*game_entities.Game{
 					{
 						BaseEntity: common.BaseEntity{ID: uuid.New()},
@@ -46,7 +46,7 @@ func TestSearchGamesUseCase_Execute(t *testing.T) {
 		},
 		{
 			name: "return empty list when no games found",
-			setupMocks: func(reader *mocks.MockGameReader) {
+			setupMocks: func(reader *mocks.MockPortGameReader) {
 				reader.On("Search", mock.Anything, mock.AnythingOfType("common.Search")).Return([]*game_entities.Game{}, nil)
 			},
 			validate: func(t *testing.T, games []*game_entities.Game) {
@@ -56,7 +56,7 @@ func TestSearchGamesUseCase_Execute(t *testing.T) {
 		},
 		{
 			name: "fail when repository returns error",
-			setupMocks: func(reader *mocks.MockGameReader) {
+			setupMocks: func(reader *mocks.MockPortGameReader) {
 				reader.On("Search", mock.Anything, mock.AnythingOfType("common.Search")).Return(nil, errors.New("database error"))
 			},
 			expectedError: "database error",
@@ -65,7 +65,7 @@ func TestSearchGamesUseCase_Execute(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockReader := new(mocks.MockGameReader)
+			mockReader := new(mocks.MockPortGameReader)
 			tt.setupMocks(mockReader)
 
 			useCase := usecases.NewSearchGamesUseCase(mockReader)

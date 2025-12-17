@@ -20,7 +20,7 @@ func TestUpdateRegionUseCase_Execute(t *testing.T) {
 		name          string
 		regionID      uuid.UUID
 		region        *game_entities.Region
-		setupMocks    func(*mocks.MockRegionWriter, *mocks.MockRegionReader)
+		setupMocks    func(*mocks.MockPortRegionWriter, *mocks.MockPortRegionReader)
 		expectedError string
 		validate      func(*testing.T, *game_entities.Region)
 	}{
@@ -32,7 +32,7 @@ func TestUpdateRegionUseCase_Execute(t *testing.T) {
 				Slug:        "updated-region",
 				Description: "Updated Description",
 			},
-			setupMocks: func(writer *mocks.MockRegionWriter, reader *mocks.MockRegionReader) {
+			setupMocks: func(writer *mocks.MockPortRegionWriter, reader *mocks.MockPortRegionReader) {
 				existingRegion := &game_entities.Region{
 					BaseEntity:  common.BaseEntity{ID: uuid.New()},
 					Name:        "Original Region",
@@ -56,7 +56,7 @@ func TestUpdateRegionUseCase_Execute(t *testing.T) {
 				Name: "Test Region",
 				Slug: "test-region",
 			},
-			setupMocks: func(writer *mocks.MockRegionWriter, reader *mocks.MockRegionReader) {
+			setupMocks: func(writer *mocks.MockPortRegionWriter, reader *mocks.MockPortRegionReader) {
 				reader.On("GetByID", mock.Anything, mock.Anything).Return(nil, errors.New("not found"))
 			},
 			expectedError: "region not found",
@@ -68,7 +68,7 @@ func TestUpdateRegionUseCase_Execute(t *testing.T) {
 				Name: "Duplicate Name",
 				Slug: "test-region",
 			},
-			setupMocks: func(writer *mocks.MockRegionWriter, reader *mocks.MockRegionReader) {
+			setupMocks: func(writer *mocks.MockPortRegionWriter, reader *mocks.MockPortRegionReader) {
 				existingRegion := &game_entities.Region{
 					BaseEntity: common.BaseEntity{ID: uuid.New()},
 					Name:       "Original Region",
@@ -91,7 +91,7 @@ func TestUpdateRegionUseCase_Execute(t *testing.T) {
 				Name: "Test Region",
 				Slug: "existing-slug",
 			},
-			setupMocks: func(writer *mocks.MockRegionWriter, reader *mocks.MockRegionReader) {
+			setupMocks: func(writer *mocks.MockPortRegionWriter, reader *mocks.MockPortRegionReader) {
 				existingRegion := &game_entities.Region{
 					BaseEntity: common.BaseEntity{ID: uuid.New()},
 					Name:       "Original Region",
@@ -111,8 +111,8 @@ func TestUpdateRegionUseCase_Execute(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockWriter := new(mocks.MockRegionWriter)
-			mockReader := new(mocks.MockRegionReader)
+			mockWriter := new(mocks.MockPortRegionWriter)
+			mockReader := new(mocks.MockPortRegionReader)
 			tt.setupMocks(mockWriter, mockReader)
 
 			useCase := usecases.NewUpdateRegionUseCase(mockWriter, mockReader)

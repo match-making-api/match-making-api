@@ -19,13 +19,13 @@ func TestDeleteGameModeUseCase_Execute(t *testing.T) {
 	tests := []struct {
 		name          string
 		gameModeID    uuid.UUID
-		setupMocks    func(*mocks.MockGameModeWriter, *mocks.MockGameModeReader)
+		setupMocks    func(*mocks.MockPortGameModeWriter, *mocks.MockPortGameModeReader)
 		expectedError string
 	}{
 		{
 			name:       "successfully delete game mode",
 			gameModeID: uuid.New(),
-			setupMocks: func(writer *mocks.MockGameModeWriter, reader *mocks.MockGameModeReader) {
+			setupMocks: func(writer *mocks.MockPortGameModeWriter, reader *mocks.MockPortGameModeReader) {
 				existingGameMode := &game_entities.GameMode{
 					BaseEntity: common.BaseEntity{ID: uuid.New()},
 					Name:       "Test Game Mode",
@@ -37,7 +37,7 @@ func TestDeleteGameModeUseCase_Execute(t *testing.T) {
 		{
 			name:       "fail when game mode not found",
 			gameModeID: uuid.New(),
-			setupMocks: func(writer *mocks.MockGameModeWriter, reader *mocks.MockGameModeReader) {
+			setupMocks: func(writer *mocks.MockPortGameModeWriter, reader *mocks.MockPortGameModeReader) {
 				reader.On("GetByID", mock.Anything, mock.Anything).Return(nil, errors.New("not found"))
 			},
 			expectedError: "game mode not found",
@@ -45,7 +45,7 @@ func TestDeleteGameModeUseCase_Execute(t *testing.T) {
 		{
 			name:       "fail when delete fails",
 			gameModeID: uuid.New(),
-			setupMocks: func(writer *mocks.MockGameModeWriter, reader *mocks.MockGameModeReader) {
+			setupMocks: func(writer *mocks.MockPortGameModeWriter, reader *mocks.MockPortGameModeReader) {
 				existingGameMode := &game_entities.GameMode{
 					BaseEntity: common.BaseEntity{ID: uuid.New()},
 					Name:       "Test Game Mode",
@@ -59,8 +59,8 @@ func TestDeleteGameModeUseCase_Execute(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockWriter := new(mocks.MockGameModeWriter)
-			mockReader := new(mocks.MockGameModeReader)
+			mockWriter := new(mocks.MockPortGameModeWriter)
+			mockReader := new(mocks.MockPortGameModeReader)
 			tt.setupMocks(mockWriter, mockReader)
 
 			useCase := usecases.NewDeleteGameModeUseCase(mockWriter, mockReader)

@@ -20,7 +20,7 @@ func TestDeleteGameUseCase_Execute(t *testing.T) {
 		name          string
 		gameID        uuid.UUID
 		existingGame  *game_entities.Game
-		setupMocks    func(*mocks.MockGameWriter, *mocks.MockGameReader)
+		setupMocks    func(*mocks.MockPortGameWriter, *mocks.MockPortGameReader)
 		expectedError string
 	}{
 		{
@@ -31,7 +31,7 @@ func TestDeleteGameUseCase_Execute(t *testing.T) {
 				Name:       "Test Game",
 				Enabled:    true,
 			},
-			setupMocks: func(writer *mocks.MockGameWriter, reader *mocks.MockGameReader) {
+			setupMocks: func(writer *mocks.MockPortGameWriter, reader *mocks.MockPortGameReader) {
 				existingGame := &game_entities.Game{
 					BaseEntity: common.BaseEntity{ID: uuid.New()},
 					Name:       "Test Game",
@@ -51,7 +51,7 @@ func TestDeleteGameUseCase_Execute(t *testing.T) {
 				Name:       "Test Game",
 				Enabled:    false,
 			},
-			setupMocks: func(writer *mocks.MockGameWriter, reader *mocks.MockGameReader) {
+			setupMocks: func(writer *mocks.MockPortGameWriter, reader *mocks.MockPortGameReader) {
 				existingGame := &game_entities.Game{
 					BaseEntity: common.BaseEntity{ID: uuid.New()},
 					Name:       "Test Game",
@@ -64,7 +64,7 @@ func TestDeleteGameUseCase_Execute(t *testing.T) {
 		{
 			name:   "fail when game not found",
 			gameID: uuid.New(),
-			setupMocks: func(writer *mocks.MockGameWriter, reader *mocks.MockGameReader) {
+			setupMocks: func(writer *mocks.MockPortGameWriter, reader *mocks.MockPortGameReader) {
 				reader.On("GetByID", mock.Anything, mock.Anything).Return(nil, errors.New("not found"))
 			},
 			expectedError: "game not found",
@@ -77,7 +77,7 @@ func TestDeleteGameUseCase_Execute(t *testing.T) {
 				Name:       "Test Game",
 				Enabled:    true,
 			},
-			setupMocks: func(writer *mocks.MockGameWriter, reader *mocks.MockGameReader) {
+			setupMocks: func(writer *mocks.MockPortGameWriter, reader *mocks.MockPortGameReader) {
 				existingGame := &game_entities.Game{
 					BaseEntity: common.BaseEntity{ID: uuid.New()},
 					Name:       "Test Game",
@@ -96,7 +96,7 @@ func TestDeleteGameUseCase_Execute(t *testing.T) {
 				Name:       "Test Game",
 				Enabled:    false,
 			},
-			setupMocks: func(writer *mocks.MockGameWriter, reader *mocks.MockGameReader) {
+			setupMocks: func(writer *mocks.MockPortGameWriter, reader *mocks.MockPortGameReader) {
 				existingGame := &game_entities.Game{
 					BaseEntity: common.BaseEntity{ID: uuid.New()},
 					Name:       "Test Game",
@@ -111,8 +111,8 @@ func TestDeleteGameUseCase_Execute(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockWriter := new(mocks.MockGameWriter)
-			mockReader := new(mocks.MockGameReader)
+			mockWriter := new(mocks.MockPortGameWriter)
+			mockReader := new(mocks.MockPortGameReader)
 			tt.setupMocks(mockWriter, mockReader)
 
 			useCase := usecases.NewDeleteGameUseCase(mockWriter, mockReader)

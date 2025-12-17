@@ -19,7 +19,7 @@ func TestCreateRegionUseCase_Execute(t *testing.T) {
 	tests := []struct {
 		name          string
 		region        *game_entities.Region
-		setupMocks    func(*mocks.MockRegionWriter, *mocks.MockRegionReader)
+		setupMocks    func(*mocks.MockPortRegionWriter, *mocks.MockPortRegionReader)
 		expectedError string
 		validate      func(*testing.T, *game_entities.Region)
 	}{
@@ -30,7 +30,7 @@ func TestCreateRegionUseCase_Execute(t *testing.T) {
 				Slug:        "test-region",
 				Description: "Test Description",
 			},
-			setupMocks: func(writer *mocks.MockRegionWriter, reader *mocks.MockRegionReader) {
+			setupMocks: func(writer *mocks.MockPortRegionWriter, reader *mocks.MockPortRegionReader) {
 				reader.On("Search", mock.Anything, mock.Anything).Return([]*game_entities.Region{}, nil)
 				writer.On("Create", mock.Anything, mock.AnythingOfType("*entities.Region")).Return(func(ctx context.Context, region *game_entities.Region) *game_entities.Region {
 					region.ID = uuid.New()
@@ -49,7 +49,7 @@ func TestCreateRegionUseCase_Execute(t *testing.T) {
 				Name: "",
 				Slug: "test-region",
 			},
-			setupMocks: func(writer *mocks.MockRegionWriter, reader *mocks.MockRegionReader) {
+			setupMocks: func(writer *mocks.MockPortRegionWriter, reader *mocks.MockPortRegionReader) {
 				// No mocks needed as validation fails before repository calls
 			},
 			expectedError: "region name is required",
@@ -60,7 +60,7 @@ func TestCreateRegionUseCase_Execute(t *testing.T) {
 				Name: "Existing Region",
 				Slug: "existing-region",
 			},
-			setupMocks: func(writer *mocks.MockRegionWriter, reader *mocks.MockRegionReader) {
+			setupMocks: func(writer *mocks.MockPortRegionWriter, reader *mocks.MockPortRegionReader) {
 				existingRegion := &game_entities.Region{
 					BaseEntity: common.BaseEntity{ID: uuid.New()},
 					Name:       "Existing Region",
@@ -76,7 +76,7 @@ func TestCreateRegionUseCase_Execute(t *testing.T) {
 				Name: "New Region",
 				Slug: "existing-slug",
 			},
-			setupMocks: func(writer *mocks.MockRegionWriter, reader *mocks.MockRegionReader) {
+			setupMocks: func(writer *mocks.MockPortRegionWriter, reader *mocks.MockPortRegionReader) {
 				existingRegion := &game_entities.Region{
 					BaseEntity: common.BaseEntity{ID: uuid.New()},
 					Name:       "Existing Region",
@@ -92,7 +92,7 @@ func TestCreateRegionUseCase_Execute(t *testing.T) {
 				Name: "Test Region",
 				Slug: "test-region",
 			},
-			setupMocks: func(writer *mocks.MockRegionWriter, reader *mocks.MockRegionReader) {
+			setupMocks: func(writer *mocks.MockPortRegionWriter, reader *mocks.MockPortRegionReader) {
 				reader.On("Search", mock.Anything, mock.Anything).Return([]*game_entities.Region{}, nil)
 				writer.On("Create", mock.Anything, mock.AnythingOfType("*entities.Region")).Return(nil, errors.New("database error"))
 			},
@@ -102,8 +102,8 @@ func TestCreateRegionUseCase_Execute(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockWriter := new(mocks.MockRegionWriter)
-			mockReader := new(mocks.MockRegionReader)
+			mockWriter := new(mocks.MockPortRegionWriter)
+			mockReader := new(mocks.MockPortRegionReader)
 			tt.setupMocks(mockWriter, mockReader)
 
 			useCase := usecases.NewCreateRegionUseCase(mockWriter, mockReader)
