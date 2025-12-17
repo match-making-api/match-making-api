@@ -1,24 +1,15 @@
 Tenacity Scheme:
-```sh
-1) Tenant
-2) Client
-3) Group
-4) User
-
-         Tenant
-            |
-            |
-           / \
-         /     \
-   Client      Group
-      |        / |
-      |      /   |
-      |    /     |
-      |  /      User
-      |/
-      |
-      |
-      User
+```mermaid
+graph TD
+    Tenant[Tenant]
+    Client[Client]
+    Group[Group]
+    User[User]
+    
+    Tenant --> Client
+    Tenant --> Group
+    Client --> User
+    Group --> User
 ```
 
 ## Domain-Driven Design for a Team-vs-Team Matchmaking System
@@ -80,4 +71,3 @@ Tenacity Scheme:
    √ The times when a player or team is available to play.
 * **Constraint:**
    √ A limitation or restriction on a player's or team's availability or preferences.
-
