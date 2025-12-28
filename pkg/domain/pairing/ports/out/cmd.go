@@ -21,6 +21,16 @@ type PairReader interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*pairing_entities.Pair, error)
 }
 
+type InvitationWriter interface {
+	Save(ctx context.Context, invitation *pairing_entities.Invitation) (*pairing_entities.Invitation, error)
+}
+
+type InvitationReader interface {
+	GetByID(ctx context.Context, id uuid.UUID) (*pairing_entities.Invitation, error)
+	FindByUserID(ctx context.Context, userID uuid.UUID) ([]*pairing_entities.Invitation, error)
+	FindByMatchID(ctx context.Context, matchID uuid.UUID) ([]*pairing_entities.Invitation, error)
+}
+
 type PoolReader interface {
 	FindPool(criteria *pairing_value_objects.Criteria) (*pairing_entities.Pool, error)
 }

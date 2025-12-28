@@ -13,6 +13,10 @@ import (
 
 	game_entities "github.com/leet-gaming/match-making-api/pkg/domain/game/entities"
 	"github.com/leet-gaming/match-making-api/pkg/domain/game/ports/out"
+	pairing_entities "github.com/leet-gaming/match-making-api/pkg/domain/pairing/entities"
+	pairing_out "github.com/leet-gaming/match-making-api/pkg/domain/pairing/ports/out"
+	parties_entities "github.com/leet-gaming/match-making-api/pkg/domain/parties/entities"
+	parties_out "github.com/leet-gaming/match-making-api/pkg/domain/parties/ports/out"
 )
 
 // MockPortGameWriter is a mock implementation of out.GameWriter using testify/mock
@@ -178,4 +182,92 @@ func (m *MockPortRegionReader) Search(ctx context.Context, query interface{}) ([
 		return nil, args.Error(1)
 	}
 	return args.Get(0).([]*game_entities.Region), args.Error(1)
+}
+
+// MockPortInvitationWriter is a mock implementation of pairing_out.InvitationWriter using testify/mock
+type MockPortInvitationWriter struct {
+	mock.Mock
+}
+
+// Ensure MockPortInvitationWriter implements pairing_out.InvitationWriter
+var _ pairing_out.InvitationWriter = (*MockPortInvitationWriter)(nil)
+
+func (m *MockPortInvitationWriter) Save(ctx context.Context, invitation *pairing_entities.Invitation) (*pairing_entities.Invitation, error) {
+	args := m.Called(ctx, invitation)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*pairing_entities.Invitation), args.Error(1)
+}
+
+// MockPortInvitationReader is a mock implementation of pairing_out.InvitationReader using testify/mock
+type MockPortInvitationReader struct {
+	mock.Mock
+}
+
+// Ensure MockPortInvitationReader implements pairing_out.InvitationReader
+var _ pairing_out.InvitationReader = (*MockPortInvitationReader)(nil)
+
+func (m *MockPortInvitationReader) GetByID(ctx context.Context, id uuid.UUID) (*pairing_entities.Invitation, error) {
+	args := m.Called(ctx, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*pairing_entities.Invitation), args.Error(1)
+}
+
+func (m *MockPortInvitationReader) FindByUserID(ctx context.Context, userID uuid.UUID) ([]*pairing_entities.Invitation, error) {
+	args := m.Called(ctx, userID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*pairing_entities.Invitation), args.Error(1)
+}
+
+func (m *MockPortInvitationReader) FindByMatchID(ctx context.Context, matchID uuid.UUID) ([]*pairing_entities.Invitation, error) {
+	args := m.Called(ctx, matchID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*pairing_entities.Invitation), args.Error(1)
+}
+
+// MockPortPairReader is a mock implementation of pairing_out.PairReader using testify/mock
+type MockPortPairReader struct {
+	mock.Mock
+}
+
+// Ensure MockPortPairReader implements pairing_out.PairReader
+var _ pairing_out.PairReader = (*MockPortPairReader)(nil)
+
+func (m *MockPortPairReader) FindPairsByPartyID(ctx context.Context, partyID uuid.UUID) ([]*pairing_entities.Pair, error) {
+	args := m.Called(ctx, partyID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*pairing_entities.Pair), args.Error(1)
+}
+
+func (m *MockPortPairReader) GetByID(ctx context.Context, id uuid.UUID) (*pairing_entities.Pair, error) {
+	args := m.Called(ctx, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*pairing_entities.Pair), args.Error(1)
+}
+
+// MockPortPeerReader is a mock implementation of parties_out.PeerReader using testify/mock
+type MockPortPeerReader struct {
+	mock.Mock
+}
+
+// Ensure MockPortPeerReader implements parties_out.PeerReader
+var _ parties_out.PeerReader = (*MockPortPeerReader)(nil)
+
+func (m *MockPortPeerReader) GetByID(id uuid.UUID) (*parties_entities.Peer, error) {
+	args := m.Called(id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*parties_entities.Peer), args.Error(1)
 }

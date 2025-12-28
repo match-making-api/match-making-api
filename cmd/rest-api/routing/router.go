@@ -41,6 +41,7 @@ func NewRouter(ctx context.Context, container container.Container) http.Handler 
 	gameController := controllers.NewGameController(container)
 	gameModeController := controllers.NewGameModeController(container)
 	regionController := controllers.NewRegionController(container)
+	invitationController := controllers.NewInvitationController(container)
 
 	// health
 	r.HandleFunc(Health, healthController.HealthCheck(ctx)).Methods("GET")
@@ -81,6 +82,22 @@ func NewRouter(ctx context.Context, container container.Container) http.Handler 
 	resourceContextMiddleware.RegisterOperation("/regions/{id}", "match-making:regions:get")
 	resourceContextMiddleware.RegisterOperation("/regions/{id}", "match-making:regions:update")
 	resourceContextMiddleware.RegisterOperation("/regions/{id}", "match-making:regions:delete")
+
+	// invitations
+	r.HandleFunc("/invitations", invitationController.Create(ctx)).Methods("POST")
+	r.HandleFunc("/invitations", invitationController.List(ctx)).Methods("GET")
+	r.HandleFunc("/invitations/{id}", invitationController.Get(ctx)).Methods("GET")
+	r.HandleFunc("/invitations/{id}/accept", invitationController.Accept(ctx)).Methods("POST")
+	r.HandleFunc("/invitations/{id}/decline", invitationController.Decline(ctx)).Methods("POST")
+	r.HandleFunc("/invitations/{id}", invitationController.Update(ctx)).Methods("PATCH")
+	r.HandleFunc("/invitations/{id}", invitationController.Delete(ctx)).Methods("DELETE")
+	resourceContextMiddleware.RegisterOperation("/invitations", "match-making:invitations:create")
+	resourceContextMiddleware.RegisterOperation("/invitations", "match-making:invitations:list")
+	resourceContextMiddleware.RegisterOperation("/invitations/{id}", "match-making:invitations:get")
+	resourceContextMiddleware.RegisterOperation("/invitations/{id}/accept", "match-making:invitations:accept")
+	resourceContextMiddleware.RegisterOperation("/invitations/{id}/decline", "match-making:invitations:decline")
+	resourceContextMiddleware.RegisterOperation("/invitations/{id}", "match-making:invitations:update")
+	resourceContextMiddleware.RegisterOperation("/invitations/{id}", "match-making:invitations:delete")
 
 	// Swagger UI
 	r.PathPrefix("/swagger/").Handler(httpSwagger.Handler(
