@@ -726,6 +726,336 @@ paths:
       tags:
         - regions
 
+  /invitations:
+    post:
+      summary: Create a manual invitation
+      description: Creates a manual invitation for a user to join a match or event. Admin only.
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvitationInput'
+      responses:
+        '201':
+          description: Invitation created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invitation'
+        '400':
+          description: Bad request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - admin access required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      tags:
+        - invitations
+
+    get:
+      summary: List invitations
+      description: Lists invitations filtered by user_id or match_id. Requires ownership or admin access.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: user_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Filter invitations by user ID
+        - name: match_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Filter invitations by match ID (admin only)
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [pending, accepted, declined, expired, revoked]
+          description: Filter invitations by status
+        - name: type
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [match, event]
+          description: Filter invitations by type
+      responses:
+        '200':
+          description: List of invitations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Invitation'
+        '400':
+          description: Bad request - user_id or match_id is required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      tags:
+        - invitations
+
+  /invitations/{id}:
+    get:
+      summary: Get invitation by ID
+      description: Retrieves a specific invitation by its ID. Requires ownership or admin access.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Invitation ID
+      responses:
+        '200':
+          description: Invitation details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invitation'
+        '403':
+          description: Forbidden - insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Invitation not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      tags:
+        - invitations
+
+    patch:
+      summary: Update invitation
+      description: Updates an invitation (message and/or expiration date). Admin only, pending invitations only.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Invitation ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvitationUpdateInput'
+      responses:
+        '200':
+          description: Invitation updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invitation'
+        '400':
+          description: Bad request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - admin access required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Invitation not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      tags:
+        - invitations
+
+    delete:
+      summary: Revoke invitation
+      description: Revokes a pending invitation. Admin only.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Invitation ID
+      responses:
+        '204':
+          description: Invitation revoked successfully
+        '400':
+          description: Bad request - invitation cannot be revoked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - admin access required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Invitation not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      tags:
+        - invitations
+
+  /invitations/{id}/accept:
+    post:
+      summary: Accept invitation
+      description: Accepts a pending invitation. Requires invitation ownership.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Invitation ID
+      responses:
+        '204':
+          description: Invitation accepted successfully
+        '400':
+          description: Bad request - invitation cannot be accepted (expired or invalid status)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - invitation does not belong to user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Invitation not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      tags:
+        - invitations
+
+  /invitations/{id}/decline:
+    post:
+      summary: Decline invitation
+      description: Declines a pending invitation. Requires invitation ownership.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Invitation ID
+      responses:
+        '204':
+          description: Invitation declined successfully
+        '400':
+          description: Bad request - invitation cannot be declined (expired or invalid status)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - invitation does not belong to user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Invitation not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      tags:
+        - invitations
+
 
 components:
   securitySchemes:
@@ -960,6 +1290,119 @@ components:
       required:
         - name
         - slug
+
+    Invitation:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier for the invitation
+        type:
+          type: integer
+          enum: [0, 1]
+          description: Invitation type (0 = match, 1 = event)
+        user_id:
+          type: string
+          format: uuid
+          description: ID of the user being invited
+        match_id:
+          type: string
+          format: uuid
+          description: Match ID (if type is match)
+        event_id:
+          type: string
+          format: uuid
+          description: Event ID (if type is event)
+        message:
+          type: string
+          description: Invitation message
+        expiration_date:
+          type: string
+          format: date-time
+          description: When the invitation expires (optional)
+        status:
+          type: integer
+          enum: [0, 1, 2, 3, 4]
+          description: Invitation status (0 = pending, 1 = accepted, 2 = declined, 3 = expired, 4 = revoked)
+        created_by:
+          type: string
+          format: uuid
+          description: ID of the administrator who created the invitation
+        accepted_at:
+          type: string
+          format: date-time
+          description: When the invitation was accepted (if accepted)
+        declined_at:
+          type: string
+          format: date-time
+          description: When the invitation was declined (if declined)
+        revoked_at:
+          type: string
+          format: date-time
+          description: When the invitation was revoked (if revoked)
+        revoked_by:
+          type: string
+          format: uuid
+          description: ID of the administrator who revoked the invitation (if revoked)
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp
+      required:
+        - id
+        - type
+        - user_id
+        - message
+        - status
+        - created_by
+
+    InvitationInput:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [match, event]
+          description: Invitation type
+        user_id:
+          type: string
+          format: uuid
+          description: ID of the user being invited
+        match_id:
+          type: string
+          format: uuid
+          description: Match ID (required if type is "match")
+        event_id:
+          type: string
+          format: uuid
+          description: Event ID (required if type is "event")
+        message:
+          type: string
+          description: Invitation message
+        expiration_date:
+          type: string
+          format: date-time
+          description: When the invitation expires (optional, must be in the future)
+      required:
+        - type
+        - user_id
+        - message
+
+    InvitationUpdateInput:
+      type: object
+      properties:
+        message:
+          type: string
+          description: Updated invitation message
+        expiration_date:
+          type: string
+          format: date-time
+          description: Updated expiration date (must be in the future)
+      required: []
 
     ErrorResponse:
       type: object
