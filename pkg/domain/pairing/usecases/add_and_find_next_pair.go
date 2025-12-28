@@ -1,6 +1,7 @@
 package usecases
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -53,7 +54,8 @@ func (uc *AddAndFindNextPairUseCase) Execute(p FindPairPayload) (*pairing_entiti
 
 	// if succesfuly dequeued
 	if len(parties) > 0 {
-		pair, err = uc.PairCreator.Execute(parties)
+		ctx := context.Background()
+		pair, err = uc.PairCreator.Execute(ctx, parties)
 		if err != nil {
 			return nil, nil, position, fmt.Errorf("AddAndFindNextPairUseCase.Execute: unable to CREATE pair. Cannot create pair for parties %v, due to %v", parties, err)
 		}

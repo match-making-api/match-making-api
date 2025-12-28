@@ -1,13 +1,15 @@
 package pairing_in
 
 import (
+	"context"
+
 	"github.com/google/uuid"
 	pairing_entities "github.com/leet-gaming/match-making-api/pkg/domain/pairing/entities"
 	pairing_value_objects "github.com/leet-gaming/match-making-api/pkg/domain/pairing/value-objects"
 )
 
 type PairCreator interface {
-	Execute(pids []uuid.UUID) (*pairing_entities.Pair, error)
+	Execute(ctx context.Context, pids []uuid.UUID) (*pairing_entities.Pair, error)
 }
 
 type PoolInitiator interface {
