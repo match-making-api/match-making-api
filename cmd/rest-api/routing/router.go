@@ -43,6 +43,7 @@ func NewRouter(ctx context.Context, container container.Container) http.Handler 
 	regionController := controllers.NewRegionController(container)
 	invitationController := controllers.NewInvitationController(container)
 	externalInvitationController := controllers.NewExternalInvitationController(container)
+	notificationController := controllers.NewNotificationController(container)
 
 	// health
 	r.HandleFunc(Health, healthController.HealthCheck(ctx)).Methods("GET")
@@ -113,6 +114,18 @@ func NewRouter(ctx context.Context, container container.Container) http.Handler 
 	resourceContextMiddleware.RegisterOperation("/external-invitations/{id}", "match-making:external-invitations:get")
 	resourceContextMiddleware.RegisterOperation("/external-invitations/{id}/resend", "match-making:external-invitations:resend")
 	resourceContextMiddleware.RegisterOperation("/external-invitations/{id}", "match-making:external-invitations:delete")
+
+	// notifications
+	r.HandleFunc("/notifications", notificationController.Send(ctx)).Methods("POST")
+	r.HandleFunc("/notifications/batch", notificationController.SendBatch(ctx)).Methods("POST")
+	r.HandleFunc("/notifications/users/{user_id}", notificationController.GetUserNotifications(ctx)).Methods("GET")
+	r.HandleFunc("/notifications/{id}/read", notificationController.MarkAsRead(ctx)).Methods("POST")
+	r.HandleFunc("/notifications/{id}/retry", notificationController.Retry(ctx)).Methods("POST")
+	resourceContextMiddleware.RegisterOperation("/notifications", "match-making:notifications:send")
+	resourceContextMiddleware.RegisterOperation("/notifications/batch", "match-making:notifications:send-batch")
+	resourceContextMiddleware.RegisterOperation("/notifications/users/{user_id}", "match-making:notifications:get-user")
+	resourceContextMiddleware.RegisterOperation("/notifications/{id}/read", "match-making:notifications:mark-read")
+	resourceContextMiddleware.RegisterOperation("/notifications/{id}/retry", "match-making:notifications:retry")
 
 	// Swagger UI
 	r.PathPrefix("/swagger/").Handler(httpSwagger.Handler(
