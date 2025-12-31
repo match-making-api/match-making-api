@@ -271,3 +271,83 @@ func (m *MockPortPeerReader) GetByID(id uuid.UUID) (*parties_entities.Peer, erro
 	}
 	return args.Get(0).(*parties_entities.Peer), args.Error(1)
 }
+
+// MockPortExternalInvitationWriter is a mock implementation of pairing_out.ExternalInvitationWriter using testify/mock
+type MockPortExternalInvitationWriter struct {
+	mock.Mock
+}
+
+// Ensure MockPortExternalInvitationWriter implements pairing_out.ExternalInvitationWriter
+var _ pairing_out.ExternalInvitationWriter = (*MockPortExternalInvitationWriter)(nil)
+
+func (m *MockPortExternalInvitationWriter) Save(ctx context.Context, invitation *pairing_entities.ExternalInvitation) (*pairing_entities.ExternalInvitation, error) {
+	args := m.Called(ctx, invitation)
+	// If no return value specified or it's a matcher, return the original invitation
+	if len(args) == 0 {
+		return invitation, nil
+	}
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	if inv, ok := args.Get(0).(*pairing_entities.ExternalInvitation); ok {
+		return inv, args.Error(1)
+	}
+	// Fallback: return the original invitation (useful when using mock.Anything)
+	return invitation, args.Error(1)
+}
+
+// MockPortExternalInvitationReader is a mock implementation of pairing_out.ExternalInvitationReader using testify/mock
+type MockPortExternalInvitationReader struct {
+	mock.Mock
+}
+
+// Ensure MockPortExternalInvitationReader implements pairing_out.ExternalInvitationReader
+var _ pairing_out.ExternalInvitationReader = (*MockPortExternalInvitationReader)(nil)
+
+func (m *MockPortExternalInvitationReader) GetByID(ctx context.Context, id uuid.UUID) (*pairing_entities.ExternalInvitation, error) {
+	args := m.Called(ctx, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*pairing_entities.ExternalInvitation), args.Error(1)
+}
+
+func (m *MockPortExternalInvitationReader) GetByRegistrationToken(ctx context.Context, token string) (*pairing_entities.ExternalInvitation, error) {
+	args := m.Called(ctx, token)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*pairing_entities.ExternalInvitation), args.Error(1)
+}
+
+func (m *MockPortExternalInvitationReader) FindByEmail(ctx context.Context, email string) ([]*pairing_entities.ExternalInvitation, error) {
+	args := m.Called(ctx, email)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*pairing_entities.ExternalInvitation), args.Error(1)
+}
+
+func (m *MockPortExternalInvitationReader) FindByMatchID(ctx context.Context, matchID uuid.UUID) ([]*pairing_entities.ExternalInvitation, error) {
+	args := m.Called(ctx, matchID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*pairing_entities.ExternalInvitation), args.Error(1)
+}
+
+func (m *MockPortExternalInvitationReader) FindByEventID(ctx context.Context, eventID uuid.UUID) ([]*pairing_entities.ExternalInvitation, error) {
+	args := m.Called(ctx, eventID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*pairing_entities.ExternalInvitation), args.Error(1)
+}
+
+func (m *MockPortExternalInvitationReader) FindByCreatedBy(ctx context.Context, createdBy uuid.UUID) ([]*pairing_entities.ExternalInvitation, error) {
+	args := m.Called(ctx, createdBy)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*pairing_entities.ExternalInvitation), args.Error(1)
+}

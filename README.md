@@ -71,3 +71,9 @@ graph TD
    √ The times when a player or team is available to play.
 * **Constraint:**
    √ A limitation or restriction on a player's or team's availability or preferences.
+* **Invitation:**
+   √ A manual invitation for a user to join a match or event.
+   √ Supports status tracking (Pending, Accepted, Declined, Expired, Revoked).
+* **ExternalInvitation:**
+   √ A manual invitation for an external user (not yet on the platform) to join a match or event.
+   √ Includes email validation, registration token generation, and automatic platform membership upon acceptance.
