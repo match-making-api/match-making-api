@@ -2,13 +2,13 @@ openapi: 3.0.0
 info:
   title: Match Making API
   description: This is a match making API server.
-  version: '1.0'
+  version: "1.0"
   contact:
     name: API Support
     email: support@leet-gaming.com
   license:
-    name: Apache 2.0
-    url: http://www.apache.org/licenses/LICENSE-2.0.html
+    name: MIT
+    url: https://opensource.org/licenses/MIT
 
 servers:
   - url: http://localhost:4991
@@ -21,7 +21,7 @@ paths:
       summary: Get Health Check
       description: Returns an HTTP handler function that performs a health check.
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
@@ -43,20 +43,20 @@ paths:
       security:
         - ApiKeyAuth: []
       responses:
-        '200':
+        "200":
           description: List of games
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Game'
-        '500':
+                  $ref: "#/components/schemas/Game"
+        "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
       tags:
         - games
 
@@ -70,26 +70,26 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/GameInput'
+              $ref: "#/components/schemas/GameInput"
       responses:
-        '201':
+        "201":
           description: Game created successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Game'
-        '400':
+                $ref: "#/components/schemas/Game"
+        "400":
           description: Bad request - validation error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
       tags:
         - games
 
@@ -108,30 +108,30 @@ paths:
             format: uuid
           description: Game ID
       responses:
-        '200':
+        "200":
           description: Game found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Game'
-        '400':
+                $ref: "#/components/schemas/Game"
+        "400":
           description: Bad request
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Game not found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
       tags:
         - games
 
@@ -153,32 +153,32 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/GameInput'
+              $ref: "#/components/schemas/GameInput"
       responses:
-        '200':
+        "200":
           description: Game updated successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Game'
-        '400':
+                $ref: "#/components/schemas/Game"
+        "400":
           description: Bad request - validation error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Game not found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
       tags:
         - games
 
@@ -200,32 +200,32 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/GameInput'
+              $ref: "#/components/schemas/GameInput"
       responses:
-        '200':
+        "200":
           description: Game updated successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Game'
-        '400':
+                $ref: "#/components/schemas/Game"
+        "400":
           description: Bad request - validation error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Game not found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
       tags:
         - games
 
@@ -243,26 +243,26 @@ paths:
             format: uuid
           description: Game ID
       responses:
-        '204':
+        "204":
           description: Game deleted successfully
-        '400':
+        "400":
           description: Bad request
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Game not found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
       tags:
         - games
 
@@ -273,20 +273,20 @@ paths:
       security:
         - ApiKeyAuth: []
       responses:
-        '200':
+        "200":
           description: List of game modes
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/GameMode'
-        '500':
+                  $ref: "#/components/schemas/GameMode"
+        "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
       tags:
         - game-modes
 
@@ -300,26 +300,26 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/GameModeInput'
+              $ref: "#/components/schemas/GameModeInput"
       responses:
-        '201':
+        "201":
           description: Game mode created successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GameMode'
-        '400':
+                $ref: "#/components/schemas/GameMode"
+        "400":
           description: Bad request - validation error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
       tags:
         - game-modes
 
@@ -338,30 +338,30 @@ paths:
             format: uuid
           description: Game mode ID
       responses:
-        '200':
+        "200":
           description: Game mode found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GameMode'
-        '400':
+                $ref: "#/components/schemas/GameMode"
+        "400":
           description: Bad request
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Game mode not found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
       tags:
         - game-modes
 
@@ -383,32 +383,32 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/GameModeInput'
+              $ref: "#/components/schemas/GameModeInput"
       responses:
-        '200':
+        "200":
           description: Game mode updated successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GameMode'
-        '400':
+                $ref: "#/components/schemas/GameMode"
+        "400":
           description: Bad request - validation error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Game mode not found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
       tags:
         - game-modes
 
@@ -430,32 +430,32 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/GameModeInput'
+              $ref: "#/components/schemas/GameModeInput"
       responses:
-        '200':
+        "200":
           description: Game mode updated successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GameMode'
-        '400':
+                $ref: "#/components/schemas/GameMode"
+        "400":
           description: Bad request - validation error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Game mode not found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
       tags:
         - game-modes
 
@@ -473,26 +473,26 @@ paths:
             format: uuid
           description: Game mode ID
       responses:
-        '204':
+        "204":
           description: Game mode deleted successfully
-        '400':
+        "400":
           description: Bad request
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Game mode not found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
       tags:
         - game-modes
 
@@ -503,20 +503,20 @@ paths:
       security:
         - ApiKeyAuth: []
       responses:
-        '200':
+        "200":
           description: List of regions
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Region'
-        '500':
+                  $ref: "#/components/schemas/Region"
+        "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
       tags:
         - regions
 
@@ -530,26 +530,26 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/RegionInput'
+              $ref: "#/components/schemas/RegionInput"
       responses:
-        '201':
+        "201":
           description: Region created successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Region'
-        '400':
+                $ref: "#/components/schemas/Region"
+        "400":
           description: Bad request - validation error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
       tags:
         - regions
 
@@ -568,30 +568,30 @@ paths:
             format: uuid
           description: Region ID
       responses:
-        '200':
+        "200":
           description: Region found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Region'
-        '400':
+                $ref: "#/components/schemas/Region"
+        "400":
           description: Bad request
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Region not found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
       tags:
         - regions
 
@@ -613,32 +613,32 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/RegionInput'
+              $ref: "#/components/schemas/RegionInput"
       responses:
-        '200':
+        "200":
           description: Region updated successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Region'
-        '400':
+                $ref: "#/components/schemas/Region"
+        "400":
           description: Bad request - validation error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Region not found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
       tags:
         - regions
 
@@ -660,32 +660,32 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/RegionInput'
+              $ref: "#/components/schemas/RegionInput"
       responses:
-        '200':
+        "200":
           description: Region updated successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Region'
-        '400':
+                $ref: "#/components/schemas/Region"
+        "400":
           description: Bad request - validation error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Region not found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
       tags:
         - regions
 
@@ -703,26 +703,26 @@ paths:
             format: uuid
           description: Region ID
       responses:
-        '204':
+        "204":
           description: Region deleted successfully
-        '400':
+        "400":
           description: Bad request
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Region not found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
       tags:
         - regions
 
@@ -737,32 +737,32 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/InvitationInput'
+              $ref: "#/components/schemas/InvitationInput"
       responses:
-        '201':
+        "201":
           description: Invitation created successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Invitation'
-        '400':
+                $ref: "#/components/schemas/Invitation"
+        "400":
           description: Bad request - validation error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
           description: Forbidden - admin access required
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
       tags:
         - invitations
 
@@ -801,32 +801,32 @@ paths:
             enum: [match, event]
           description: Filter invitations by type
       responses:
-        '200':
+        "200":
           description: List of invitations
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Invitation'
-        '400':
+                  $ref: "#/components/schemas/Invitation"
+        "400":
           description: Bad request - user_id or match_id is required
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
           description: Forbidden - insufficient permissions
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
       tags:
         - invitations
 
@@ -845,30 +845,30 @@ paths:
             format: uuid
           description: Invitation ID
       responses:
-        '200':
+        "200":
           description: Invitation details
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Invitation'
-        '403':
+                $ref: "#/components/schemas/Invitation"
+        "403":
           description: Forbidden - insufficient permissions
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Invitation not found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
       tags:
         - invitations
 
@@ -890,38 +890,38 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/InvitationUpdateInput'
+              $ref: "#/components/schemas/InvitationUpdateInput"
       responses:
-        '200':
+        "200":
           description: Invitation updated successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Invitation'
-        '400':
+                $ref: "#/components/schemas/Invitation"
+        "400":
           description: Bad request - validation error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
           description: Forbidden - admin access required
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Invitation not found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
       tags:
         - invitations
 
@@ -939,32 +939,32 @@ paths:
             format: uuid
           description: Invitation ID
       responses:
-        '204':
+        "204":
           description: Invitation revoked successfully
-        '400':
+        "400":
           description: Bad request - invitation cannot be revoked
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
           description: Forbidden - admin access required
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Invitation not found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
       tags:
         - invitations
 
@@ -983,32 +983,32 @@ paths:
             format: uuid
           description: Invitation ID
       responses:
-        '204':
+        "204":
           description: Invitation accepted successfully
-        '400':
+        "400":
           description: Bad request - invitation cannot be accepted (expired or invalid status)
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
           description: Forbidden - invitation does not belong to user
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Invitation not found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
       tags:
         - invitations
 
@@ -1027,32 +1027,32 @@ paths:
             format: uuid
           description: Invitation ID
       responses:
-        '204':
+        "204":
           description: Invitation declined successfully
-        '400':
+        "400":
           description: Bad request - invitation cannot be declined (expired or invalid status)
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
           description: Forbidden - invitation does not belong to user
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Invitation not found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
       tags:
         - invitations
 
@@ -1067,32 +1067,32 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ExternalInvitationInput'
+              $ref: "#/components/schemas/ExternalInvitationInput"
       responses:
-        '201':
+        "201":
           description: External invitation created successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ExternalInvitation'
-        '400':
+                $ref: "#/components/schemas/ExternalInvitation"
+        "400":
           description: Bad request - validation error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
           description: Forbidden - admin access required
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
       tags:
         - external-invitations
 
@@ -1138,32 +1138,32 @@ paths:
             enum: [pending, accepted, expired, revoked]
           description: Filter by invitation status
       responses:
-        '200':
+        "200":
           description: List of external invitations
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/ExternalInvitation'
-        '400':
+                  $ref: "#/components/schemas/ExternalInvitation"
+        "400":
           description: Bad request - validation error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
           description: Forbidden - admin access required
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
       tags:
         - external-invitations
 
@@ -1179,30 +1179,30 @@ paths:
             type: string
           description: Registration token from the invitation email
       responses:
-        '200':
+        "200":
           description: External invitation found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ExternalInvitation'
-        '400':
+                $ref: "#/components/schemas/ExternalInvitation"
+        "400":
           description: Bad request - token is required
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Invitation not found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
       tags:
         - external-invitations
 
@@ -1221,30 +1221,30 @@ paths:
             format: uuid
           description: External invitation ID
       responses:
-        '200':
+        "200":
           description: External invitation found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ExternalInvitation'
-        '403':
+                $ref: "#/components/schemas/ExternalInvitation"
+        "403":
           description: Forbidden - admin access required
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Invitation not found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
       tags:
         - external-invitations
 
@@ -1262,32 +1262,32 @@ paths:
             format: uuid
           description: External invitation ID
       responses:
-        '204':
+        "204":
           description: External invitation revoked successfully
-        '400':
+        "400":
           description: Bad request - invitation cannot be revoked
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
           description: Forbidden - admin access required
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Invitation not found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
       tags:
         - external-invitations
 
@@ -1306,32 +1306,32 @@ paths:
             format: uuid
           description: External invitation ID
       responses:
-        '204':
+        "204":
           description: Invitation email resent successfully
-        '400':
+        "400":
           description: Bad request - invitation cannot be resent (expired or invalid status)
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
           description: Forbidden - admin access required
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Invitation not found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
       tags:
         - external-invitations
 
@@ -1346,26 +1346,26 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/NotificationInput'
+              $ref: "#/components/schemas/NotificationInput"
       responses:
-        '201':
+        "201":
           description: Notification sent successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Notification'
-        '400':
+                $ref: "#/components/schemas/Notification"
+        "400":
           description: Bad request - validation error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
       tags:
         - notifications
 
@@ -1380,9 +1380,9 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/BatchNotificationInput'
+              $ref: "#/components/schemas/BatchNotificationInput"
       responses:
-        '200':
+        "200":
           description: Batch notifications processed
           content:
             application/json:
@@ -1392,7 +1392,7 @@ paths:
                   notifications:
                     type: array
                     items:
-                      $ref: '#/components/schemas/Notification'
+                      $ref: "#/components/schemas/Notification"
                   success_count:
                     type: integer
                     description: Number of successfully sent notifications
@@ -1404,24 +1404,24 @@ paths:
                     items:
                       type: string
                     description: Error messages for failed notifications
-        '400':
+        "400":
           description: Bad request - validation error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
           description: Forbidden - admin access required
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
       tags:
         - notifications
 
@@ -1457,30 +1457,30 @@ paths:
             default: 0
           description: Number of notifications to skip
       responses:
-        '200':
+        "200":
           description: List of notifications
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UserNotificationsResult'
-        '400':
+                $ref: "#/components/schemas/UserNotificationsResult"
+        "400":
           description: Bad request - validation error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
           description: Forbidden - user can only access their own notifications
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
       tags:
         - notifications
 
@@ -1499,32 +1499,32 @@ paths:
             format: uuid
           description: Notification ID
       responses:
-        '204':
+        "204":
           description: Notification marked as read successfully
-        '400':
+        "400":
           description: Bad request - validation error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
           description: Forbidden - user can only mark their own notifications as read
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Notification not found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
       tags:
         - notifications
 
@@ -1543,32 +1543,32 @@ paths:
             format: uuid
           description: Notification ID
       responses:
-        '204':
+        "204":
           description: Notification retry initiated successfully
-        '400':
+        "400":
           description: Bad request - notification cannot be retried
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
           description: Forbidden - admin access required
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Notification not found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
       tags:
         - notifications
 
@@ -2130,7 +2130,15 @@ components:
           description: Channel to use
         type:
           type: string
-          enum: [match_invitation, match_acceptance, event_reminder, event_cancellation, system_announcement, custom]
+          enum:
+            [
+              match_invitation,
+              match_acceptance,
+              event_reminder,
+              event_cancellation,
+              system_announcement,
+              custom,
+            ]
           description: Notification type
         title:
           type: string
@@ -2176,7 +2184,15 @@ components:
           description: Channel to use
         type:
           type: string
-          enum: [match_invitation, match_acceptance, event_reminder, event_cancellation, system_announcement, custom]
+          enum:
+            [
+              match_invitation,
+              match_acceptance,
+              event_reminder,
+              event_cancellation,
+              system_announcement,
+              custom,
+            ]
           description: Notification type
         title:
           type: string
@@ -2213,7 +2229,7 @@ components:
         notifications:
           type: array
           items:
-            $ref: '#/components/schemas/Notification'
+            $ref: "#/components/schemas/Notification"
         total:
           type: integer
           description: Total number of notifications for the user
