@@ -34,3 +34,16 @@ type InvitationReader interface {
 type PoolReader interface {
 	FindPool(criteria *pairing_value_objects.Criteria) (*pairing_entities.Pool, error)
 }
+
+type ExternalInvitationWriter interface {
+	Save(ctx context.Context, invitation *pairing_entities.ExternalInvitation) (*pairing_entities.ExternalInvitation, error)
+}
+
+type ExternalInvitationReader interface {
+	GetByID(ctx context.Context, id uuid.UUID) (*pairing_entities.ExternalInvitation, error)
+	GetByRegistrationToken(ctx context.Context, token string) (*pairing_entities.ExternalInvitation, error)
+	FindByEmail(ctx context.Context, email string) ([]*pairing_entities.ExternalInvitation, error)
+	FindByMatchID(ctx context.Context, matchID uuid.UUID) ([]*pairing_entities.ExternalInvitation, error)
+	FindByEventID(ctx context.Context, eventID uuid.UUID) ([]*pairing_entities.ExternalInvitation, error)
+	FindByCreatedBy(ctx context.Context, createdBy uuid.UUID) ([]*pairing_entities.ExternalInvitation, error)
+}

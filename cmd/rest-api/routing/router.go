@@ -42,6 +42,7 @@ func NewRouter(ctx context.Context, container container.Container) http.Handler 
 	gameModeController := controllers.NewGameModeController(container)
 	regionController := controllers.NewRegionController(container)
 	invitationController := controllers.NewInvitationController(container)
+	externalInvitationController := controllers.NewExternalInvitationController(container)
 
 	// health
 	r.HandleFunc(Health, healthController.HealthCheck(ctx)).Methods("GET")
@@ -98,6 +99,20 @@ func NewRouter(ctx context.Context, container container.Container) http.Handler 
 	resourceContextMiddleware.RegisterOperation("/invitations/{id}/decline", "match-making:invitations:decline")
 	resourceContextMiddleware.RegisterOperation("/invitations/{id}", "match-making:invitations:update")
 	resourceContextMiddleware.RegisterOperation("/invitations/{id}", "match-making:invitations:delete")
+
+	// external invitations
+	r.HandleFunc("/external-invitations", externalInvitationController.Create(ctx)).Methods("POST")
+	r.HandleFunc("/external-invitations", externalInvitationController.List(ctx)).Methods("GET")
+	r.HandleFunc("/external-invitations/by-token", externalInvitationController.GetByToken(ctx)).Methods("GET")
+	r.HandleFunc("/external-invitations/{id}", externalInvitationController.Get(ctx)).Methods("GET")
+	r.HandleFunc("/external-invitations/{id}/resend", externalInvitationController.Resend(ctx)).Methods("POST")
+	r.HandleFunc("/external-invitations/{id}", externalInvitationController.Delete(ctx)).Methods("DELETE")
+	resourceContextMiddleware.RegisterOperation("/external-invitations", "match-making:external-invitations:create")
+	resourceContextMiddleware.RegisterOperation("/external-invitations", "match-making:external-invitations:list")
+	resourceContextMiddleware.RegisterOperation("/external-invitations/by-token", "match-making:external-invitations:get-by-token")
+	resourceContextMiddleware.RegisterOperation("/external-invitations/{id}", "match-making:external-invitations:get")
+	resourceContextMiddleware.RegisterOperation("/external-invitations/{id}/resend", "match-making:external-invitations:resend")
+	resourceContextMiddleware.RegisterOperation("/external-invitations/{id}", "match-making:external-invitations:delete")
 
 	// Swagger UI
 	r.PathPrefix("/swagger/").Handler(httpSwagger.Handler(
