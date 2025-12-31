@@ -1335,6 +1335,243 @@ paths:
       tags:
         - external-invitations
 
+  /notifications:
+    post:
+      summary: Send a notification
+      description: Sends a notification to a specific user. Respects user preferences and do not disturb settings.
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotificationInput'
+      responses:
+        '201':
+          description: Notification sent successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Notification'
+        '400':
+          description: Bad request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      tags:
+        - notifications
+
+  /notifications/batch:
+    post:
+      summary: Send batch notifications
+      description: Sends notifications to multiple users. Admin only.
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchNotificationInput'
+      responses:
+        '200':
+          description: Batch notifications processed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  notifications:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Notification'
+                  success_count:
+                    type: integer
+                    description: Number of successfully sent notifications
+                  error_count:
+                    type: integer
+                    description: Number of failed notifications
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                    description: Error messages for failed notifications
+        '400':
+          description: Bad request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - admin access required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      tags:
+        - notifications
+
+  /notifications/users/{user_id}:
+    get:
+      summary: Get user notifications
+      description: Retrieves notifications for a specific user. Users can only access their own notifications.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: User ID
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Maximum number of notifications to return
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+          description: Number of notifications to skip
+      responses:
+        '200':
+          description: List of notifications
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserNotificationsResult'
+        '400':
+          description: Bad request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - user can only access their own notifications
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      tags:
+        - notifications
+
+  /notifications/{id}/read:
+    post:
+      summary: Mark notification as read
+      description: Marks an in-app notification as read. Users can only mark their own notifications as read.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Notification ID
+      responses:
+        '204':
+          description: Notification marked as read successfully
+        '400':
+          description: Bad request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - user can only mark their own notifications as read
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Notification not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      tags:
+        - notifications
+
+  /notifications/{id}/retry:
+    post:
+      summary: Retry failed notification
+      description: Retries a failed notification. Admin only.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Notification ID
+      responses:
+        '204':
+          description: Notification retry initiated successfully
+        '400':
+          description: Bad request - notification cannot be retried
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - admin access required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Notification not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      tags:
+        - notifications
+
 components:
   securitySchemes:
     ApiKeyAuth:
@@ -1794,6 +2031,203 @@ components:
         - full_name
         - email
         - message
+
+    Notification:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier for the notification
+        user_id:
+          type: string
+          format: uuid
+          description: User who receives the notification
+        channel:
+          type: integer
+          enum: [0, 1, 2]
+          description: Channel used (0 = in_app, 1 = email, 2 = sms)
+        type:
+          type: integer
+          enum: [0, 1, 2, 3, 4, 5]
+          description: Notification type (0 = match_invitation, 1 = match_acceptance, 2 = event_reminder, 3 = event_cancellation, 4 = system_announcement, 5 = custom)
+        title:
+          type: string
+          description: Notification title
+        message:
+          type: string
+          description: Notification message body
+        metadata:
+          type: object
+          additionalProperties: true
+          description: Additional metadata (match ID, event details, timestamps, etc.)
+        status:
+          type: integer
+          enum: [0, 1, 2, 3]
+          description: Notification status (0 = pending, 1 = sent, 2 = failed, 3 = retrying)
+        template_id:
+          type: string
+          format: uuid
+          description: Template used (if any)
+        language:
+          type: string
+          description: Language/locale for localization
+        sent_at:
+          type: string
+          format: date-time
+          description: When the notification was sent
+        failed_at:
+          type: string
+          format: date-time
+          description: When the notification failed (if failed)
+        failure_reason:
+          type: string
+          description: Reason for failure
+        retry_count:
+          type: integer
+          description: Number of retry attempts
+        max_retries:
+          type: integer
+          description: Maximum retry attempts
+        next_retry_at:
+          type: string
+          format: date-time
+          description: When to retry next
+        read_at:
+          type: string
+          format: date-time
+          description: When user read the notification (for in-app)
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp
+      required:
+        - id
+        - user_id
+        - channel
+        - type
+        - title
+        - message
+        - status
+        - language
+        - retry_count
+        - max_retries
+
+    NotificationInput:
+      type: object
+      properties:
+        user_id:
+          type: string
+          format: uuid
+          description: User who receives the notification
+        channel:
+          type: string
+          enum: [in_app, email, sms]
+          description: Channel to use
+        type:
+          type: string
+          enum: [match_invitation, match_acceptance, event_reminder, event_cancellation, system_announcement, custom]
+          description: Notification type
+        title:
+          type: string
+          description: Notification title
+        message:
+          type: string
+          description: Notification message body
+        metadata:
+          type: object
+          additionalProperties: true
+          description: Additional metadata
+        template_id:
+          type: string
+          format: uuid
+          description: Template ID to use (optional)
+        language:
+          type: string
+          description: Language/locale (optional, defaults to user preference)
+        max_retries:
+          type: integer
+          minimum: 0
+          default: 3
+          description: Maximum retry attempts
+      required:
+        - user_id
+        - channel
+        - type
+        - title
+        - message
+
+    BatchNotificationInput:
+      type: object
+      properties:
+        user_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: List of user IDs to send notifications to
+        channel:
+          type: string
+          enum: [in_app, email, sms]
+          description: Channel to use
+        type:
+          type: string
+          enum: [match_invitation, match_acceptance, event_reminder, event_cancellation, system_announcement, custom]
+          description: Notification type
+        title:
+          type: string
+          description: Notification title
+        message:
+          type: string
+          description: Notification message body
+        metadata:
+          type: object
+          additionalProperties: true
+          description: Additional metadata
+        template_id:
+          type: string
+          format: uuid
+          description: Template ID to use (optional)
+        language:
+          type: string
+          description: Language/locale (optional)
+        max_retries:
+          type: integer
+          minimum: 0
+          default: 3
+          description: Maximum retry attempts
+      required:
+        - user_ids
+        - channel
+        - type
+        - title
+        - message
+
+    UserNotificationsResult:
+      type: object
+      properties:
+        notifications:
+          type: array
+          items:
+            $ref: '#/components/schemas/Notification'
+        total:
+          type: integer
+          description: Total number of notifications for the user
+        limit:
+          type: integer
+          description: Limit used in the query
+        offset:
+          type: integer
+          description: Offset used in the query
+      required:
+        - notifications
+        - total
+        - limit
+        - offset
 
     ErrorResponse:
       type: object

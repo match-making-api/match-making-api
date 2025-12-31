@@ -47,3 +47,34 @@ type ExternalInvitationReader interface {
 	FindByEventID(ctx context.Context, eventID uuid.UUID) ([]*pairing_entities.ExternalInvitation, error)
 	FindByCreatedBy(ctx context.Context, createdBy uuid.UUID) ([]*pairing_entities.ExternalInvitation, error)
 }
+
+type NotificationWriter interface {
+	Save(ctx context.Context, notification *pairing_entities.Notification) (*pairing_entities.Notification, error)
+	SaveBatch(ctx context.Context, notifications []*pairing_entities.Notification) ([]*pairing_entities.Notification, error)
+}
+
+type NotificationReader interface {
+	GetByID(ctx context.Context, id uuid.UUID) (*pairing_entities.Notification, error)
+	FindByUserID(ctx context.Context, userID uuid.UUID, limit int, offset int) ([]*pairing_entities.Notification, error)
+	FindByStatus(ctx context.Context, status pairing_entities.NotificationStatus) ([]*pairing_entities.Notification, error)
+	FindFailedNotifications(ctx context.Context) ([]*pairing_entities.Notification, error)
+	CountByUserID(ctx context.Context, userID uuid.UUID) (int, error)
+}
+
+type NotificationTemplateWriter interface {
+	Save(ctx context.Context, template *pairing_entities.NotificationTemplate) (*pairing_entities.NotificationTemplate, error)
+}
+
+type NotificationTemplateReader interface {
+	GetByID(ctx context.Context, id uuid.UUID) (*pairing_entities.NotificationTemplate, error)
+	FindByType(ctx context.Context, notificationType pairing_entities.NotificationType) ([]*pairing_entities.NotificationTemplate, error)
+	FindActiveTemplates(ctx context.Context) ([]*pairing_entities.NotificationTemplate, error)
+}
+
+type UserNotificationPreferencesWriter interface {
+	Save(ctx context.Context, preferences *pairing_entities.UserNotificationPreferences) (*pairing_entities.UserNotificationPreferences, error)
+}
+
+type UserNotificationPreferencesReader interface {
+	GetByUserID(ctx context.Context, userID uuid.UUID) (*pairing_entities.UserNotificationPreferences, error)
+}
