@@ -1,0 +1,1897 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>usecases: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">github.com/leet-gaming/match-making-api/pkg/domain/pairing/usecases/accept_invitation_usecase.go (0.0%)</option>
+				
+				<option value="file1">github.com/leet-gaming/match-making-api/pkg/domain/pairing/usecases/add_and_find_next_pair.go (100.0%)</option>
+				
+				<option value="file2">github.com/leet-gaming/match-making-api/pkg/domain/pairing/usecases/create_manual_invitation_usecase.go (0.0%)</option>
+				
+				<option value="file3">github.com/leet-gaming/match-making-api/pkg/domain/pairing/usecases/create_pair.go (0.0%)</option>
+				
+				<option value="file4">github.com/leet-gaming/match-making-api/pkg/domain/pairing/usecases/create_pool.go (0.0%)</option>
+				
+				<option value="file5">github.com/leet-gaming/match-making-api/pkg/domain/pairing/usecases/decline_invitation_usecase.go (0.0%)</option>
+				
+				<option value="file6">github.com/leet-gaming/match-making-api/pkg/domain/pairing/usecases/invitation_notifier.go (0.0%)</option>
+				
+				<option value="file7">github.com/leet-gaming/match-making-api/pkg/domain/pairing/usecases/matchmaking_event_consumer.go (81.7%)</option>
+				
+				<option value="file8">github.com/leet-gaming/match-making-api/pkg/domain/pairing/usecases/noop_conflict_notifier.go (0.0%)</option>
+				
+				<option value="file9">github.com/leet-gaming/match-making-api/pkg/domain/pairing/usecases/party_schedule_matcher.go (76.4%)</option>
+				
+				<option value="file10">github.com/leet-gaming/match-making-api/pkg/domain/pairing/usecases/resolve_match_conflict_usecase.go (0.0%)</option>
+				
+				<option value="file11">github.com/leet-gaming/match-making-api/pkg/domain/pairing/usecases/revoke_invitation_usecase.go (0.0%)</option>
+				
+				<option value="file12">github.com/leet-gaming/match-making-api/pkg/domain/pairing/usecases/update_invitation_usecase.go (0.0%)</option>
+				
+				<option value="file13">github.com/leet-gaming/match-making-api/pkg/domain/pairing/usecases/verify_client_match_conflicts_usecase.go (0.0%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package usecases
+
+import (
+        "context"
+        "fmt"
+        "log/slog"
+        "time"
+
+        "github.com/google/uuid"
+        pairing_entities "github.com/leet-gaming/match-making-api/pkg/domain/pairing/entities"
+        pairing_out "github.com/leet-gaming/match-making-api/pkg/domain/pairing/ports/out"
+)
+
+// AcceptInvitationUseCase handles accepting an invitation
+type AcceptInvitationUseCase struct {
+        InvitationReader pairing_out.InvitationReader
+        InvitationWriter pairing_out.InvitationWriter
+        Notifier         InvitationNotifier // Optional: if nil, notifications are skipped
+}
+
+// Execute accepts an invitation if it's valid and not expired
+func (uc *AcceptInvitationUseCase) Execute(ctx context.Context, invitationID uuid.UUID, userID uuid.UUID) error <span class="cov0" title="0">{
+        // Get the invitation
+        invitation, err := uc.InvitationReader.GetByID(ctx, invitationID)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to get invitation %v: %w", invitationID, err)
+        }</span>
+
+        // Verify that the invitation belongs to the user
+        <span class="cov0" title="0">if invitation.UserID != userID </span><span class="cov0" title="0">{
+                return fmt.Errorf("invitation %v does not belong to user %v", invitationID, userID)
+        }</span>
+
+        // Check if invitation can be accepted
+        <span class="cov0" title="0">if !invitation.CanAccept() </span><span class="cov0" title="0">{
+                if invitation.IsExpired() </span><span class="cov0" title="0">{
+                        // Update status to expired if not already updated
+                        if invitation.Status != pairing_entities.InvitationStatusExpired </span><span class="cov0" title="0">{
+                                invitation.Status = pairing_entities.InvitationStatusExpired
+                                _, err = uc.InvitationWriter.Save(ctx, invitation)
+                                if err != nil </span><span class="cov0" title="0">{
+                                        slog.ErrorContext(ctx, "failed to update expired invitation", "error", err, "invitation_id", invitationID)
+                                }</span>
+                        }
+                        <span class="cov0" title="0">return fmt.Errorf("invitation %v has expired", invitationID)</span>
+                }
+                <span class="cov0" title="0">return fmt.Errorf("invitation %v cannot be accepted (current status: %v)", invitationID, invitation.Status)</span>
+        }
+
+        // Update invitation status
+        <span class="cov0" title="0">now := time.Now()
+        invitation.Status = pairing_entities.InvitationStatusAccepted
+        invitation.AcceptedAt = &amp;now
+
+        _, err = uc.InvitationWriter.Save(ctx, invitation)
+        if err != nil </span><span class="cov0" title="0">{
+                slog.ErrorContext(ctx, "failed to save accepted invitation", "error", err, "invitation_id", invitationID)
+                return fmt.Errorf("failed to accept invitation: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">slog.InfoContext(ctx, "invitation accepted successfully",
+                "invitation_id", invitationID,
+                "user_id", userID,
+                "match_id", invitation.MatchID,
+                "event_id", invitation.EventID)
+
+        // Send notification about acceptance
+        if uc.Notifier != nil </span><span class="cov0" title="0">{
+                if err := uc.Notifier.NotifyInvitationAccepted(ctx, invitationID, userID); err != nil </span><span class="cov0" title="0">{
+                        slog.ErrorContext(ctx, "failed to send acceptance notification",
+                                "error", err, "invitation_id", invitationID, "user_id", userID)
+                        // Don't fail acceptance if notification fails
+                }</span>
+        }
+
+        <span class="cov0" title="0">return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">package usecases
+
+import (
+        "context"
+        "fmt"
+
+        "github.com/google/uuid"
+        pairing_entities "github.com/leet-gaming/match-making-api/pkg/domain/pairing/entities"
+        pairing_in "github.com/leet-gaming/match-making-api/pkg/domain/pairing/ports/in"
+        pairing_out "github.com/leet-gaming/match-making-api/pkg/domain/pairing/ports/out"
+        pairing_value_objects "github.com/leet-gaming/match-making-api/pkg/domain/pairing/value-objects"
+        schedules_in_ports "github.com/leet-gaming/match-making-api/pkg/domain/schedules/ports/in"
+)
+
+type AddAndFindNextPairUseCase struct {
+        PoolReader pairing_out.PoolReader
+        PoolWriter pairing_out.PoolWriter
+
+        PartyScheduleReader schedules_in_ports.PartyScheduleReader
+        PoolInitiator       pairing_in.PoolInitiator
+        PairCreator         pairing_in.PairCreator
+        ScheduleMatcher     pairing_in.PartyScheduleMatcher
+}
+
+type FindPairPayload struct {
+        PartyID  uuid.UUID // (always create a party, even if alone, easier to add someone to it if the user decides so in the middle of match making)
+        Criteria pairing_value_objects.Criteria
+}
+
+func (uc *AddAndFindNextPairUseCase) Execute(p FindPairPayload) (*pairing_entities.Pair, *pairing_entities.Pool, int, error) <span class="cov8" title="1">{
+        schedule := uc.PartyScheduleReader.GetScheduleByPartyID(p.PartyID)
+
+        p.Criteria.Schedule = schedule
+
+        var pool *pairing_entities.Pool
+        var err error
+
+        pool, _ = uc.PoolReader.FindPool(&amp;p.Criteria)
+
+        if pool == nil </span><span class="cov8" title="1">{
+                pool, err = uc.PoolInitiator.Execute(p.Criteria)
+
+                if err != nil </span><span class="cov8" title="1">{
+                        return nil, nil, -1, fmt.Errorf("AddAndFindNextPairUseCase.Execute: unable to FIND pair. Cannot create pool with Criteria %v, due to %v", p.Criteria, err)
+                }</span>
+        }
+
+        <span class="cov8" title="1">position := pool.Join(p.PartyID) // ADD: party Or peer. (Idempotent =&gt; wont dup if already enqueued)
+        uc.PoolWriter.Save(pool)
+
+        parties := pool.Peek(p.Criteria.PairSize) // FIND: equiv: pool.Dequeue(s, q)
+
+        var pair *pairing_entities.Pair
+
+        // if succesfuly dequeued
+        if len(parties) &gt; 0 </span><span class="cov8" title="1">{
+                ctx := context.Background()
+                pair, err = uc.PairCreator.Execute(ctx, parties)
+                if err != nil </span><span class="cov8" title="1">{
+                        return nil, nil, position, fmt.Errorf("AddAndFindNextPairUseCase.Execute: unable to CREATE pair. Cannot create pair for parties %v, due to %v", parties, err)
+                }</span>
+
+                <span class="cov8" title="1">pool, err = uc.PoolWriter.Save(pool)
+
+                if err != nil </span><span class="cov8" title="1">{
+                        return nil, nil, position, fmt.Errorf("AddAndFindNextPairUseCase.Execute: unable to UPDATE pool for pair %v. Cannot update pool for parties %v, due to %v", pair, parties, err)
+                }</span>
+        }
+
+        <span class="cov8" title="1">return pair, pool, position, nil</span> // send msg with position etc?
+}
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">package usecases
+
+import (
+        "context"
+        "fmt"
+        "log/slog"
+        "time"
+
+        "github.com/google/uuid"
+        "github.com/leet-gaming/match-making-api/pkg/common"
+        pairing_entities "github.com/leet-gaming/match-making-api/pkg/domain/pairing/entities"
+        pairing_out "github.com/leet-gaming/match-making-api/pkg/domain/pairing/ports/out"
+        parties_out "github.com/leet-gaming/match-making-api/pkg/domain/parties/ports/out"
+)
+
+// CreateManualInvitationUseCase handles the creation of manual invitations by administrators
+type CreateManualInvitationUseCase struct {
+        InvitationWriter pairing_out.InvitationWriter
+        PeerReader       parties_out.PeerReader
+        PairReader       pairing_out.PairReader
+        Notifier         InvitationNotifier // Optional: if nil, notifications are skipped
+}
+
+// CreateInvitationPayload contains the information needed to create an invitation
+type CreateInvitationPayload struct {
+        Type           pairing_entities.InvitationType
+        UserID         uuid.UUID
+        MatchID        *uuid.UUID
+        EventID        *uuid.UUID
+        Message        string
+        ExpirationDate *time.Time
+}
+
+// Execute creates a manual invitation after validating all requirements
+func (uc *CreateManualInvitationUseCase) Execute(ctx context.Context, payload CreateInvitationPayload) (*pairing_entities.Invitation, error) <span class="cov0" title="0">{
+        // Verify that the user is an administrator
+        if !common.IsAdmin(ctx) </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("only administrators can create manual invitations")
+        }</span>
+
+        <span class="cov0" title="0">resourceOwner := common.GetResourceOwner(ctx)
+        createdBy := resourceOwner.UserID
+
+        // Validate user exists and is eligible
+        if err := uc.validateUser(ctx, payload.UserID); err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("user validation failed: %w", err)
+        }</span>
+
+        // Validate match or event
+        <span class="cov0" title="0">if err := uc.validateMatchOrEvent(ctx, payload); err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("match/event validation failed: %w", err)
+        }</span>
+
+        // Validate expiration date if provided
+        <span class="cov0" title="0">if payload.ExpirationDate != nil &amp;&amp; payload.ExpirationDate.Before(time.Now()) </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("expiration date must be in the future")
+        }</span>
+
+        // Create invitation
+        <span class="cov0" title="0">invitation := pairing_entities.NewInvitation(
+                resourceOwner,
+                payload.Type,
+                payload.UserID,
+                payload.MatchID,
+                payload.EventID,
+                payload.Message,
+                payload.ExpirationDate,
+                createdBy,
+        )
+
+        // Save invitation
+        savedInvitation, err := uc.InvitationWriter.Save(ctx, invitation)
+        if err != nil </span><span class="cov0" title="0">{
+                slog.ErrorContext(ctx, "failed to save invitation", "error", err, "user_id", payload.UserID)
+                return nil, fmt.Errorf("failed to create invitation: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">slog.InfoContext(ctx, "manual invitation created successfully",
+                "invitation_id", savedInvitation.ID,
+                "user_id", payload.UserID,
+                "match_id", payload.MatchID,
+                "event_id", payload.EventID,
+                "created_by", createdBy,
+                "expiration_date", payload.ExpirationDate)
+
+        // Send notification to the user
+        if uc.Notifier != nil </span><span class="cov0" title="0">{
+                if err := uc.Notifier.NotifyInvitationCreated(ctx, savedInvitation.ID, payload.UserID, payload.Message); err != nil </span><span class="cov0" title="0">{
+                        slog.ErrorContext(ctx, "failed to send invitation notification",
+                                "error", err, "invitation_id", savedInvitation.ID, "user_id", payload.UserID)
+                        // Don't fail invitation creation if notification fails
+                }</span>
+        }
+
+        <span class="cov0" title="0">return savedInvitation, nil</span>
+}
+
+// validateUser checks if the user exists and is eligible for invitations
+func (uc *CreateManualInvitationUseCase) validateUser(ctx context.Context, userID uuid.UUID) error <span class="cov0" title="0">{
+        // Check if peer exists (users are represented as peers in the system)
+        _, err := uc.PeerReader.GetByID(userID)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("user %v does not exist or is not eligible: %w", userID, err)
+        }</span>
+
+        // Additional eligibility checks can be added here
+        // For example: check if user is active, not banned, etc.
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+// validateMatchOrEvent validates that the match or event is valid and open for new participants
+func (uc *CreateManualInvitationUseCase) validateMatchOrEvent(ctx context.Context, payload CreateInvitationPayload) error <span class="cov0" title="0">{
+        if payload.Type == pairing_entities.InvitationTypeMatch </span><span class="cov0" title="0">{
+                if payload.MatchID == nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("match_id is required for match invitations")
+                }</span>
+
+                // Validate that the match exists
+                <span class="cov0" title="0">pair, err := uc.PairReader.GetByID(ctx, *payload.MatchID)
+                if err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("match %v does not exist: %w", *payload.MatchID, err)
+                }</span>
+
+                // Check if match is open for new participants
+                // This is a simplified check - you may need to add more logic based on your business rules
+                // For example: check if match has available slots, hasn't started yet, etc.
+                <span class="cov0" title="0">if pair.ConflictStatus == pairing_entities.ConflictStatusFlagged </span><span class="cov0" title="0">{
+                        return fmt.Errorf("match %v has conflicts and is not open for new participants", *payload.MatchID)
+                }</span>
+
+                // Additional validations can be added here
+                // For example: check if match is full, has started, etc.
+        } else<span class="cov0" title="0"> if payload.Type == pairing_entities.InvitationTypeEvent </span><span class="cov0" title="0">{
+                if payload.EventID == nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("event_id is required for event invitations")
+                }</span>
+
+                // Event validation would go here
+                // For now, we'll just check that event_id is provided
+                // TODO: Implement event validation when event system is available
+        } else<span class="cov0" title="0"> {
+                return fmt.Errorf("invalid invitation type: %v", payload.Type)
+        }</span>
+
+        <span class="cov0" title="0">return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">package usecases
+
+import (
+        "context"
+        "fmt"
+        "log/slog"
+
+        "github.com/google/uuid"
+        "github.com/leet-gaming/match-making-api/pkg/common"
+        pairing_entities "github.com/leet-gaming/match-making-api/pkg/domain/pairing/entities"
+        pairing_out "github.com/leet-gaming/match-making-api/pkg/domain/pairing/ports/out"
+        parties_out "github.com/leet-gaming/match-making-api/pkg/domain/parties/ports/out"
+)
+
+// ConflictVerifier is an interface for verifying match conflicts
+type ConflictVerifier interface {
+        Execute(ctx context.Context, partyID uuid.UUID) (*ConflictResult, error)
+}
+
+type CreatePairUseCase struct {
+        PartyReader      parties_out.PartyReader
+        PairWriter       pairing_out.PairWriter
+        ConflictVerifier ConflictVerifier // Optional: if nil, conflict checking is skipped
+}
+
+func (uc *CreatePairUseCase) Execute(ctx context.Context, partyIDs []uuid.UUID) (*pairing_entities.Pair, error) <span class="cov0" title="0">{
+        resourceOwner := common.GetResourceOwner(ctx)
+        pair := pairing_entities.NewPair(len(partyIDs), resourceOwner)
+
+        for _, partyID := range partyIDs </span><span class="cov0" title="0">{
+                party, err := uc.PartyReader.GetByID(partyID)
+                if err != nil </span><span class="cov0" title="0">{
+                        return nil, fmt.Errorf("CreatePairUseCase.Execute: unable to create pair. PartyID: %v not found (Error: %v)", partyID, err)
+                }</span>
+                <span class="cov0" title="0">pair.Match[partyID] = party</span>
+        }
+
+        <span class="cov0" title="0">savedPair, err := uc.PairWriter.Save(pair)
+        if err != nil </span><span class="cov0" title="0">{
+                slog.ErrorContext(ctx, "failed to save pair", "error", err, "party_ids", partyIDs)
+                return nil, fmt.Errorf("CreatePairUseCase.Execute: unable to create pair for PartyIDs %v, due to create error: %v", partyIDs, err)
+        }</span>
+
+        <span class="cov0" title="0">slog.InfoContext(ctx, "pair created successfully", "pair_id", savedPair.ID, "party_ids", partyIDs)
+
+        // Automatically verify conflicts for all parties in the new pair
+        if uc.ConflictVerifier != nil </span><span class="cov0" title="0">{
+                for partyID := range savedPair.Match </span><span class="cov0" title="0">{
+                        conflictResult, err := uc.ConflictVerifier.Execute(ctx, partyID)
+                        if err != nil </span><span class="cov0" title="0">{
+                                slog.ErrorContext(ctx, "failed to verify conflicts after pair creation", 
+                                        "party_id", partyID, "pair_id", savedPair.ID, "error", err)
+                                // Don't fail pair creation if conflict check fails
+                                continue</span>
+                        }
+
+                        <span class="cov0" title="0">if conflictResult.HasConflict </span><span class="cov0" title="0">{
+                                slog.WarnContext(ctx, "conflicts detected after pair creation", 
+                                        "party_id", partyID, "pair_id", savedPair.ID, 
+                                        "conflicting_pairs", conflictResult.ConflictingPairs)
+                        }</span>
+                }
+        }
+
+        <span class="cov0" title="0">return savedPair, nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file4" style="display: none">package usecases
+
+import (
+        pairing_entities "github.com/leet-gaming/match-making-api/pkg/domain/pairing/entities"
+        pairing_value_objects "github.com/leet-gaming/match-making-api/pkg/domain/pairing/value-objects"
+)
+
+type CreatePoolUseCase struct{}
+
+type CreatePoolPayload struct {
+        Criteria *pairing_value_objects.Criteria
+}
+
+func (uc *CreatePoolUseCase) Execute(p *CreatePoolPayload) (*pairing_entities.Pool, error) <span class="cov0" title="0">{
+
+        // definir estrategia de sharding (ie, daily pool, week range pool, onlinepool)
+
+        return nil, nil
+}</span>
+</pre>
+		
+		<pre class="file" id="file5" style="display: none">package usecases
+
+import (
+        "context"
+        "fmt"
+        "log/slog"
+        "time"
+
+        "github.com/google/uuid"
+        pairing_entities "github.com/leet-gaming/match-making-api/pkg/domain/pairing/entities"
+        pairing_out "github.com/leet-gaming/match-making-api/pkg/domain/pairing/ports/out"
+)
+
+// DeclineInvitationUseCase handles declining an invitation
+type DeclineInvitationUseCase struct {
+        InvitationReader pairing_out.InvitationReader
+        InvitationWriter pairing_out.InvitationWriter
+        Notifier         InvitationNotifier // Optional: if nil, notifications are skipped
+}
+
+// Execute declines an invitation if it's valid and not expired
+func (uc *DeclineInvitationUseCase) Execute(ctx context.Context, invitationID uuid.UUID, userID uuid.UUID) error <span class="cov0" title="0">{
+        // Get the invitation
+        invitation, err := uc.InvitationReader.GetByID(ctx, invitationID)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to get invitation %v: %w", invitationID, err)
+        }</span>
+
+        // Verify that the invitation belongs to the user
+        <span class="cov0" title="0">if invitation.UserID != userID </span><span class="cov0" title="0">{
+                return fmt.Errorf("invitation %v does not belong to user %v", invitationID, userID)
+        }</span>
+
+        // Check if invitation can be declined
+        <span class="cov0" title="0">if !invitation.CanDecline() </span><span class="cov0" title="0">{
+                if invitation.IsExpired() </span><span class="cov0" title="0">{
+                        return fmt.Errorf("invitation %v has expired", invitationID)
+                }</span>
+                <span class="cov0" title="0">return fmt.Errorf("invitation %v cannot be declined (current status: %v)", invitationID, invitation.Status)</span>
+        }
+
+        // Update invitation status
+        <span class="cov0" title="0">now := time.Now()
+        invitation.Status = pairing_entities.InvitationStatusDeclined
+        invitation.DeclinedAt = &amp;now
+
+        _, err = uc.InvitationWriter.Save(ctx, invitation)
+        if err != nil </span><span class="cov0" title="0">{
+                slog.ErrorContext(ctx, "failed to save declined invitation", "error", err, "invitation_id", invitationID)
+                return fmt.Errorf("failed to decline invitation: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">slog.InfoContext(ctx, "invitation declined successfully",
+                "invitation_id", invitationID,
+                "user_id", userID,
+                "match_id", invitation.MatchID,
+                "event_id", invitation.EventID)
+
+        // Send notification about decline
+        if uc.Notifier != nil </span><span class="cov0" title="0">{
+                if err := uc.Notifier.NotifyInvitationDeclined(ctx, invitationID, userID); err != nil </span><span class="cov0" title="0">{
+                        slog.ErrorContext(ctx, "failed to send decline notification",
+                                "error", err, "invitation_id", invitationID, "user_id", userID)
+                        // Don't fail decline if notification fails
+                }</span>
+        }
+
+        <span class="cov0" title="0">return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file6" style="display: none">package usecases
+
+import (
+        "context"
+
+        "github.com/google/uuid"
+)
+
+// InvitationNotifier is an interface for sending invitation notifications
+type InvitationNotifier interface {
+        NotifyInvitationCreated(ctx context.Context, invitationID uuid.UUID, userID uuid.UUID, message string) error
+        NotifyInvitationAccepted(ctx context.Context, invitationID uuid.UUID, userID uuid.UUID) error
+        NotifyInvitationDeclined(ctx context.Context, invitationID uuid.UUID, userID uuid.UUID) error
+        NotifyInvitationRevoked(ctx context.Context, invitationID uuid.UUID, userID uuid.UUID) error
+}
+
+// NoOpInvitationNotifier is a no-operation implementation of InvitationNotifier
+// This can be used as a placeholder until a real notification system is implemented
+type NoOpInvitationNotifier struct{}
+
+// NewNoOpInvitationNotifier creates a new NoOpInvitationNotifier
+func NewNoOpInvitationNotifier() InvitationNotifier <span class="cov0" title="0">{
+        return &amp;NoOpInvitationNotifier{}
+}</span>
+
+// NotifyInvitationCreated is a no-op implementation
+func (n *NoOpInvitationNotifier) NotifyInvitationCreated(ctx context.Context, invitationID uuid.UUID, userID uuid.UUID, message string) error <span class="cov0" title="0">{
+        // No-op: This implementation does not send any notifications
+        // Replace this with actual notification logic (email, SMS, push notification, etc.)
+        return nil
+}</span>
+
+// NotifyInvitationAccepted is a no-op implementation
+func (n *NoOpInvitationNotifier) NotifyInvitationAccepted(ctx context.Context, invitationID uuid.UUID, userID uuid.UUID) error <span class="cov0" title="0">{
+        return nil
+}</span>
+
+// NotifyInvitationDeclined is a no-op implementation
+func (n *NoOpInvitationNotifier) NotifyInvitationDeclined(ctx context.Context, invitationID uuid.UUID, userID uuid.UUID) error <span class="cov0" title="0">{
+        return nil
+}</span>
+
+// NotifyInvitationRevoked is a no-op implementation
+func (n *NoOpInvitationNotifier) NotifyInvitationRevoked(ctx context.Context, invitationID uuid.UUID, userID uuid.UUID) error <span class="cov0" title="0">{
+        return nil
+}</span>
+</pre>
+		
+		<pre class="file" id="file7" style="display: none">package usecases
+
+import (
+        "context"
+        "fmt"
+        "log/slog"
+
+        "github.com/google/uuid"
+        game_out "github.com/leet-gaming/match-making-api/pkg/domain/game/ports/out"
+        pairing_entities "github.com/leet-gaming/match-making-api/pkg/domain/pairing/entities"
+        pairing_out "github.com/leet-gaming/match-making-api/pkg/domain/pairing/ports/out"
+        pairing_value_objects "github.com/leet-gaming/match-making-api/pkg/domain/pairing/value-objects"
+        "github.com/leet-gaming/match-making-api/pkg/infra/kafka"
+)
+
+// AddAndFindNextPairExecutor defines the interface for adding and finding pairs
+type AddAndFindNextPairExecutor interface {
+        Execute(payload FindPairPayload) (*pairing_entities.Pair, *pairing_entities.Pool, int, error)
+}
+
+// EventPublisherInterface defines the interface for publishing events
+type EventPublisherInterface interface {
+        PublishMatchCreated(ctx context.Context, event *kafka.MatchEvent) error
+}
+
+// MatchmakingEventConsumer consumes events from replay-api and processes them
+type MatchmakingEventConsumer struct {
+        addAndFindNextPair AddAndFindNextPairExecutor
+        eventPublisher     EventPublisherInterface
+        regionReader       game_out.RegionReader
+        poolReader         pairing_out.PoolReader
+        poolWriter         pairing_out.PoolWriter
+}
+
+// NewMatchmakingEventConsumer creates a new consumer for matchmaking events
+func NewMatchmakingEventConsumer(
+        addAndFindNextPair AddAndFindNextPairExecutor,
+        eventPublisher EventPublisherInterface,
+        regionReader game_out.RegionReader,
+        poolReader pairing_out.PoolReader,
+        poolWriter pairing_out.PoolWriter,
+) *MatchmakingEventConsumer <span class="cov8" title="1">{
+        return &amp;MatchmakingEventConsumer{
+                addAndFindNextPair: addAndFindNextPair,
+                eventPublisher:     eventPublisher,
+                regionReader:       regionReader,
+                poolReader:         poolReader,
+                poolWriter:         poolWriter,
+        }
+}</span>
+
+// HandleQueueEvent processes queue join/leave events
+func (c *MatchmakingEventConsumer) HandleQueueEvent(ctx context.Context, event *kafka.QueueEvent) error <span class="cov8" title="1">{
+        slog.InfoContext(ctx, "Processing queue event",
+                "event_type", event.EventType,
+                "player_id", event.PlayerID,
+                "game_type", event.GameType,
+                "region", event.Region,
+                "mmr", event.MMR)
+
+        switch event.EventType </span>{
+        case kafka.EventTypeQueueJoined:<span class="cov8" title="1">
+                return c.handleQueueJoined(ctx, event)</span>
+        case kafka.EventTypeQueueLeft:<span class="cov8" title="1">
+                return c.handleQueueLeft(ctx, event)</span>
+        default:<span class="cov8" title="1">
+                slog.WarnContext(ctx, "Unknown queue event type", "event_type", event.EventType)
+                return nil</span>
+        }
+}
+
+// HandleLobbyEvent processes lobby events
+func (c *MatchmakingEventConsumer) HandleLobbyEvent(ctx context.Context, event *kafka.LobbyEvent) error <span class="cov8" title="1">{
+        slog.InfoContext(ctx, "Processing lobby event",
+                "event_type", event.EventType,
+                "lobby_id", event.LobbyID,
+                "player_ids", event.PlayerIDs,
+                "game_type", event.GameType,
+                "region", event.Region)
+
+        switch event.EventType </span>{
+        case kafka.EventTypePlayerJoined:<span class="cov8" title="1">
+                slog.InfoContext(ctx, "Players joined lobby",
+                        "lobby_id", event.LobbyID,
+                        "player_ids", event.PlayerIDs,
+                        "game_type", event.GameType,
+                        "region", event.Region,
+                        "avg_mmr", event.AvgMMR)</span>
+        default:<span class="cov8" title="1">
+                slog.WarnContext(ctx, "Unknown lobby event type", "event_type", event.EventType)</span>
+        }
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+// handleQueueJoined processes a player joining the matchmaking queue
+func (c *MatchmakingEventConsumer) handleQueueJoined(ctx context.Context, event *kafka.QueueEvent) error <span class="cov8" title="1">{
+        slog.InfoContext(ctx, "Player joined matchmaking queue",
+                "player_id", event.PlayerID,
+                "game_type", event.GameType,
+                "region", event.Region,
+                "mmr", event.MMR)
+
+        gameID, err := uuid.Parse(event.GameType)
+        if err != nil </span><span class="cov8" title="1">{
+                slog.ErrorContext(ctx, "Invalid game type UUID", "game_type", event.GameType, "error", err)
+                return err
+        }</span>
+
+        // Lookup region by slug
+        <span class="cov8" title="1">regions, err := c.regionReader.Search(ctx, map[string]interface{}{"slug": event.Region})
+        if err != nil </span><span class="cov0" title="0">{
+                slog.ErrorContext(ctx, "Failed to lookup region", "region_slug", event.Region, "error", err)
+                return err
+        }</span>
+        <span class="cov8" title="1">if len(regions) == 0 </span><span class="cov8" title="1">{
+                slog.ErrorContext(ctx, "Region not found", "region_slug", event.Region)
+                return fmt.Errorf("region not found: %s", event.Region)
+        }</span>
+        <span class="cov8" title="1">region := regions[0]
+        
+        payload := FindPairPayload{
+                PartyID: event.PlayerID,
+                Criteria: pairing_value_objects.Criteria{
+                        GameID: &amp;gameID,
+                        Region: region,
+                        PairSize: 2, // Default to 1v1 for now
+                        SkillRange: &amp;pairing_value_objects.SkillRange{
+                                MinMMR: event.MMR - 200,
+                                MaxMMR: event.MMR + 200,
+                        },
+                },
+        }
+
+        pair, pool, position, err := c.addAndFindNextPair.Execute(payload)
+        if err != nil </span><span class="cov0" title="0">{
+                slog.ErrorContext(ctx, "Failed to add player to matchmaking pool", "error", err, "player_id", event.PlayerID)
+                return err
+        }</span>
+
+        <span class="cov8" title="1">if pair != nil </span><span class="cov8" title="1">{
+                slog.InfoContext(ctx, "Match found!",
+                        "pair_id", pair.ID,
+                        "players", pair.Match,
+                        "player_id", event.PlayerID)
+
+                // Extract player IDs from the pair
+                playerIDs := make([]uuid.UUID, 0, len(pair.Match))
+                for playerID := range pair.Match </span><span class="cov8" title="1">{
+                        playerIDs = append(playerIDs, playerID)
+                }</span>
+
+                // Publish match created event
+                <span class="cov8" title="1">matchEvent := &amp;kafka.MatchEvent{
+                        MatchID:   pair.ID,
+                        LobbyID:   pair.ID, // Assuming lobby ID is the pair ID for now
+                        EventType: kafka.EventTypeMatchCreated,
+                        GameType:  event.GameType,
+                        Region:    event.Region,
+                        PlayerIDs: playerIDs,
+                }
+                if err := c.eventPublisher.PublishMatchCreated(ctx, matchEvent); err != nil </span><span class="cov0" title="0">{
+                        slog.ErrorContext(ctx, "Failed to publish match created event", "error", err, "pair_id", pair.ID)
+                        // Don't return error to avoid failing the matchmaking process
+                }</span>
+        } else<span class="cov8" title="1"> {
+                slog.InfoContext(ctx, "Player added to pool",
+                        "pool_size", len(pool.Parties),
+                        "position", position,
+                        "player_id", event.PlayerID)
+        }</span>
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+// handleQueueLeft processes a player leaving the matchmaking queue
+func (c *MatchmakingEventConsumer) handleQueueLeft(ctx context.Context, event *kafka.QueueEvent) error <span class="cov8" title="1">{
+        slog.InfoContext(ctx, "Player left matchmaking queue",
+                "player_id", event.PlayerID,
+                "game_type", event.GameType)
+
+        gameID, err := uuid.Parse(event.GameType)
+        if err != nil </span><span class="cov0" title="0">{
+                slog.ErrorContext(ctx, "Invalid game type UUID", "game_type", event.GameType, "error", err)
+                return err
+        }</span>
+
+        // Lookup region by slug
+        <span class="cov8" title="1">regions, err := c.regionReader.Search(ctx, map[string]interface{}{"slug": event.Region})
+        if err != nil </span><span class="cov8" title="1">{
+                slog.ErrorContext(ctx, "Failed to lookup region", "region_slug", event.Region, "error", err)
+                return err
+        }</span>
+        <span class="cov8" title="1">if len(regions) == 0 </span><span class="cov0" title="0">{
+                slog.ErrorContext(ctx, "Region not found", "region_slug", event.Region)
+                return fmt.Errorf("region not found: %s", event.Region)
+        }</span>
+        <span class="cov8" title="1">region := regions[0]
+
+        criteria := pairing_value_objects.Criteria{
+                GameID:   &amp;gameID,
+                Region:   region,
+                PairSize: 2, // Assuming same pair size
+        }
+
+        // Find the pool
+        pool, err := c.poolReader.FindPool(&amp;criteria)
+        if err != nil </span><span class="cov0" title="0">{
+                slog.ErrorContext(ctx, "Failed to find pool for removal", "error", err, "player_id", event.PlayerID)
+                return err
+        }</span>
+        <span class="cov8" title="1">if pool == nil </span><span class="cov8" title="1">{
+                slog.WarnContext(ctx, "Pool not found for player removal", "player_id", event.PlayerID)
+                return nil // Player not in any pool
+        }</span>
+
+        // Remove the player from the pool
+        <span class="cov8" title="1">_, err = pool.Remove(event.PlayerID)
+        if err != nil </span><span class="cov0" title="0">{
+                slog.ErrorContext(ctx, "Failed to remove player from pool", "error", err, "player_id", event.PlayerID)
+                return err
+        }</span>
+
+        // Save the updated pool
+        <span class="cov8" title="1">_, err = c.poolWriter.Save(pool)
+        if err != nil </span><span class="cov8" title="1">{
+                slog.ErrorContext(ctx, "Failed to save pool after removal", "error", err, "player_id", event.PlayerID)
+                return err
+        }</span>
+
+        <span class="cov8" title="1">slog.InfoContext(ctx, "Player removed from matchmaking pool", "player_id", event.PlayerID)
+
+        return nil</span>
+}</pre>
+		
+		<pre class="file" id="file8" style="display: none">package usecases
+
+import (
+        "context"
+
+        "github.com/google/uuid"
+)
+
+// NoOpConflictNotifier is a no-operation implementation of ConflictNotifier
+// This can be used as a placeholder until a real notification system is implemented
+type NoOpConflictNotifier struct{}
+
+// NewNoOpConflictNotifier creates a new NoOpConflictNotifier
+func NewNoOpConflictNotifier() ConflictNotifier <span class="cov0" title="0">{
+        return &amp;NoOpConflictNotifier{}
+}</span>
+
+// NotifyConflict is a no-op implementation that does nothing
+func (n *NoOpConflictNotifier) NotifyConflict(ctx context.Context, partyID uuid.UUID, pairID uuid.UUID, reason string) error <span class="cov0" title="0">{
+        // No-op: This implementation does not send any notifications
+        // Replace this with actual notification logic (email, SMS, push notification, etc.)
+        return nil
+}</span>
+</pre>
+		
+		<pre class="file" id="file9" style="display: none">package usecases
+
+import (
+        "context"
+        "errors"
+        "fmt"
+        "log/slog"
+        "sync"
+        "time"
+
+        "github.com/google/uuid"
+        pairing_in "github.com/leet-gaming/match-making-api/pkg/domain/pairing/ports/in"
+        schedule_entities "github.com/leet-gaming/match-making-api/pkg/domain/schedules/entities"
+        schedules_in_ports "github.com/leet-gaming/match-making-api/pkg/domain/schedules/ports/in"
+)
+
+// compatibilityKey is used as a key for memoization cache
+type compatibilityKey struct {
+        ID1 uuid.UUID
+        ID2 uuid.UUID
+}
+
+// PartyScheduleMatcher implements the recursive matching algorithm for parties based on schedule compatibility
+// Optimized with caching, memoization, and parallel processing for high-load scenarios
+type PartyScheduleMatcher struct {
+        ScheduleReader schedules_in_ports.PartyScheduleReader
+        
+        // Cache for schedules to avoid repeated repository calls
+        scheduleCache map[uuid.UUID]*schedule_entities.Schedule
+        scheduleCacheMutex sync.RWMutex
+        
+        // Memoization cache for compatibility checks to avoid repeated calculations
+        compatibilityCache map[compatibilityKey]bool
+        compatibilityCacheMutex sync.RWMutex
+        
+        // Threshold for parallel processing (number of parties)
+        parallelThreshold int
+}
+
+// NewPartyScheduleMatcher creates a new instance of PartyScheduleMatcher
+func NewPartyScheduleMatcher(scheduleReader schedules_in_ports.PartyScheduleReader) pairing_in.PartyScheduleMatcher <span class="cov8" title="1">{
+        return &amp;PartyScheduleMatcher{
+                ScheduleReader:      scheduleReader,
+                scheduleCache:       make(map[uuid.UUID]*schedule_entities.Schedule),
+                compatibilityCache:  make(map[compatibilityKey]bool),
+                parallelThreshold:  10, // Use parallel processing when there are 10+ parties
+        }
+}</span>
+
+// Execute identifies compatible matches between parties recursively
+// It handles cases where parties have non-overlapping schedules by checking all possible combinations
+// Returns the matched parties or an error if no matches are found
+// Optimized with caching and memoization for better performance
+// Validates schedules and handles database communication errors gracefully
+func (pm *PartyScheduleMatcher) Execute(pids []uuid.UUID, qty int, matched []uuid.UUID) ([]uuid.UUID, error) <span class="cov8" title="1">{
+        ctx := context.Background()
+        if qty &lt;= 0 </span><span class="cov0" title="0">{
+                return nil, errors.New("quantity must be greater than zero: invalid quantity parameter")
+        }</span>
+
+        // Base case: we have enough matched parties
+        <span class="cov8" title="1">if len(matched) &gt;= qty </span><span class="cov8" title="1">{
+                return matched, nil
+        }</span>
+
+        // Base case: no more parties available
+        <span class="cov8" title="1">if len(pids) == 0 </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("not enough parties available to match the required quantity: need %d, have %d matched", qty, len(matched))
+        }</span>
+
+        // Pre-load all schedules into cache to avoid repeated repository calls
+        // This also validates schedules and handles database errors
+        <span class="cov8" title="1">if err := pm.preloadSchedules(ctx, pids); err != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("failed to load schedules from database: %w", err)
+        }</span>
+
+        // Use parallel processing for large sets of parties
+        <span class="cov8" title="1">if len(pids) &gt;= pm.parallelThreshold </span><span class="cov0" title="0">{
+                return pm.executeParallel(ctx, pids, qty, matched)
+        }</span>
+
+        // Recursive case: try to find matches starting with each available party
+        <span class="cov8" title="1">var validationErrors []error
+        for i, current := range pids </span><span class="cov8" title="1">{
+                currentSchedule := pm.getCachedSchedule(current)
+                if currentSchedule == nil </span><span class="cov8" title="1">{
+                        slog.WarnContext(ctx, "party has no schedule, skipping", "party_id", current)
+                        continue</span>
+                }
+
+                // Validate schedule before using it
+                <span class="cov8" title="1">if err := validateSchedule(*currentSchedule); err != nil </span><span class="cov8" title="1">{
+                        slog.ErrorContext(ctx, "invalid schedule detected, skipping party", "party_id", current, "error", err)
+                        validationErrors = append(validationErrors, fmt.Errorf("party %s has invalid schedule: %w", current, err))
+                        continue</span>
+                }
+
+                // Find parties with compatible schedules
+                <span class="cov8" title="1">matchingParties, err := pm.findMatchingParties(ctx, pids, i, *currentSchedule)
+                if err != nil </span><span class="cov0" title="0">{
+                        // If there was an error finding matching parties (e.g., invalid schedules), log and continue
+                        slog.WarnContext(ctx, "error finding matching parties, continuing with next party", "party_id", current, "error", err)
+                        continue</span>
+                }
+                
+                // Check if we have enough matching parties to complete the match
+                <span class="cov8" title="1">needed := qty - len(matched) - 1
+                if len(matchingParties) &gt;= needed </span><span class="cov8" title="1">{
+                        // Try to build a match starting with this party
+                        result, err := pm.matchParties(ctx, pids, i, qty, matched, current, matchingParties)
+                        if err == nil </span><span class="cov8" title="1">{
+                                return result, nil
+                        }</span>
+                        // If this combination didn't work, continue to next party
+                }
+        }
+
+        // If we had validation errors, include them in the error message
+        <span class="cov8" title="1">if len(validationErrors) &gt; 0 </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("unable to match parties: %d parties had invalid schedules (first error: %v). Need %d, have %d matched, %d available", 
+                        len(validationErrors), validationErrors[0], qty, len(matched), len(pids))
+        }</span>
+
+        // No valid match found
+        <span class="cov8" title="1">return nil, fmt.Errorf("unable to match the required quantity of parties: need %d, have %d matched, %d available. All parties were checked but no compatible schedules found", qty, len(matched), len(pids))</span>
+}
+
+// matchParties attempts to build a complete match starting with the current party
+func (pm *PartyScheduleMatcher) matchParties(ctx context.Context, pids []uuid.UUID, currentIndex, qty int, matched []uuid.UUID, current uuid.UUID, matchingParties []uuid.UUID) ([]uuid.UUID, error) <span class="cov8" title="1">{
+        // Add current party to matched list
+        newMatched := append(matched, current)
+        
+        // Remove current party from available list
+        remainingPids := append(pids[:currentIndex], pids[currentIndex+1:]...)
+        
+        // Try to add matching parties until we reach the required quantity
+        for _, match := range matchingParties </span><span class="cov8" title="1">{
+                // Check if this party is still available (might have been used in a recursive call)
+                if !containsUUID(remainingPids, match) </span><span class="cov0" title="0">{
+                        continue</span>
+                }
+                
+                <span class="cov8" title="1">newMatched = append(newMatched, match)
+                remainingPids = removeUUID(remainingPids, match)
+                
+                // If we have enough parties, return success
+                if len(newMatched) &gt;= qty </span><span class="cov8" title="1">{
+                        return newMatched[:qty], nil
+                }</span>
+        }
+        
+                // Recursively try to find remaining parties
+        <span class="cov0" title="0">return pm.Execute(remainingPids, qty, newMatched)</span>
+}
+
+// findMatchingParties finds all parties with schedules compatible with the given schedule
+// Uses cached schedules and memoized compatibility checks for better performance
+// Returns error if invalid schedules are encountered
+func (pm *PartyScheduleMatcher) findMatchingParties(ctx context.Context, pids []uuid.UUID, currentIndex int, schedule schedule_entities.Schedule) ([]uuid.UUID, error) <span class="cov8" title="1">{
+        var matchingParties []uuid.UUID
+        
+        for i, otherPID := range pids </span><span class="cov8" title="1">{
+                // Skip the current party
+                if i == currentIndex </span><span class="cov8" title="1">{
+                        continue</span>
+                }
+                
+                // Get the other party's schedule from cache
+                <span class="cov8" title="1">otherSchedule := pm.getCachedSchedule(otherPID)
+                if otherSchedule == nil </span><span class="cov8" title="1">{
+                        slog.DebugContext(ctx, "party has no schedule, skipping compatibility check", "party_id", otherPID)
+                        continue</span>
+                }
+                
+                // Validate the other party's schedule before checking compatibility
+                <span class="cov8" title="1">if err := validateSchedule(*otherSchedule); err != nil </span><span class="cov8" title="1">{
+                        slog.WarnContext(ctx, "invalid schedule detected during compatibility check, skipping", "party_id", otherPID, "error", err)
+                        // Continue with other parties rather than failing completely
+                        continue</span>
+                }
+                
+                // Check if schedules are compatible using memoized result
+                <span class="cov8" title="1">if pm.areSchedulesCompatibleMemoized(schedule.ID, otherSchedule.ID, schedule, *otherSchedule) </span><span class="cov8" title="1">{
+                        matchingParties = append(matchingParties, otherPID)
+                }</span>
+        }
+        
+        <span class="cov8" title="1">return matchingParties, nil</span>
+}
+
+// preloadSchedules loads all schedules for the given party IDs into the cache
+// This avoids repeated repository calls during the matching process
+// Returns an error if database communication fails for critical operations
+func (pm *PartyScheduleMatcher) preloadSchedules(ctx context.Context, pids []uuid.UUID) error <span class="cov8" title="1">{
+        pm.scheduleCacheMutex.Lock()
+        defer pm.scheduleCacheMutex.Unlock()
+        
+        var dbErrors []error
+        for _, pid := range pids </span><span class="cov8" title="1">{
+                // Only load if not already cached
+                if _, exists := pm.scheduleCache[pid]; !exists </span><span class="cov8" title="1">{
+                        // Attempt to get schedule from repository
+                        // Note: GetScheduleByPartyID returns nil on error, so we can't directly detect DB errors
+                        // But we can validate the schedule if it's returned
+                        schedule := pm.ScheduleReader.GetScheduleByPartyID(pid)
+                        if schedule != nil </span><span class="cov8" title="1">{
+                                // Validate schedule before caching
+                                if err := validateSchedule(*schedule); err != nil </span><span class="cov8" title="1">{
+                                        slog.WarnContext(ctx, "invalid schedule loaded from database, not caching", "party_id", pid, "error", err)
+                                        dbErrors = append(dbErrors, fmt.Errorf("party %s: %w", pid, err))
+                                        // Don't cache invalid schedules
+                                        continue</span>
+                                }
+                                <span class="cov8" title="1">pm.scheduleCache[pid] = schedule</span>
+                        } else<span class="cov8" title="1"> {
+                                // Schedule is nil - could be missing or database error
+                                // Log but don't fail the entire operation
+                                slog.DebugContext(ctx, "schedule not found for party", "party_id", pid)
+                        }</span>
+                }
+        }
+        
+        // If all schedules failed to load, return an error
+        <span class="cov8" title="1">if len(dbErrors) == len(pids) &amp;&amp; len(pids) &gt; 0 </span><span class="cov8" title="1">{
+                return fmt.Errorf("failed to load schedules for all parties: %d errors (example: %v)", len(dbErrors), dbErrors[0])
+        }</span>
+        
+        // If some schedules failed but not all, log warning but continue
+        <span class="cov8" title="1">if len(dbErrors) &gt; 0 </span><span class="cov8" title="1">{
+                slog.WarnContext(ctx, "some schedules failed to load or were invalid", "failed_count", len(dbErrors), "total_parties", len(pids))
+        }</span>
+        
+        <span class="cov8" title="1">return nil</span>
+}
+
+// getCachedSchedule retrieves a schedule from cache, falling back to repository if not cached
+func (pm *PartyScheduleMatcher) getCachedSchedule(pid uuid.UUID) *schedule_entities.Schedule <span class="cov8" title="1">{
+        // Try to get from cache first
+        pm.scheduleCacheMutex.RLock()
+        if schedule, exists := pm.scheduleCache[pid]; exists </span><span class="cov8" title="1">{
+                pm.scheduleCacheMutex.RUnlock()
+                return schedule
+        }</span>
+        <span class="cov8" title="1">pm.scheduleCacheMutex.RUnlock()
+        
+        // Not in cache, fetch from repository and cache it
+        schedule := pm.ScheduleReader.GetScheduleByPartyID(pid)
+        if schedule != nil </span><span class="cov8" title="1">{
+                pm.scheduleCacheMutex.Lock()
+                pm.scheduleCache[pid] = schedule
+                pm.scheduleCacheMutex.Unlock()
+        }</span>
+        
+        <span class="cov8" title="1">return schedule</span>
+}
+
+// areSchedulesCompatibleMemoized checks compatibility with memoization to avoid repeated calculations
+func (pm *PartyScheduleMatcher) areSchedulesCompatibleMemoized(id1, id2 uuid.UUID, schedule1, schedule2 schedule_entities.Schedule) bool <span class="cov8" title="1">{
+        // Create a consistent key (smaller ID first)
+        key := compatibilityKey{ID1: id1, ID2: id2}
+        if id1.String() &gt; id2.String() </span><span class="cov8" title="1">{
+                key = compatibilityKey{ID1: id2, ID2: id1}
+        }</span>
+        
+        // Check cache first
+        <span class="cov8" title="1">pm.compatibilityCacheMutex.RLock()
+        if result, exists := pm.compatibilityCache[key]; exists </span><span class="cov8" title="1">{
+                pm.compatibilityCacheMutex.RUnlock()
+                return result
+        }</span>
+        <span class="cov8" title="1">pm.compatibilityCacheMutex.RUnlock()
+        
+        // Not in cache, calculate and store
+        result := areSchedulesCompatible(schedule1, schedule2)
+        
+        pm.compatibilityCacheMutex.Lock()
+        pm.compatibilityCache[key] = result
+        pm.compatibilityCacheMutex.Unlock()
+        
+        return result</span>
+}
+
+// executeParallel processes multiple combinations in parallel for better performance
+func (pm *PartyScheduleMatcher) executeParallel(ctx context.Context, pids []uuid.UUID, qty int, matched []uuid.UUID) ([]uuid.UUID, error) <span class="cov0" title="0">{
+        type matchResult struct {
+                matched []uuid.UUID
+                err     error
+        }
+        
+        resultChan := make(chan matchResult, len(pids))
+        var wg sync.WaitGroup
+        
+        // Limit concurrent goroutines to avoid excessive resource usage
+        maxConcurrency := 10
+        if len(pids) &lt; maxConcurrency </span><span class="cov0" title="0">{
+                maxConcurrency = len(pids)
+        }</span>
+        
+        <span class="cov0" title="0">semaphore := make(chan struct{}, maxConcurrency)
+        
+        for i, current := range pids </span><span class="cov0" title="0">{
+                wg.Add(1)
+                go func(idx int, pid uuid.UUID) </span><span class="cov0" title="0">{
+                        defer wg.Done()
+                        
+                        // Acquire semaphore
+                        semaphore &lt;- struct{}{}
+                        defer func() </span><span class="cov0" title="0">{ &lt;-semaphore }</span>()
+                        
+                        <span class="cov0" title="0">currentSchedule := pm.getCachedSchedule(pid)
+                        if currentSchedule == nil </span><span class="cov0" title="0">{
+                                slog.WarnContext(ctx, "party has no schedule, skipping", "party_id", pid)
+                                return
+                        }</span>
+                        
+                        <span class="cov0" title="0">matchingParties, err := pm.findMatchingParties(ctx, pids, idx, *currentSchedule)
+                        if err != nil </span><span class="cov0" title="0">{
+                                // Log error but continue with next party
+                                slog.WarnContext(ctx, "error finding matching parties in parallel execution", "party_id", pid, "error", err)
+                                return
+                        }</span>
+                        
+                        <span class="cov0" title="0">needed := qty - len(matched) - 1
+                        
+                        if len(matchingParties) &gt;= needed </span><span class="cov0" title="0">{
+                                matchedParties, err := pm.matchParties(ctx, pids, idx, qty, matched, pid, matchingParties)
+                                if err == nil </span><span class="cov0" title="0">{
+                                        resultChan &lt;- matchResult{matched: matchedParties, err: nil}
+                                        return
+                                }</span>
+                        }
+                }(i, current)
+        }
+        
+        // Wait for all goroutines and close channel
+        <span class="cov0" title="0">go func() </span><span class="cov0" title="0">{
+                wg.Wait()
+                close(resultChan)
+        }</span>()
+        
+        // Return first successful result
+        <span class="cov0" title="0">for res := range resultChan </span><span class="cov0" title="0">{
+                if res.err == nil &amp;&amp; len(res.matched) &gt;= qty </span><span class="cov0" title="0">{
+                        return res.matched, nil
+                }</span>
+        }
+        
+        // No valid match found
+        <span class="cov0" title="0">return nil, fmt.Errorf("unable to match the required quantity of parties: need %d, have %d matched, %d available", qty, len(matched), len(pids))</span>
+}
+
+// areSchedulesCompatible checks if two schedules have any overlapping availability
+// This handles cases where parties have non-overlapping schedules by returning false
+func areSchedulesCompatible(schedule1 schedule_entities.Schedule, schedule2 schedule_entities.Schedule) bool <span class="cov8" title="1">{
+        // Check all combinations of date options from both schedules
+        for _, option1 := range schedule1.Options </span><span class="cov8" title="1">{
+                for _, option2 := range schedule2.Options </span><span class="cov8" title="1">{
+                        if hasMatchingAvailability(option1, option2) </span><span class="cov8" title="1">{
+                                return true
+                        }</span>
+                }
+        }
+        <span class="cov8" title="1">return false</span>
+}
+
+func hasMatchingAvailability(option1 schedule_entities.DateOption, option2 schedule_entities.DateOption) bool <span class="cov8" title="1">{
+        for _, day1 := range option1.Days </span><span class="cov8" title="1">{
+                for _, weekday1 := range option1.Weekdays </span><span class="cov8" title="1">{
+                        for _, timeframe1 := range option1.TimeFrames </span><span class="cov8" title="1">{
+                                for _, day2 := range option2.Days </span><span class="cov8" title="1">{
+                                        for _, weekday2 := range option2.Weekdays </span><span class="cov8" title="1">{
+                                                for _, timeframe2 := range option2.TimeFrames </span><span class="cov8" title="1">{
+                                                        if isAvailableCombination(day1, weekday1, timeframe1, day2, weekday2, timeframe2) </span><span class="cov8" title="1">{
+                                                                return true
+                                                        }</span>
+                                                }
+                                        }
+                                }
+                        }
+                }
+        }
+        <span class="cov8" title="1">return false</span>
+}
+
+func isAvailableCombination(day1 int, weekday1 time.Weekday, timeframe1 schedule_entities.TimeFrame,
+        day2 int, weekday2 time.Weekday, timeframe2 schedule_entities.TimeFrame) bool <span class="cov8" title="1">{
+        if weekday1 != weekday2 &amp;&amp; !(weekday1 == time.Sunday &amp;&amp; weekday2 == time.Saturday) </span><span class="cov0" title="0">{
+                return false
+        }</span>
+        <span class="cov8" title="1">if day1 != 0 &amp;&amp; day2 != 0 &amp;&amp; day1 != day2 </span><span class="cov8" title="1">{
+                return false
+        }</span>
+        <span class="cov8" title="1">return isTimeFrameOverlapping(timeframe1.Start, timeframe1.End, timeframe2.Start, timeframe2.End)</span>
+}
+
+func isTimeFrameOverlapping(start1, end1, start2, end2 time.Time) bool <span class="cov8" title="1">{
+        return start1.Before(end2) &amp;&amp; start2.Before(end1)
+}</span>
+
+// removeUUID removes the first occurrence of the given UUID from the slice
+func removeUUID(slice []uuid.UUID, id uuid.UUID) []uuid.UUID <span class="cov8" title="1">{
+        for i, v := range slice </span><span class="cov8" title="1">{
+                if v == id </span><span class="cov8" title="1">{
+                        return append(slice[:i], slice[i+1:]...)
+                }</span>
+        }
+        <span class="cov0" title="0">return slice</span>
+}
+
+// containsUUID checks if the slice contains the given UUID
+func containsUUID(slice []uuid.UUID, id uuid.UUID) bool <span class="cov8" title="1">{
+        for _, v := range slice </span><span class="cov8" title="1">{
+                if v == id </span><span class="cov8" title="1">{
+                        return true
+                }</span>
+        }
+        <span class="cov0" title="0">return false</span>
+}
+
+// validateSchedule validates a schedule for correctness
+// Returns an error with descriptive message if the schedule is invalid
+func validateSchedule(schedule schedule_entities.Schedule) error <span class="cov8" title="1">{
+        // Check if schedule has any options
+        if schedule.Options == nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("schedule has no options defined (schedule_id: %s)", schedule.ID)
+        }</span>
+        
+        <span class="cov8" title="1">if len(schedule.Options) == 0 </span><span class="cov8" title="1">{
+                return fmt.Errorf("schedule has empty options map (schedule_id: %s)", schedule.ID)
+        }</span>
+        
+        // Validate each date option
+        <span class="cov8" title="1">hasValidOption := false
+        for optionKey, option := range schedule.Options </span><span class="cov8" title="1">{
+                if err := validateDateOption(option, optionKey); err != nil </span><span class="cov8" title="1">{
+                        return fmt.Errorf("invalid date option at key %d: %w", optionKey, err)
+                }</span>
+                <span class="cov8" title="1">hasValidOption = true</span>
+        }
+        
+        <span class="cov8" title="1">if !hasValidOption </span><span class="cov0" title="0">{
+                return fmt.Errorf("schedule has no valid date options (schedule_id: %s)", schedule.ID)
+        }</span>
+        
+        <span class="cov8" title="1">return nil</span>
+}
+
+// validateDateOption validates a single date option
+func validateDateOption(option schedule_entities.DateOption, optionKey int) error <span class="cov8" title="1">{
+        // Check if option has any timeframes
+        if len(option.TimeFrames) == 0 </span><span class="cov8" title="1">{
+                return fmt.Errorf("date option has no timeframes defined")
+        }</span>
+        
+        // Validate each timeframe
+        <span class="cov8" title="1">for i, timeframe := range option.TimeFrames </span><span class="cov8" title="1">{
+                if err := validateTimeFrame(timeframe, i); err != nil </span><span class="cov8" title="1">{
+                        return fmt.Errorf("timeframe %d: %w", i, err)
+                }</span>
+        }
+        
+        // Check if at least one of Months, Weekdays, or Days is specified
+        <span class="cov8" title="1">if len(option.Months) == 0 &amp;&amp; len(option.Weekdays) == 0 &amp;&amp; len(option.Days) == 0 </span><span class="cov8" title="1">{
+                return fmt.Errorf("date option must specify at least one of: Months, Weekdays, or Days")
+        }</span>
+        
+        <span class="cov8" title="1">return nil</span>
+}
+
+// validateTimeFrame validates a single timeframe
+func validateTimeFrame(timeframe schedule_entities.TimeFrame, index int) error <span class="cov8" title="1">{
+        // Check if start time is before end time
+        if !timeframe.Start.Before(timeframe.End) </span><span class="cov8" title="1">{
+                return fmt.Errorf("timeframe start time (%v) must be before end time (%v)", timeframe.Start, timeframe.End)
+        }</span>
+        
+        // Check if timeframe has valid duration (at least 1 minute)
+        <span class="cov8" title="1">duration := timeframe.End.Sub(timeframe.Start)
+        if duration &lt; time.Minute </span><span class="cov8" title="1">{
+                return fmt.Errorf("timeframe duration must be at least 1 minute, got %v", duration)
+        }</span>
+        
+        <span class="cov8" title="1">return nil</span>
+}
+
+// ClearCache clears all caches (useful for testing or memory management)
+func (pm *PartyScheduleMatcher) ClearCache() <span class="cov8" title="1">{
+        pm.scheduleCacheMutex.Lock()
+        pm.compatibilityCacheMutex.Lock()
+        defer pm.scheduleCacheMutex.Unlock()
+        defer pm.compatibilityCacheMutex.Unlock()
+        
+        pm.scheduleCache = make(map[uuid.UUID]*schedule_entities.Schedule)
+        pm.compatibilityCache = make(map[compatibilityKey]bool)
+}</span>
+</pre>
+		
+		<pre class="file" id="file10" style="display: none">package usecases
+
+import (
+        "context"
+        "fmt"
+        "log/slog"
+
+        "github.com/google/uuid"
+        "github.com/leet-gaming/match-making-api/pkg/common"
+        pairing_entities "github.com/leet-gaming/match-making-api/pkg/domain/pairing/entities"
+        pairing_out "github.com/leet-gaming/match-making-api/pkg/domain/pairing/ports/out"
+)
+
+// ResolveMatchConflictUseCase allows administrators to resolve or override flagged conflicts
+type ResolveMatchConflictUseCase struct {
+        PairReader pairing_out.PairReader
+        PairWriter pairing_out.PairWriter
+}
+
+// ResolveConflictPayload contains the information needed to resolve a conflict
+type ResolveConflictPayload struct {
+        PairID  uuid.UUID
+        Action  ConflictResolutionAction
+        Reason  string // Optional reason for the resolution
+}
+
+type ConflictResolutionAction string
+
+const (
+        ConflictResolutionResolve ConflictResolutionAction = "resolve" // Mark as resolved (conflict was fixed)
+        ConflictResolutionOverride ConflictResolutionAction = "override" // Override the conflict (admin decision)
+        ConflictResolutionRemove   ConflictResolutionAction = "remove"   // Remove the conflicting match
+)
+
+// Execute resolves a flagged conflict according to the specified action
+func (uc *ResolveMatchConflictUseCase) Execute(ctx context.Context, payload ResolveConflictPayload) error <span class="cov0" title="0">{
+        // Verify that the user is an administrator
+        if !common.IsAdmin(ctx) </span><span class="cov0" title="0">{
+                return fmt.Errorf("only administrators can resolve conflicts")
+        }</span>
+
+        // Get the pair
+        <span class="cov0" title="0">pair, err := uc.PairReader.GetByID(ctx, payload.PairID)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to get pair %v: %w", payload.PairID, err)
+        }</span>
+
+        // Verify the pair is actually flagged
+        <span class="cov0" title="0">if pair.ConflictStatus != pairing_entities.ConflictStatusFlagged </span><span class="cov0" title="0">{
+                return fmt.Errorf("pair %v is not flagged as conflicting", payload.PairID)
+        }</span>
+
+        <span class="cov0" title="0">resourceOwner := common.GetResourceOwner(ctx)
+
+        switch payload.Action </span>{
+        case ConflictResolutionResolve:<span class="cov0" title="0">
+                // Mark conflict as resolved
+                pair.ConflictStatus = pairing_entities.ConflictStatusResolved
+                pair.ConflictReason = ""
+                slog.InfoContext(ctx, "conflict resolved by admin", 
+                        "pair_id", payload.PairID, "admin_user_id", resourceOwner.UserID, "reason", payload.Reason)</span>
+
+        case ConflictResolutionOverride:<span class="cov0" title="0">
+                // Override the conflict (keep the match despite the conflict)
+                pair.ConflictStatus = pairing_entities.ConflictStatusNone
+                pair.ConflictReason = ""
+                slog.InfoContext(ctx, "conflict overridden by admin", 
+                        "pair_id", payload.PairID, "admin_user_id", resourceOwner.UserID, "reason", payload.Reason)</span>
+
+        case ConflictResolutionRemove:<span class="cov0" title="0">
+                // Note: This would require a Delete method on PairWriter
+                // For now, we'll just flag it differently or leave it for future implementation
+                // You might want to add a PairDeleter interface or extend PairWriter
+                slog.WarnContext(ctx, "conflict removal requested but not implemented", 
+                        "pair_id", payload.PairID, "admin_user_id", resourceOwner.UserID)
+                return fmt.Errorf("conflict removal is not yet implemented")</span>
+
+        default:<span class="cov0" title="0">
+                return fmt.Errorf("invalid conflict resolution action: %v", payload.Action)</span>
+        }
+
+        // Save the updated pair
+        <span class="cov0" title="0">_, err = uc.PairWriter.Save(pair)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to save resolved pair %v: %w", payload.PairID, err)
+        }</span>
+
+        <span class="cov0" title="0">slog.InfoContext(ctx, "conflict resolution completed", 
+                "pair_id", payload.PairID, "action", payload.Action, "admin_user_id", resourceOwner.UserID)
+
+        return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file11" style="display: none">package usecases
+
+import (
+        "context"
+        "fmt"
+        "log/slog"
+        "time"
+
+        "github.com/google/uuid"
+        "github.com/leet-gaming/match-making-api/pkg/common"
+        pairing_entities "github.com/leet-gaming/match-making-api/pkg/domain/pairing/entities"
+        pairing_out "github.com/leet-gaming/match-making-api/pkg/domain/pairing/ports/out"
+)
+
+// RevokeInvitationUseCase handles revoking an invitation (admin only)
+type RevokeInvitationUseCase struct {
+        InvitationReader pairing_out.InvitationReader
+        InvitationWriter pairing_out.InvitationWriter
+        Notifier         InvitationNotifier // Optional: if nil, notifications are skipped
+}
+
+// Execute revokes an invitation if it's still pending
+func (uc *RevokeInvitationUseCase) Execute(ctx context.Context, invitationID uuid.UUID) error <span class="cov0" title="0">{
+        // Verify that the user is an administrator
+        if !common.IsAdmin(ctx) </span><span class="cov0" title="0">{
+                return fmt.Errorf("only administrators can revoke invitations")
+        }</span>
+
+        <span class="cov0" title="0">resourceOwner := common.GetResourceOwner(ctx)
+        revokedBy := resourceOwner.UserID
+
+        // Get the invitation
+        invitation, err := uc.InvitationReader.GetByID(ctx, invitationID)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to get invitation %v: %w", invitationID, err)
+        }</span>
+
+        // Check if invitation can be revoked
+        <span class="cov0" title="0">if !invitation.CanRevoke() </span><span class="cov0" title="0">{
+                return fmt.Errorf("invitation %v cannot be revoked (current status: %v)", invitationID, invitation.Status)
+        }</span>
+
+        // Update invitation status
+        <span class="cov0" title="0">now := time.Now()
+        invitation.Status = pairing_entities.InvitationStatusRevoked
+        invitation.RevokedAt = &amp;now
+        invitation.RevokedBy = &amp;revokedBy
+
+        _, err = uc.InvitationWriter.Save(ctx, invitation)
+        if err != nil </span><span class="cov0" title="0">{
+                slog.ErrorContext(ctx, "failed to save revoked invitation", "error", err, "invitation_id", invitationID)
+                return fmt.Errorf("failed to revoke invitation: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">slog.InfoContext(ctx, "invitation revoked successfully",
+                "invitation_id", invitationID,
+                "revoked_by", revokedBy,
+                "user_id", invitation.UserID)
+
+        // Send notification to the user about revocation
+        if uc.Notifier != nil </span><span class="cov0" title="0">{
+                if err := uc.Notifier.NotifyInvitationRevoked(ctx, invitationID, invitation.UserID); err != nil </span><span class="cov0" title="0">{
+                        slog.ErrorContext(ctx, "failed to send revocation notification",
+                                "error", err, "invitation_id", invitationID, "user_id", invitation.UserID)
+                        // Don't fail revocation if notification fails
+                }</span>
+        }
+
+        <span class="cov0" title="0">return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file12" style="display: none">package usecases
+
+import (
+        "context"
+        "fmt"
+        "log/slog"
+        "time"
+
+        "github.com/google/uuid"
+        "github.com/leet-gaming/match-making-api/pkg/common"
+        pairing_entities "github.com/leet-gaming/match-making-api/pkg/domain/pairing/entities"
+        pairing_out "github.com/leet-gaming/match-making-api/pkg/domain/pairing/ports/out"
+)
+
+// UpdateInvitationUseCase handles updating an invitation (admin only, before acceptance)
+type UpdateInvitationUseCase struct {
+        InvitationReader pairing_out.InvitationReader
+        InvitationWriter pairing_out.InvitationWriter
+}
+
+// UpdateInvitationPayload contains the fields that can be updated
+type UpdateInvitationPayload struct {
+        Message        *string
+        ExpirationDate *time.Time
+}
+
+// Execute updates an invitation if it's still pending
+func (uc *UpdateInvitationUseCase) Execute(ctx context.Context, invitationID uuid.UUID, payload UpdateInvitationPayload) (*pairing_entities.Invitation, error) <span class="cov0" title="0">{
+        // Verify that the user is an administrator
+        if !common.IsAdmin(ctx) </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("only administrators can update invitations")
+        }</span>
+
+        // Get the invitation
+        <span class="cov0" title="0">invitation, err := uc.InvitationReader.GetByID(ctx, invitationID)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to get invitation %v: %w", invitationID, err)
+        }</span>
+
+        // Only allow updates to pending invitations
+        <span class="cov0" title="0">if invitation.Status != pairing_entities.InvitationStatusPending </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("invitation %v cannot be updated (current status: %v)", invitationID, invitation.Status)
+        }</span>
+
+        // Update fields if provided
+        <span class="cov0" title="0">if payload.Message != nil </span><span class="cov0" title="0">{
+                invitation.Message = *payload.Message
+        }</span>
+
+        <span class="cov0" title="0">if payload.ExpirationDate != nil </span><span class="cov0" title="0">{
+                // Validate expiration date
+                if payload.ExpirationDate.Before(time.Now()) </span><span class="cov0" title="0">{
+                        return nil, fmt.Errorf("expiration date must be in the future")
+                }</span>
+                <span class="cov0" title="0">invitation.ExpirationDate = payload.ExpirationDate</span>
+        }
+
+        // Update UpdatedAt timestamp (BaseEntity handles this, but we ensure it's set)
+        <span class="cov0" title="0">invitation.UpdatedAt = time.Now()
+
+        // Save updated invitation
+        savedInvitation, err := uc.InvitationWriter.Save(ctx, invitation)
+        if err != nil </span><span class="cov0" title="0">{
+                slog.ErrorContext(ctx, "failed to save updated invitation", "error", err, "invitation_id", invitationID)
+                return nil, fmt.Errorf("failed to update invitation: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">slog.InfoContext(ctx, "invitation updated successfully",
+                "invitation_id", invitationID,
+                "updated_by", common.GetResourceOwner(ctx).UserID)
+
+        return savedInvitation, nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file13" style="display: none">package usecases
+
+import (
+        "context"
+        "fmt"
+        "log/slog"
+        "time"
+
+        "github.com/google/uuid"
+        pairing_entities "github.com/leet-gaming/match-making-api/pkg/domain/pairing/entities"
+        pairing_out "github.com/leet-gaming/match-making-api/pkg/domain/pairing/ports/out"
+        schedule_entities "github.com/leet-gaming/match-making-api/pkg/domain/schedules/entities"
+        schedules_in_ports "github.com/leet-gaming/match-making-api/pkg/domain/schedules/ports/in"
+)
+
+// VerifyClientMatchConflictsUseCase verifies that a client's matches do not have scheduling conflicts
+type VerifyClientMatchConflictsUseCase struct {
+        PairReader         pairing_out.PairReader
+        PairWriter         pairing_out.PairWriter
+        PartyScheduleReader schedules_in_ports.PartyScheduleReader
+        ConflictNotifier   ConflictNotifier
+}
+
+// ConflictNotifier is an interface for notifying about conflicts
+type ConflictNotifier interface {
+        NotifyConflict(ctx context.Context, partyID uuid.UUID, pairID uuid.UUID, reason string) error
+}
+
+// ConflictResult represents the result of a conflict check
+type ConflictResult struct {
+        HasConflict  bool
+        ConflictingPairs []uuid.UUID
+}
+
+// Execute verifies all matches associated with a client (party) for scheduling conflicts
+func (uc *VerifyClientMatchConflictsUseCase) Execute(ctx context.Context, partyID uuid.UUID) (*ConflictResult, error) <span class="cov0" title="0">{
+        slog.InfoContext(ctx, "verifying match conflicts for party", "party_id", partyID)
+
+        // Get client's availability schedule
+        clientSchedule := uc.PartyScheduleReader.GetScheduleByPartyID(partyID)
+        if clientSchedule == nil </span><span class="cov0" title="0">{
+                slog.WarnContext(ctx, "party has no schedule, cannot verify conflicts", "party_id", partyID)
+                return &amp;ConflictResult{HasConflict: false, ConflictingPairs: []uuid.UUID{}}, nil
+        }</span>
+
+        // Get all pairs (matches) for this party
+        <span class="cov0" title="0">pairs, err := uc.PairReader.FindPairsByPartyID(ctx, partyID)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to find pairs for party %v: %w", partyID, err)
+        }</span>
+
+        <span class="cov0" title="0">if len(pairs) == 0 </span><span class="cov0" title="0">{
+                slog.DebugContext(ctx, "no matches found for party", "party_id", partyID)
+                return &amp;ConflictResult{HasConflict: false, ConflictingPairs: []uuid.UUID{}}, nil
+        }</span>
+
+        <span class="cov0" title="0">slog.InfoContext(ctx, "found matches for party", "party_id", partyID, "match_count", len(pairs))
+
+        // Check for conflicts between matches
+        conflictingPairs := uc.detectConflicts(ctx, partyID, pairs, clientSchedule)
+
+        if len(conflictingPairs) &gt; 0 </span><span class="cov0" title="0">{
+                // Flag conflicting pairs and notify
+                for _, pairID := range conflictingPairs </span><span class="cov0" title="0">{
+                        err := uc.flagConflict(ctx, pairID, fmt.Sprintf("conflict detected with other matches for party %v", partyID))
+                        if err != nil </span><span class="cov0" title="0">{
+                                slog.ErrorContext(ctx, "failed to flag conflict", "pair_id", pairID, "error", err)
+                                continue</span>
+                        }
+
+                        // Notify client and relevant parties
+                        <span class="cov0" title="0">if uc.ConflictNotifier != nil </span><span class="cov0" title="0">{
+                                if err := uc.ConflictNotifier.NotifyConflict(ctx, partyID, pairID, "match conflict detected with your availability"); err != nil </span><span class="cov0" title="0">{
+                                        slog.ErrorContext(ctx, "failed to send conflict notification", "pair_id", pairID, "party_id", partyID, "error", err)
+                                }</span>
+                        }
+
+                        <span class="cov0" title="0">slog.WarnContext(ctx, "conflict detected and flagged", "pair_id", pairID, "party_id", partyID)</span>
+                }
+
+                <span class="cov0" title="0">return &amp;ConflictResult{HasConflict: true, ConflictingPairs: conflictingPairs}, nil</span>
+        }
+
+        <span class="cov0" title="0">slog.InfoContext(ctx, "no conflicts found for party", "party_id", partyID)
+        return &amp;ConflictResult{HasConflict: false, ConflictingPairs: []uuid.UUID{}}, nil</span>
+}
+
+// detectConflicts checks for scheduling conflicts between matches and with client availability
+// A conflict occurs when:
+// 1. A match (pair) has parties with schedules incompatible with the client's availability
+// 2. Two matches have parties with incompatible schedules (meaning they cannot happen simultaneously)
+func (uc *VerifyClientMatchConflictsUseCase) detectConflicts(
+        ctx context.Context,
+        partyID uuid.UUID,
+        pairs []*pairing_entities.Pair,
+        clientSchedule *schedule_entities.Schedule,
+) []uuid.UUID <span class="cov0" title="0">{
+        var conflictingPairs []uuid.UUID
+        conflictSet := make(map[uuid.UUID]bool)
+
+        // Check each pair against client's availability
+        for _, pair := range pairs </span><span class="cov0" title="0">{
+                // Get the collective schedule requirement for this pair (intersection of all party schedules)
+                pairSchedule := uc.getPairSchedule(ctx, pair)
+                
+                if pairSchedule == nil </span><span class="cov0" title="0">{
+                        // If we can't determine the pair schedule, skip conflict check for this pair
+                        continue</span>
+                }
+
+                // Check if client's availability is compatible with the pair's schedule requirement
+                // If not compatible, this match conflicts with client's availability
+                <span class="cov0" title="0">if !areSchedulesCompatibleForConflict(*clientSchedule, *pairSchedule) </span><span class="cov0" title="0">{
+                        conflictSet[pair.ID] = true
+                        slog.WarnContext(ctx, "pair conflicts with client availability", 
+                                "pair_id", pair.ID, "party_id", partyID)
+                }</span>
+        }
+
+        // Check for conflicts between pairs (two matches that cannot happen simultaneously)
+        <span class="cov0" title="0">for i, pair1 := range pairs </span><span class="cov0" title="0">{
+                for j, pair2 := range pairs </span><span class="cov0" title="0">{
+                        if i &gt;= j </span><span class="cov0" title="0">{
+                                continue</span> // Avoid duplicate checks
+                        }
+
+                        // Skip if either pair is already flagged
+                        <span class="cov0" title="0">if conflictSet[pair1.ID] || conflictSet[pair2.ID] </span><span class="cov0" title="0">{
+                                continue</span>
+                        }
+
+                        <span class="cov0" title="0">schedule1 := uc.getPairSchedule(ctx, pair1)
+                        schedule2 := uc.getPairSchedule(ctx, pair2)
+
+                        if schedule1 == nil || schedule2 == nil </span><span class="cov0" title="0">{
+                                continue</span>
+                        }
+
+                        // If two pairs have incompatible schedules, they conflict
+                        // This means the client cannot participate in both matches
+                        <span class="cov0" title="0">if !areSchedulesCompatibleForConflict(*schedule1, *schedule2) </span><span class="cov0" title="0">{
+                                // Flag both pairs as conflicting
+                                conflictSet[pair1.ID] = true
+                                conflictSet[pair2.ID] = true
+                                slog.WarnContext(ctx, "pairs have conflicting schedules", 
+                                        "pair1_id", pair1.ID, "pair2_id", pair2.ID, "party_id", partyID)
+                        }</span>
+                }
+        }
+
+        // Convert set to slice
+        <span class="cov0" title="0">for pairID := range conflictSet </span><span class="cov0" title="0">{
+                conflictingPairs = append(conflictingPairs, pairID)
+        }</span>
+
+        <span class="cov0" title="0">return conflictingPairs</span>
+}
+
+// getPairSchedule computes the intersection of all party schedules in a pair
+// This represents the time slots when all parties in the pair are available
+func (uc *VerifyClientMatchConflictsUseCase) getPairSchedule(ctx context.Context, pair *pairing_entities.Pair) *schedule_entities.Schedule <span class="cov0" title="0">{
+        if len(pair.Match) == 0 </span><span class="cov0" title="0">{
+                return nil
+        }</span>
+
+        <span class="cov0" title="0">var schedules []*schedule_entities.Schedule
+        for partyID := range pair.Match </span><span class="cov0" title="0">{
+                schedule := uc.PartyScheduleReader.GetScheduleByPartyID(partyID)
+                if schedule != nil </span><span class="cov0" title="0">{
+                        schedules = append(schedules, schedule)
+                }</span>
+        }
+
+        <span class="cov0" title="0">if len(schedules) == 0 </span><span class="cov0" title="0">{
+                return nil
+        }</span>
+
+        // Start with the first schedule
+        <span class="cov0" title="0">result := schedules[0]
+
+        // Intersect with all other schedules
+        // For simplicity, we check if all schedules are compatible with each other
+        // If they are, we can use any one of them as representative
+        // If not all are compatible, the pair itself has an internal conflict
+        for i := 1; i &lt; len(schedules); i++ </span><span class="cov0" title="0">{
+                if !areSchedulesCompatibleForConflict(*result, *schedules[i]) </span><span class="cov0" title="0">{
+                        // Internal conflict in the pair - parties have incompatible schedules
+                        // This is also a conflict we should flag
+                        return nil
+                }</span>
+        }
+
+        <span class="cov0" title="0">return result</span>
+}
+
+// flagConflict marks a pair as having a conflict
+func (uc *VerifyClientMatchConflictsUseCase) flagConflict(ctx context.Context, pairID uuid.UUID, reason string) error <span class="cov0" title="0">{
+        pair, err := uc.PairReader.GetByID(ctx, pairID)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to get pair %v: %w", pairID, err)
+        }</span>
+
+        <span class="cov0" title="0">pair.ConflictStatus = pairing_entities.ConflictStatusFlagged
+        pair.ConflictReason = reason
+
+        _, err = uc.PairWriter.Save(pair)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to save flagged pair %v: %w", pairID, err)
+        }</span>
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+// areSchedulesCompatible checks if two schedules have compatible availability
+// Returns true if schedules are compatible (have overlapping availability), false if they conflict
+// This uses the same logic as party_schedule_matcher.go
+func areSchedulesCompatibleForConflict(schedule1, schedule2 schedule_entities.Schedule) bool <span class="cov0" title="0">{
+        // Check all combinations of date options from both schedules
+        for _, option1 := range schedule1.Options </span><span class="cov0" title="0">{
+                for _, option2 := range schedule2.Options </span><span class="cov0" title="0">{
+                        if hasMatchingAvailabilityForConflict(option1, option2) </span><span class="cov0" title="0">{
+                                return true
+                        }</span>
+                }
+        }
+        <span class="cov0" title="0">return false</span>
+}
+
+func hasMatchingAvailabilityForConflict(option1, option2 schedule_entities.DateOption) bool <span class="cov0" title="0">{
+        for _, day1 := range option1.Days </span><span class="cov0" title="0">{
+                for _, weekday1 := range option1.Weekdays </span><span class="cov0" title="0">{
+                        for _, timeframe1 := range option1.TimeFrames </span><span class="cov0" title="0">{
+                                for _, day2 := range option2.Days </span><span class="cov0" title="0">{
+                                        for _, weekday2 := range option2.Weekdays </span><span class="cov0" title="0">{
+                                                for _, timeframe2 := range option2.TimeFrames </span><span class="cov0" title="0">{
+                                                        if isAvailableCombinationForConflict(day1, weekday1, timeframe1, day2, weekday2, timeframe2) </span><span class="cov0" title="0">{
+                                                                return true
+                                                        }</span>
+                                                }
+                                        }
+                                }
+                        }
+                }
+        }
+        <span class="cov0" title="0">return false</span>
+}
+
+func isAvailableCombinationForConflict(day1 int, weekday1 time.Weekday, timeframe1 schedule_entities.TimeFrame,
+        day2 int, weekday2 time.Weekday, timeframe2 schedule_entities.TimeFrame) bool <span class="cov0" title="0">{
+        if weekday1 != weekday2 &amp;&amp; !(weekday1 == time.Sunday &amp;&amp; weekday2 == time.Saturday) </span><span class="cov0" title="0">{
+                return false
+        }</span>
+        <span class="cov0" title="0">if day1 != 0 &amp;&amp; day2 != 0 &amp;&amp; day1 != day2 </span><span class="cov0" title="0">{
+                return false
+        }</span>
+        <span class="cov0" title="0">return isTimeFrameOverlappingForConflict(timeframe1.Start, timeframe1.End, timeframe2.Start, timeframe2.End)</span>
+}
+
+func isTimeFrameOverlappingForConflict(start1, end1, start2, end2 time.Time) bool <span class="cov0" title="0">{
+        return start1.Before(end2) &amp;&amp; start2.Before(end1)
+}</span>
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>

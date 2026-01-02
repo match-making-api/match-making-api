@@ -80,7 +80,7 @@ func (e *Pool) Remove(partyID uuid.UUID) (int, error) {
 		}
 	}
 
-	return -1, fmt.Errorf("Pool.Remove: PartyID %v not in pool")
+	return -1, fmt.Errorf("Pool.Remove: PartyID %v not in pool", partyID)
 }
 
 func (e *Pool) IsQueued(pid uuid.UUID) (int, bool) {

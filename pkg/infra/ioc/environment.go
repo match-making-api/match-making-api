@@ -33,6 +33,11 @@ func EnvironmentConfig() (config.Config, error) {
 			Group:              os.Getenv("KAFKA_CONSUMER_GROUP_ID"),
 			AssignmentStrategy: os.Getenv("KAFKA_PARTITION_ASSIGNMENT_STRATEGY"),
 		},
+		Api: config.ApiConfig{
+			RID:           os.Getenv("RID_SERVICE_URL"),
+			PlayerProfile: os.Getenv("PLAYER_PROFILE_SERVICE_URL"),
+			Subscription:  os.Getenv("SUBSCRIPTION_SERVICE_URL"),
+		},
 	}
 
 	return config, nil

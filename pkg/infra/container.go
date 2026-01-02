@@ -19,5 +19,5 @@ import (
 // Returns:
 //   - error: An error if the injection process fails, nil otherwise.
 func Inject(c container.Container) error {
-	return common.InjectAll(c, ioc.InjectIoc, mongodb.InjectGameRepository, mongodb.InjectGameModeRepository, mongodb.InjectRegionRepository, squad.Inject, billing.Inject, iam.Inject)
+	return common.InjectAll(c, ioc.InjectIoc, mongodb.InjectGameRepository, mongodb.InjectGameModeRepository, mongodb.InjectRegionRepository, squad.Inject, billing.Inject, iam.Inject, InjectKafka)
 }

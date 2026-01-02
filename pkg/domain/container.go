@@ -4,6 +4,7 @@ import (
 	"github.com/golobby/container/v3"
 	"github.com/leet-gaming/match-making-api/pkg/common"
 	"github.com/leet-gaming/match-making-api/pkg/domain/game"
+	"github.com/leet-gaming/match-making-api/pkg/domain/iam"
 	"github.com/leet-gaming/match-making-api/pkg/domain/lobbies"
 	"github.com/leet-gaming/match-making-api/pkg/domain/pairing"
 	"github.com/leet-gaming/match-making-api/pkg/domain/schedules"
@@ -18,5 +19,5 @@ import (
 // Returns:
 //   - error: An error if any of the injection processes fail, nil otherwise.
 func Inject(c container.Container) error {
-	return common.InjectAll(c, game.Inject, lobbies.Inject, pairing.Inject, schedules.Inject)
+	return common.InjectAll(c, game.Inject, iam.Inject, lobbies.Inject, pairing.Inject, schedules.Inject)
 }

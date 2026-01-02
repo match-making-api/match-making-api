@@ -14,7 +14,9 @@ import (
 	game_entities "github.com/leet-gaming/match-making-api/pkg/domain/game/entities"
 	"github.com/leet-gaming/match-making-api/pkg/domain/game/ports/out"
 	pairing_entities "github.com/leet-gaming/match-making-api/pkg/domain/pairing/entities"
+	pairing_in "github.com/leet-gaming/match-making-api/pkg/domain/pairing/ports/in"
 	pairing_out "github.com/leet-gaming/match-making-api/pkg/domain/pairing/ports/out"
+	pairing_value_objects "github.com/leet-gaming/match-making-api/pkg/domain/pairing/value-objects"
 	parties_entities "github.com/leet-gaming/match-making-api/pkg/domain/parties/entities"
 	parties_out "github.com/leet-gaming/match-making-api/pkg/domain/parties/ports/out"
 )
@@ -270,4 +272,68 @@ func (m *MockPortPeerReader) GetByID(id uuid.UUID) (*parties_entities.Peer, erro
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*parties_entities.Peer), args.Error(1)
+}
+
+// MockPoolReader is a mock implementation of pairing_out.PoolReader using testify/mock
+type MockPoolReader struct {
+	mock.Mock
+}
+
+// Ensure MockPoolReader implements pairing_out.PoolReader
+var _ pairing_out.PoolReader = (*MockPoolReader)(nil)
+
+func (m *MockPoolReader) FindPool(criteria *pairing_value_objects.Criteria) (*pairing_entities.Pool, error) {
+	args := m.Called(criteria)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*pairing_entities.Pool), args.Error(1)
+}
+
+// MockPoolWriter is a mock implementation of pairing_out.PoolWriter using testify/mock
+type MockPoolWriter struct {
+	mock.Mock
+}
+
+// Ensure MockPoolWriter implements pairing_out.PoolWriter
+var _ pairing_out.PoolWriter = (*MockPoolWriter)(nil)
+
+func (m *MockPoolWriter) Save(p *pairing_entities.Pool) (*pairing_entities.Pool, error) {
+	args := m.Called(p)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*pairing_entities.Pool), args.Error(1)
+}
+
+// MockPoolInitiator is a mock implementation of pairing_in.PoolInitiator using testify/mock
+type MockPoolInitiator struct {
+	mock.Mock
+}
+
+// Ensure MockPoolInitiator implements pairing_in.PoolInitiator
+var _ pairing_in.PoolInitiator = (*MockPoolInitiator)(nil)
+
+func (m *MockPoolInitiator) Execute(c pairing_value_objects.Criteria) (*pairing_entities.Pool, error) {
+	args := m.Called(c)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*pairing_entities.Pool), args.Error(1)
+}
+
+// MockPairCreator is a mock implementation of pairing_in.PairCreator using testify/mock
+type MockPairCreator struct {
+	mock.Mock
+}
+
+// Ensure MockPairCreator implements pairing_in.PairCreator
+var _ pairing_in.PairCreator = (*MockPairCreator)(nil)
+
+func (m *MockPairCreator) Execute(ctx context.Context, pids []uuid.UUID) (*pairing_entities.Pair, error) {
+	args := m.Called(ctx, pids)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*pairing_entities.Pair), args.Error(1)
 }

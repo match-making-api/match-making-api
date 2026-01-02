@@ -127,7 +127,7 @@ func InjectMongoDB(c container.Container) error {
 			return nil, err
 		}
 
-		mongoOptions := options.Client().ApplyURI(config.MongoDB.URI).SetRegistry(MongoRegistry).SetMaxPoolSize(100)
+		mongoOptions := options.Client().ApplyURI(config.MongoDB.URI).SetRegistry(MongoRegistry).SetMaxPoolSize(1)
 
 		client, err := mongo.Connect(context.TODO(), mongoOptions)
 
@@ -135,6 +135,15 @@ func InjectMongoDB(c container.Container) error {
 			slog.Error("Failed to connect to MongoDB.", "err", err)
 			return nil, err
 		}
+
+		// Ping to ensure connection and authentication work
+		err = client.Ping(context.TODO(), nil)
+		if err != nil {
+			slog.Error("Failed to ping MongoDB.", "err", err)
+			return nil, err
+		}
+
+		slog.Info("Successfully connected to MongoDB")
 
 		return client, nil
 	})
@@ -172,6 +181,8 @@ func (r *MongoDBRepository[T]) InitQueryableFields(fieldInfos map[string]FieldIn
 	r.collection = r.mongoClient.Database(r.dbName).Collection(r.collectionName)
 
 	// Ensure text index is created for full-text search
+	// TODO: Re-enable index creation after fixing authentication issue
+	/*
 	textIndexFields := bson.D{}
 	for field, info := range fieldInfos {
 		if info.bool {
@@ -185,8 +196,10 @@ func (r *MongoDBRepository[T]) InitQueryableFields(fieldInfos map[string]FieldIn
 		})
 		if err != nil {
 			slog.Error("InitQueryableFields: failed to create text index", "err", err)
+			// Continue anyway - indexes can be created manually if needed
 		}
 	}
+	*/
 
 	Repositories[common.ResourceType(r.entityName)] = r
 }

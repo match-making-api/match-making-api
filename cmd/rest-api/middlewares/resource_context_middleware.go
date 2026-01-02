@@ -29,7 +29,8 @@ func NewResourceContextMiddleware(container *container.Container) *ResourceConte
 	}
 
 	return &ResourceContextMiddleware{
-		VerifyRID: verifyRID,
+		VerifyRID:    verifyRID,
+		OperationMap: make(map[string]string),
 	}
 }
 
