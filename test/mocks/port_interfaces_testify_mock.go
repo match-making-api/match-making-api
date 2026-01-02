@@ -337,3 +337,174 @@ func (m *MockPairCreator) Execute(ctx context.Context, pids []uuid.UUID) (*pairi
 	}
 	return args.Get(0).(*pairing_entities.Pair), args.Error(1)
 }
+
+// MockPortExternalInvitationWriter is a mock implementation of pairing_out.ExternalInvitationWriter using testify/mock
+type MockPortExternalInvitationWriter struct {
+	mock.Mock
+}
+
+// Ensure MockPortExternalInvitationWriter implements pairing_out.ExternalInvitationWriter
+var _ pairing_out.ExternalInvitationWriter = (*MockPortExternalInvitationWriter)(nil)
+
+func (m *MockPortExternalInvitationWriter) Save(ctx context.Context, invitation *pairing_entities.ExternalInvitation) (*pairing_entities.ExternalInvitation, error) {
+	args := m.Called(ctx, invitation)
+	// If no return value specified or it's a matcher, return the original invitation
+	if len(args) == 0 {
+		return invitation, nil
+	}
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	if inv, ok := args.Get(0).(*pairing_entities.ExternalInvitation); ok {
+		return inv, args.Error(1)
+	}
+	// Fallback: return the original invitation (useful when using mock.Anything)
+	return invitation, args.Error(1)
+}
+
+// MockPortExternalInvitationReader is a mock implementation of pairing_out.ExternalInvitationReader using testify/mock
+type MockPortExternalInvitationReader struct {
+	mock.Mock
+}
+
+// Ensure MockPortExternalInvitationReader implements pairing_out.ExternalInvitationReader
+var _ pairing_out.ExternalInvitationReader = (*MockPortExternalInvitationReader)(nil)
+
+func (m *MockPortExternalInvitationReader) GetByID(ctx context.Context, id uuid.UUID) (*pairing_entities.ExternalInvitation, error) {
+	args := m.Called(ctx, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*pairing_entities.ExternalInvitation), args.Error(1)
+}
+
+func (m *MockPortExternalInvitationReader) GetByRegistrationToken(ctx context.Context, token string) (*pairing_entities.ExternalInvitation, error) {
+	args := m.Called(ctx, token)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*pairing_entities.ExternalInvitation), args.Error(1)
+}
+
+func (m *MockPortExternalInvitationReader) FindByEmail(ctx context.Context, email string) ([]*pairing_entities.ExternalInvitation, error) {
+	args := m.Called(ctx, email)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*pairing_entities.ExternalInvitation), args.Error(1)
+}
+
+func (m *MockPortExternalInvitationReader) FindByMatchID(ctx context.Context, matchID uuid.UUID) ([]*pairing_entities.ExternalInvitation, error) {
+	args := m.Called(ctx, matchID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*pairing_entities.ExternalInvitation), args.Error(1)
+}
+
+func (m *MockPortExternalInvitationReader) FindByEventID(ctx context.Context, eventID uuid.UUID) ([]*pairing_entities.ExternalInvitation, error) {
+	args := m.Called(ctx, eventID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*pairing_entities.ExternalInvitation), args.Error(1)
+}
+
+func (m *MockPortExternalInvitationReader) FindByCreatedBy(ctx context.Context, createdBy uuid.UUID) ([]*pairing_entities.ExternalInvitation, error) {
+	args := m.Called(ctx, createdBy)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*pairing_entities.ExternalInvitation), args.Error(1)
+}
+
+// MockPortNotificationWriter is a mock implementation of pairing_out.NotificationWriter using testify/mock
+type MockPortNotificationWriter struct {
+	mock.Mock
+}
+
+// Ensure MockPortNotificationWriter implements pairing_out.NotificationWriter
+var _ pairing_out.NotificationWriter = (*MockPortNotificationWriter)(nil)
+
+func (m *MockPortNotificationWriter) Save(ctx context.Context, notification *pairing_entities.Notification) (*pairing_entities.Notification, error) {
+	args := m.Called(ctx, notification)
+	if args.Get(0) == nil {
+		// If no return value specified, return the original notification
+		return notification, args.Error(1)
+	}
+	if notif, ok := args.Get(0).(*pairing_entities.Notification); ok {
+		return notif, args.Error(1)
+	}
+	// Fallback: return the original notification (useful when using mock.Anything)
+	return notification, args.Error(1)
+}
+
+func (m *MockPortNotificationWriter) SaveBatch(ctx context.Context, notifications []*pairing_entities.Notification) ([]*pairing_entities.Notification, error) {
+	args := m.Called(ctx, notifications)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*pairing_entities.Notification), args.Error(1)
+}
+
+// MockPortNotificationReader is a mock implementation of pairing_out.NotificationReader using testify/mock
+type MockPortNotificationReader struct {
+	mock.Mock
+}
+
+// Ensure MockPortNotificationReader implements pairing_out.NotificationReader
+var _ pairing_out.NotificationReader = (*MockPortNotificationReader)(nil)
+
+func (m *MockPortNotificationReader) GetByID(ctx context.Context, id uuid.UUID) (*pairing_entities.Notification, error) {
+	args := m.Called(ctx, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*pairing_entities.Notification), args.Error(1)
+}
+
+func (m *MockPortNotificationReader) FindByUserID(ctx context.Context, userID uuid.UUID, limit int, offset int) ([]*pairing_entities.Notification, error) {
+	args := m.Called(ctx, userID, limit, offset)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*pairing_entities.Notification), args.Error(1)
+}
+
+func (m *MockPortNotificationReader) FindByStatus(ctx context.Context, status pairing_entities.NotificationStatus) ([]*pairing_entities.Notification, error) {
+	args := m.Called(ctx, status)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*pairing_entities.Notification), args.Error(1)
+}
+
+func (m *MockPortNotificationReader) FindFailedNotifications(ctx context.Context) ([]*pairing_entities.Notification, error) {
+	args := m.Called(ctx)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*pairing_entities.Notification), args.Error(1)
+}
+
+func (m *MockPortNotificationReader) CountByUserID(ctx context.Context, userID uuid.UUID) (int, error) {
+	args := m.Called(ctx, userID)
+	return args.Get(0).(int), args.Error(1)
+}
+
+// MockPortUserNotificationPreferencesReader is a mock implementation of pairing_out.UserNotificationPreferencesReader using testify/mock
+type MockPortUserNotificationPreferencesReader struct {
+	mock.Mock
+}
+
+// Ensure MockPortUserNotificationPreferencesReader implements pairing_out.UserNotificationPreferencesReader
+var _ pairing_out.UserNotificationPreferencesReader = (*MockPortUserNotificationPreferencesReader)(nil)
+
+func (m *MockPortUserNotificationPreferencesReader) GetByUserID(ctx context.Context, userID uuid.UUID) (*pairing_entities.UserNotificationPreferences, error) {
+	args := m.Called(ctx, userID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*pairing_entities.UserNotificationPreferences), args.Error(1)
+}
+}
