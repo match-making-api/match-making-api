@@ -1,0 +1,2261 @@
+openapi: 3.0.0
+info:
+  title: Match Making API
+  description: This is a match making API server.
+  version: "1.0"
+  contact:
+    name: API Support
+    email: support@leet-gaming.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:4991
+  - url: https://staging-api.leet-gaming.com/match-making
+  - url: https://api.leet-gaming.com
+
+paths:
+  /health:
+    get:
+      summary: Get Health Check
+      description: Returns an HTTP handler function that performs a health check.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "ok"
+                required:
+                  - status
+      tags:
+        - health
+
+  /games:
+    get:
+      summary: List all games
+      description: Returns a list of all games available for matchmaking.
+      security:
+        - ApiKeyAuth: []
+      responses:
+        "200":
+          description: List of games
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Game"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      tags:
+        - games
+
+    post:
+      summary: Create a new game
+      description: Creates a new game and adds it to the matchmaking list.
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GameInput"
+      responses:
+        "201":
+          description: Game created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Game"
+        "400":
+          description: Bad request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      tags:
+        - games
+
+  /games/{id}:
+    get:
+      summary: Get game by ID
+      description: Retrieves a specific game by its ID.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Game ID
+      responses:
+        "200":
+          description: Game found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Game"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Game not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      tags:
+        - games
+
+    put:
+      summary: Update a game
+      description: Updates an existing game's details.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Game ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GameInput"
+      responses:
+        "200":
+          description: Game updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Game"
+        "400":
+          description: Bad request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Game not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      tags:
+        - games
+
+    patch:
+      summary: Partially update a game
+      description: Partially updates an existing game's details.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Game ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GameInput"
+      responses:
+        "200":
+          description: Game updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Game"
+        "400":
+          description: Bad request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Game not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      tags:
+        - games
+
+    delete:
+      summary: Delete a game
+      description: Deletes a game from the matchmaking list. If the game is enabled, it will be disabled first to avoid disrupting ongoing matchmaking sessions.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Game ID
+      responses:
+        "204":
+          description: Game deleted successfully
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Game not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      tags:
+        - games
+
+  /game-modes:
+    get:
+      summary: List all game modes
+      description: Returns a list of all game modes available in the system.
+      security:
+        - ApiKeyAuth: []
+      responses:
+        "200":
+          description: List of game modes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GameMode"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      tags:
+        - game-modes
+
+    post:
+      summary: Create a new game mode
+      description: Creates a new game mode and associates it with a game.
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GameModeInput"
+      responses:
+        "201":
+          description: Game mode created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameMode"
+        "400":
+          description: Bad request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      tags:
+        - game-modes
+
+  /game-modes/{id}:
+    get:
+      summary: Get game mode by ID
+      description: Retrieves a specific game mode by its ID.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Game mode ID
+      responses:
+        "200":
+          description: Game mode found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameMode"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Game mode not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      tags:
+        - game-modes
+
+    put:
+      summary: Update a game mode
+      description: Updates an existing game mode's details.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Game mode ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GameModeInput"
+      responses:
+        "200":
+          description: Game mode updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameMode"
+        "400":
+          description: Bad request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Game mode not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      tags:
+        - game-modes
+
+    patch:
+      summary: Partially update a game mode
+      description: Partially updates an existing game mode's details.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Game mode ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GameModeInput"
+      responses:
+        "200":
+          description: Game mode updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameMode"
+        "400":
+          description: Bad request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Game mode not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      tags:
+        - game-modes
+
+    delete:
+      summary: Delete a game mode
+      description: Deletes a game mode from the system.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Game mode ID
+      responses:
+        "204":
+          description: Game mode deleted successfully
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Game mode not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      tags:
+        - game-modes
+
+  /regions:
+    get:
+      summary: List all regions
+      description: Returns a list of all regions available in the system.
+      security:
+        - ApiKeyAuth: []
+      responses:
+        "200":
+          description: List of regions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Region"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      tags:
+        - regions
+
+    post:
+      summary: Create a new region
+      description: Creates a new region with a unique name and slug.
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegionInput"
+      responses:
+        "201":
+          description: Region created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Region"
+        "400":
+          description: Bad request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      tags:
+        - regions
+
+  /regions/{id}:
+    get:
+      summary: Get region by ID
+      description: Retrieves a specific region by its ID.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Region ID
+      responses:
+        "200":
+          description: Region found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Region"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Region not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      tags:
+        - regions
+
+    put:
+      summary: Update a region
+      description: Updates an existing region's details.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Region ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegionInput"
+      responses:
+        "200":
+          description: Region updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Region"
+        "400":
+          description: Bad request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Region not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      tags:
+        - regions
+
+    patch:
+      summary: Partially update a region
+      description: Partially updates an existing region's details.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Region ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegionInput"
+      responses:
+        "200":
+          description: Region updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Region"
+        "400":
+          description: Bad request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Region not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      tags:
+        - regions
+
+    delete:
+      summary: Delete a region
+      description: Deletes a region from the system.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Region ID
+      responses:
+        "204":
+          description: Region deleted successfully
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Region not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      tags:
+        - regions
+
+  /invitations:
+    post:
+      summary: Create a manual invitation
+      description: Creates a manual invitation for a user to join a match or event. Admin only.
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InvitationInput"
+      responses:
+        "201":
+          description: Invitation created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Invitation"
+        "400":
+          description: Bad request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Forbidden - admin access required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      tags:
+        - invitations
+
+    get:
+      summary: List invitations
+      description: Lists invitations filtered by user_id or match_id. Requires ownership or admin access.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: user_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Filter invitations by user ID
+        - name: match_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Filter invitations by match ID (admin only)
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [pending, accepted, declined, expired, revoked]
+          description: Filter invitations by status
+        - name: type
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [match, event]
+          description: Filter invitations by type
+      responses:
+        "200":
+          description: List of invitations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Invitation"
+        "400":
+          description: Bad request - user_id or match_id is required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Forbidden - insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      tags:
+        - invitations
+
+  /invitations/{id}:
+    get:
+      summary: Get invitation by ID
+      description: Retrieves a specific invitation by its ID. Requires ownership or admin access.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Invitation ID
+      responses:
+        "200":
+          description: Invitation details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Invitation"
+        "403":
+          description: Forbidden - insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Invitation not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      tags:
+        - invitations
+
+    patch:
+      summary: Update invitation
+      description: Updates an invitation (message and/or expiration date). Admin only, pending invitations only.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Invitation ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InvitationUpdateInput"
+      responses:
+        "200":
+          description: Invitation updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Invitation"
+        "400":
+          description: Bad request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Forbidden - admin access required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Invitation not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      tags:
+        - invitations
+
+    delete:
+      summary: Revoke invitation
+      description: Revokes a pending invitation. Admin only.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Invitation ID
+      responses:
+        "204":
+          description: Invitation revoked successfully
+        "400":
+          description: Bad request - invitation cannot be revoked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Forbidden - admin access required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Invitation not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      tags:
+        - invitations
+
+  /invitations/{id}/accept:
+    post:
+      summary: Accept invitation
+      description: Accepts a pending invitation. Requires invitation ownership.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Invitation ID
+      responses:
+        "204":
+          description: Invitation accepted successfully
+        "400":
+          description: Bad request - invitation cannot be accepted (expired or invalid status)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Forbidden - invitation does not belong to user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Invitation not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      tags:
+        - invitations
+
+  /invitations/{id}/decline:
+    post:
+      summary: Decline invitation
+      description: Declines a pending invitation. Requires invitation ownership.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Invitation ID
+      responses:
+        "204":
+          description: Invitation declined successfully
+        "400":
+          description: Bad request - invitation cannot be declined (expired or invalid status)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Forbidden - invitation does not belong to user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Invitation not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      tags:
+        - invitations
+
+  /external-invitations:
+    post:
+      summary: Create an external invitation
+      description: Creates a manual invitation for an external user (not yet on the platform) to join a match or event. Admin only.
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExternalInvitationInput"
+      responses:
+        "201":
+          description: External invitation created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExternalInvitation"
+        "400":
+          description: Bad request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Forbidden - admin access required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      tags:
+        - external-invitations
+
+    get:
+      summary: List external invitations
+      description: Lists external invitations filtered by email, match_id, event_id, or created_by. Admin only.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: email
+          in: query
+          required: false
+          schema:
+            type: string
+            format: email
+          description: Filter by email address
+        - name: match_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Filter by match ID
+        - name: event_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Filter by event ID
+        - name: created_by
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Filter by administrator who created the invitation
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [pending, accepted, expired, revoked]
+          description: Filter by invitation status
+      responses:
+        "200":
+          description: List of external invitations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ExternalInvitation"
+        "400":
+          description: Bad request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Forbidden - admin access required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      tags:
+        - external-invitations
+
+  /external-invitations/by-token:
+    get:
+      summary: Get external invitation by registration token
+      description: Retrieves an external invitation by its registration token. Public endpoint (no authentication required).
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Registration token from the invitation email
+      responses:
+        "200":
+          description: External invitation found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExternalInvitation"
+        "400":
+          description: Bad request - token is required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Invitation not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      tags:
+        - external-invitations
+
+  /external-invitations/{id}:
+    get:
+      summary: Get external invitation by ID
+      description: Retrieves a specific external invitation by its ID. Admin only.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: External invitation ID
+      responses:
+        "200":
+          description: External invitation found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExternalInvitation"
+        "403":
+          description: Forbidden - admin access required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Invitation not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      tags:
+        - external-invitations
+
+    delete:
+      summary: Revoke external invitation
+      description: Revokes a pending external invitation. Admin only.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: External invitation ID
+      responses:
+        "204":
+          description: External invitation revoked successfully
+        "400":
+          description: Bad request - invitation cannot be revoked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Forbidden - admin access required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Invitation not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      tags:
+        - external-invitations
+
+  /external-invitations/{id}/resend:
+    post:
+      summary: Resend external invitation email
+      description: Resends the invitation email for an existing external invitation. Admin only.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: External invitation ID
+      responses:
+        "204":
+          description: Invitation email resent successfully
+        "400":
+          description: Bad request - invitation cannot be resent (expired or invalid status)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Forbidden - admin access required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Invitation not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      tags:
+        - external-invitations
+
+  /notifications:
+    post:
+      summary: Send a notification
+      description: Sends a notification to a specific user. Respects user preferences and do not disturb settings.
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NotificationInput"
+      responses:
+        "201":
+          description: Notification sent successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Notification"
+        "400":
+          description: Bad request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      tags:
+        - notifications
+
+  /notifications/batch:
+    post:
+      summary: Send batch notifications
+      description: Sends notifications to multiple users. Admin only.
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BatchNotificationInput"
+      responses:
+        "200":
+          description: Batch notifications processed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  notifications:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Notification"
+                  success_count:
+                    type: integer
+                    description: Number of successfully sent notifications
+                  error_count:
+                    type: integer
+                    description: Number of failed notifications
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                    description: Error messages for failed notifications
+        "400":
+          description: Bad request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Forbidden - admin access required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      tags:
+        - notifications
+
+  /notifications/users/{user_id}:
+    get:
+      summary: Get user notifications
+      description: Retrieves notifications for a specific user. Users can only access their own notifications.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: User ID
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Maximum number of notifications to return
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+          description: Number of notifications to skip
+      responses:
+        "200":
+          description: List of notifications
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserNotificationsResult"
+        "400":
+          description: Bad request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Forbidden - user can only access their own notifications
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      tags:
+        - notifications
+
+  /notifications/{id}/read:
+    post:
+      summary: Mark notification as read
+      description: Marks an in-app notification as read. Users can only mark their own notifications as read.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Notification ID
+      responses:
+        "204":
+          description: Notification marked as read successfully
+        "400":
+          description: Bad request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Forbidden - user can only mark their own notifications as read
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Notification not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      tags:
+        - notifications
+
+  /notifications/{id}/retry:
+    post:
+      summary: Retry failed notification
+      description: Retries a failed notification. Admin only.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Notification ID
+      responses:
+        "204":
+          description: Notification retry initiated successfully
+        "400":
+          description: Bad request - notification cannot be retried
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Forbidden - admin access required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Notification not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      tags:
+        - notifications
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: Authorization
+
+  schemas:
+    Game:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier for the game
+        name:
+          type: string
+          description: Name of the game
+        description:
+          type: string
+          description: Description of the game
+        min_players_per_team:
+          type: integer
+          minimum: 1
+          description: Minimum number of players per team
+        max_players_per_team:
+          type: integer
+          minimum: 1
+          description: Maximum number of players per team
+        number_of_teams:
+          type: integer
+          minimum: 1
+          description: Number of teams in the game
+        max_duration:
+          type: string
+          format: duration
+          description: Maximum duration of a match (e.g., "30m", "1h")
+        allow_spectators:
+          type: boolean
+          description: Whether spectators are allowed
+        skill_based_matching:
+          type: boolean
+          description: Whether skill-based matchmaking is enabled
+        allowed_regions:
+          type: array
+          items:
+            type: string
+          description: List of allowed regions for matchmaking
+        game_modes:
+          type: array
+          items:
+            type: string
+          description: Available game modes
+        map_pool:
+          type: array
+          items:
+            type: string
+          description: Available maps
+        custom_rules:
+          type: object
+          additionalProperties:
+            type: string
+          description: Custom rules for the game
+        enabled:
+          type: boolean
+          description: Whether the game is enabled for matchmaking
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp
+      required:
+        - id
+        - name
+        - min_players_per_team
+        - max_players_per_team
+        - number_of_teams
+        - enabled
+
+    GameInput:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Name of the game
+        description:
+          type: string
+          description: Description of the game
+        min_players_per_team:
+          type: integer
+          minimum: 1
+          description: Minimum number of players per team
+        max_players_per_team:
+          type: integer
+          minimum: 1
+          description: Maximum number of players per team
+        number_of_teams:
+          type: integer
+          minimum: 1
+          description: Number of teams in the game
+        max_duration:
+          type: string
+          format: duration
+          description: Maximum duration of a match
+        allow_spectators:
+          type: boolean
+          description: Whether spectators are allowed
+        skill_based_matching:
+          type: boolean
+          description: Whether skill-based matchmaking is enabled
+        allowed_regions:
+          type: array
+          items:
+            type: string
+          description: List of allowed regions for matchmaking
+        game_modes:
+          type: array
+          items:
+            type: string
+          description: Available game modes
+        map_pool:
+          type: array
+          items:
+            type: string
+          description: Available maps
+        custom_rules:
+          type: object
+          additionalProperties:
+            type: string
+          description: Custom rules for the game
+        enabled:
+          type: boolean
+          description: Whether the game is enabled for matchmaking
+      required:
+        - name
+        - min_players_per_team
+        - max_players_per_team
+        - number_of_teams
+
+    GameMode:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier for the game mode
+        game_id:
+          type: string
+          format: uuid
+          description: ID of the game this mode belongs to
+        name:
+          type: string
+          description: Name of the game mode
+        description:
+          type: string
+          description: Description of the game mode
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp
+      required:
+        - id
+        - game_id
+        - name
+
+    GameModeInput:
+      type: object
+      properties:
+        game_id:
+          type: string
+          format: uuid
+          description: ID of the game this mode belongs to
+        name:
+          type: string
+          description: Name of the game mode
+        description:
+          type: string
+          description: Description of the game mode
+      required:
+        - game_id
+        - name
+
+    Region:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier for the region
+        name:
+          type: string
+          description: Unique name for the region
+        slug:
+          type: string
+          description: Slug for the region (e.g., "eu-west-1")
+        description:
+          type: string
+          description: Description of the region
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp
+      required:
+        - id
+        - name
+        - slug
+
+    RegionInput:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Unique name for the region
+        slug:
+          type: string
+          description: Slug for the region (e.g., "eu-west-1")
+        description:
+          type: string
+          description: Description of the region
+      required:
+        - name
+        - slug
+
+    Invitation:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier for the invitation
+        type:
+          type: integer
+          enum: [0, 1]
+          description: Invitation type (0 = match, 1 = event)
+        user_id:
+          type: string
+          format: uuid
+          description: ID of the user being invited
+        match_id:
+          type: string
+          format: uuid
+          description: Match ID (if type is match)
+        event_id:
+          type: string
+          format: uuid
+          description: Event ID (if type is event)
+        message:
+          type: string
+          description: Invitation message
+        expiration_date:
+          type: string
+          format: date-time
+          description: When the invitation expires (optional)
+        status:
+          type: integer
+          enum: [0, 1, 2, 3, 4]
+          description: Invitation status (0 = pending, 1 = accepted, 2 = declined, 3 = expired, 4 = revoked)
+        created_by:
+          type: string
+          format: uuid
+          description: ID of the administrator who created the invitation
+        accepted_at:
+          type: string
+          format: date-time
+          description: When the invitation was accepted (if accepted)
+        declined_at:
+          type: string
+          format: date-time
+          description: When the invitation was declined (if declined)
+        revoked_at:
+          type: string
+          format: date-time
+          description: When the invitation was revoked (if revoked)
+        revoked_by:
+          type: string
+          format: uuid
+          description: ID of the administrator who revoked the invitation (if revoked)
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp
+      required:
+        - id
+        - type
+        - user_id
+        - message
+        - status
+        - created_by
+
+    InvitationInput:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [match, event]
+          description: Invitation type
+        user_id:
+          type: string
+          format: uuid
+          description: ID of the user being invited
+        match_id:
+          type: string
+          format: uuid
+          description: Match ID (required if type is "match")
+        event_id:
+          type: string
+          format: uuid
+          description: Event ID (required if type is "event")
+        message:
+          type: string
+          description: Invitation message
+        expiration_date:
+          type: string
+          format: date-time
+          description: When the invitation expires (optional, must be in the future)
+      required:
+        - type
+        - user_id
+        - message
+
+    InvitationUpdateInput:
+      type: object
+      properties:
+        message:
+          type: string
+          description: Updated invitation message
+        expiration_date:
+          type: string
+          format: date-time
+          description: Updated expiration date (must be in the future)
+      required: []
+
+    ExternalInvitation:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier for the external invitation
+        type:
+          type: integer
+          enum: [0, 1]
+          description: Invitation type (0 = match, 1 = event)
+        full_name:
+          type: string
+          description: Full name of the external user
+        email:
+          type: string
+          format: email
+          description: Email address of the external user
+        message:
+          type: string
+          description: Invitation message
+        expiration_date:
+          type: string
+          format: date-time
+          description: When the invitation expires (optional)
+        status:
+          type: integer
+          enum: [0, 1, 2, 3]
+          description: Invitation status (0 = pending, 1 = accepted, 2 = expired, 3 = revoked)
+        registration_token:
+          type: string
+          description: Unique token for registration link
+        match_id:
+          type: string
+          format: uuid
+          description: Match ID (if type is match)
+        event_id:
+          type: string
+          format: uuid
+          description: Event ID (if type is event)
+        created_by:
+          type: string
+          format: uuid
+          description: ID of the administrator who created the invitation
+        accepted_at:
+          type: string
+          format: date-time
+          description: When the invitation was accepted (if accepted)
+        revoked_at:
+          type: string
+          format: date-time
+          description: When the invitation was revoked (if revoked)
+        revoked_by:
+          type: string
+          format: uuid
+          description: ID of the administrator who revoked the invitation (if revoked)
+        registered_user_id:
+          type: string
+          format: uuid
+          description: User ID after registration (if accepted)
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp
+      required:
+        - id
+        - type
+        - full_name
+        - email
+        - message
+        - status
+        - registration_token
+        - created_by
+
+    ExternalInvitationInput:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [match, event]
+          description: Invitation type
+        full_name:
+          type: string
+          description: Full name of the external user
+        email:
+          type: string
+          format: email
+          description: Email address of the external user
+        message:
+          type: string
+          description: Invitation message
+        expiration_date:
+          type: string
+          format: date-time
+          description: When the invitation expires (optional, must be in the future)
+        match_id:
+          type: string
+          format: uuid
+          description: Match ID (required if type is "match")
+        event_id:
+          type: string
+          format: uuid
+          description: Event ID (required if type is "event")
+      required:
+        - type
+        - full_name
+        - email
+        - message
+
+    Notification:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier for the notification
+        user_id:
+          type: string
+          format: uuid
+          description: User who receives the notification
+        channel:
+          type: integer
+          enum: [0, 1, 2]
+          description: Channel used (0 = in_app, 1 = email, 2 = sms)
+        type:
+          type: integer
+          enum: [0, 1, 2, 3, 4, 5]
+          description: Notification type (0 = match_invitation, 1 = match_acceptance, 2 = event_reminder, 3 = event_cancellation, 4 = system_announcement, 5 = custom)
+        title:
+          type: string
+          description: Notification title
+        message:
+          type: string
+          description: Notification message body
+        metadata:
+          type: object
+          additionalProperties: true
+          description: Additional metadata (match ID, event details, timestamps, etc.)
+        status:
+          type: integer
+          enum: [0, 1, 2, 3]
+          description: Notification status (0 = pending, 1 = sent, 2 = failed, 3 = retrying)
+        template_id:
+          type: string
+          format: uuid
+          description: Template used (if any)
+        language:
+          type: string
+          description: Language/locale for localization
+        sent_at:
+          type: string
+          format: date-time
+          description: When the notification was sent
+        failed_at:
+          type: string
+          format: date-time
+          description: When the notification failed (if failed)
+        failure_reason:
+          type: string
+          description: Reason for failure
+        retry_count:
+          type: integer
+          description: Number of retry attempts
+        max_retries:
+          type: integer
+          description: Maximum retry attempts
+        next_retry_at:
+          type: string
+          format: date-time
+          description: When to retry next
+        read_at:
+          type: string
+          format: date-time
+          description: When user read the notification (for in-app)
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp
+      required:
+        - id
+        - user_id
+        - channel
+        - type
+        - title
+        - message
+        - status
+        - language
+        - retry_count
+        - max_retries
+
+    NotificationInput:
+      type: object
+      properties:
+        user_id:
+          type: string
+          format: uuid
+          description: User who receives the notification
+        channel:
+          type: string
+          enum: [in_app, email, sms]
+          description: Channel to use
+        type:
+          type: string
+          enum:
+            [
+              match_invitation,
+              match_acceptance,
+              event_reminder,
+              event_cancellation,
+              system_announcement,
+              custom,
+            ]
+          description: Notification type
+        title:
+          type: string
+          description: Notification title
+        message:
+          type: string
+          description: Notification message body
+        metadata:
+          type: object
+          additionalProperties: true
+          description: Additional metadata
+        template_id:
+          type: string
+          format: uuid
+          description: Template ID to use (optional)
+        language:
+          type: string
+          description: Language/locale (optional, defaults to user preference)
+        max_retries:
+          type: integer
+          minimum: 0
+          default: 3
+          description: Maximum retry attempts
+      required:
+        - user_id
+        - channel
+        - type
+        - title
+        - message
+
+    BatchNotificationInput:
+      type: object
+      properties:
+        user_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: List of user IDs to send notifications to
+        channel:
+          type: string
+          enum: [in_app, email, sms]
+          description: Channel to use
+        type:
+          type: string
+          enum:
+            [
+              match_invitation,
+              match_acceptance,
+              event_reminder,
+              event_cancellation,
+              system_announcement,
+              custom,
+            ]
+          description: Notification type
+        title:
+          type: string
+          description: Notification title
+        message:
+          type: string
+          description: Notification message body
+        metadata:
+          type: object
+          additionalProperties: true
+          description: Additional metadata
+        template_id:
+          type: string
+          format: uuid
+          description: Template ID to use (optional)
+        language:
+          type: string
+          description: Language/locale (optional)
+        max_retries:
+          type: integer
+          minimum: 0
+          default: 3
+          description: Maximum retry attempts
+      required:
+        - user_ids
+        - channel
+        - type
+        - title
+        - message
+
+    UserNotificationsResult:
+      type: object
+      properties:
+        notifications:
+          type: array
+          items:
+            $ref: "#/components/schemas/Notification"
+        total:
+          type: integer
+          description: Total number of notifications for the user
+        limit:
+          type: integer
+          description: Limit used in the query
+        offset:
+          type: integer
+          description: Offset used in the query
+      required:
+        - notifications
+        - total
+        - limit
+        - offset
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error code
+        message:
+          type: string
+          description: Error message
+      required:
+        - error
+
+security:
+  - ApiKeyAuth: []

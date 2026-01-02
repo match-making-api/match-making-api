@@ -1,7 +1,0 @@
-package lobbies_entities
-
-import "github.com/google/uuid"
-
-type Match struct {
-	ID uuid.UUID
-}

@@ -1,14 +1,16 @@
-
-
-
-
-
-
-
-        Schedules --> Parties
-        
-        Pairing ---> Lobbies
-
+Tenacity Scheme:
+```mermaid
+graph TD
+    Tenant[Tenant]
+    Client[Client]
+    Group[Group]
+    User[User]
+    
+    Tenant --> Client
+    Tenant --> Group
+    Client --> User
+    Group --> User
+```
 
 ## Domain-Driven Design for a Team-vs-Team Matchmaking System
 
@@ -69,5 +71,16 @@
    √ The times when a player or team is available to play.
 * **Constraint:**
    √ A limitation or restriction on a player's or team's availability or preferences.
-
-By clearly defining these bounded contexts and domain entities, we can build a robust and scalable matchmaking system that meets the needs of players and teams.
+* **Invitation:**
+   √ A manual invitation for a user to join a match or event.
+   √ Supports status tracking (Pending, Accepted, Declined, Expired, Revoked).
+* **ExternalInvitation:**
+   √ A manual invitation for an external user (not yet on the platform) to join a match or event.
+   √ Includes email validation, registration token generation, and automatic platform membership upon acceptance.
+* **Notification:**
+   √ A notification sent to users via multiple channels (in-app, email, SMS).
+   √ Supports status tracking (Pending, Sent, Failed, Retrying), retry policies, and user preferences.
+* **NotificationTemplate:**
+   √ A reusable template for notifications with support for variables and multiple languages.
+* **UserNotificationPreferences:**
+   √ User preferences for notifications including enabled/disabled channels, do not disturb times, and type preferences.
