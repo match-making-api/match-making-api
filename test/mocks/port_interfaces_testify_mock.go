@@ -507,4 +507,3 @@ func (m *MockPortUserNotificationPreferencesReader) GetByUserID(ctx context.Cont
 	}
 	return args.Get(0).(*pairing_entities.UserNotificationPreferences), args.Error(1)
 }
-}
