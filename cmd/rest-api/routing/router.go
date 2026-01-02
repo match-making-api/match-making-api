@@ -32,7 +32,9 @@ func NewRouter(ctx context.Context, container container.Container) http.Handler 
 
 	// middleware
 	resourceContextMiddleware := middlewares.NewResourceContextMiddleware(&container)
+	corsMiddleware := middlewares.NewCORSMiddleware()
 
+	r.Use(corsMiddleware.Handler)
 	r.Use(mux.CORSMethodMiddleware(r))
 	r.Use(resourceContextMiddleware.Handler)
 
