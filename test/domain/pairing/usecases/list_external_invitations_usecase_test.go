@@ -72,7 +72,7 @@ func TestListExternalInvitationsUseCase_Execute(t *testing.T) {
 						Status:     pairing_entities.ExternalInvitationStatusPending,
 					},
 				}
-				reader.On("FindByMatchID", mock.Anything, matchID).Return(invitations, nil)
+				reader.On("FindByMatchID", mock.Anything, mock.AnythingOfType("uuid.UUID")).Return(invitations, nil)
 			},
 			validate: func(t *testing.T, invs []*pairing_entities.ExternalInvitation) {
 				assert.Len(t, invs, 1)

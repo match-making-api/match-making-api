@@ -66,6 +66,9 @@ func TestGetGameModesUseCase_Execute(t *testing.T) {
 			useCase := usecases.NewGetGameModesUseCase(mockReader)
 
 			ctx := context.Background()
+			ctx = context.WithValue(ctx, common.TenantIDKey, google_uuid.New())
+			ctx = context.WithValue(ctx, common.ClientIDKey, google_uuid.New())
+			ctx = context.WithValue(ctx, common.UserIDKey, google_uuid.New())
 			result, err := useCase.Execute(ctx, tt.gameID)
 
 			assert.NoError(t, err)

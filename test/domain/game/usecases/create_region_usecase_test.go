@@ -32,9 +32,11 @@ func TestCreateRegionUseCase_Execute(t *testing.T) {
 			},
 			setupMocks: func(writer *mocks.MockPortRegionWriter, reader *mocks.MockPortRegionReader) {
 				reader.On("Search", mock.Anything, mock.Anything).Return([]*game_entities.Region{}, nil)
-				writer.On("Create", mock.Anything, mock.AnythingOfType("*entities.Region")).Return(func(ctx context.Context, region *game_entities.Region) *game_entities.Region {
-					region.ID = uuid.New()
-					return region
+				writer.On("Create", mock.Anything, mock.AnythingOfType("*entities.Region")).Return(&game_entities.Region{
+					BaseEntity:  common.BaseEntity{ID: uuid.New()},
+					Name:        "Test Region",
+					Slug:        "test-region",
+					Description: "Test Description",
 				}, nil)
 			},
 			validate: func(t *testing.T, region *game_entities.Region) {
