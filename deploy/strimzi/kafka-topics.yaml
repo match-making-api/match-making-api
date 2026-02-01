@@ -1,0 +1,57 @@
+# Matchmaking topics for Leet Matchmaking 2026
+# Story 2501-001: Kafka Infrastructure Setup
+#
+# Topics are created by the Entity Operator (Topic Operator) when the Kafka cluster is ready.
+# Apply after kafka.yaml: kubectl apply -f kafka-topics.yaml
+#
+# Epic retention: commands 7d, events 30d, matches 90d
+# Partition count: 12+ per epic §10 "Topic Design for Scalability"
+# Replication factor: 3 for all topics
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: matchmaking.commands
+  namespace: matchmaking
+  labels:
+    strimzi.io/cluster: matchmaking-cluster
+    app.kubernetes.io/part-of: leet-matchmaking-2026
+spec:
+  partitions: 12
+  replicas: 3
+  config:
+    retention.ms: 604800000
+    segment.ms: 86400000
+    cleanup.policy: delete
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: matchmaking.events
+  namespace: matchmaking
+  labels:
+    strimzi.io/cluster: matchmaking-cluster
+    app.kubernetes.io/part-of: leet-matchmaking-2026
+spec:
+  partitions: 12
+  replicas: 3
+  config:
+    retention.ms: 2592000000
+    segment.ms: 86400000
+    cleanup.policy: delete
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: matchmaking.matches
+  namespace: matchmaking
+  labels:
+    strimzi.io/cluster: matchmaking-cluster
+    app.kubernetes.io/part-of: leet-matchmaking-2026
+spec:
+  partitions: 12
+  replicas: 3
+  config:
+    retention.ms: 7776000000
+    segment.ms: 86400000
+    cleanup.policy: delete

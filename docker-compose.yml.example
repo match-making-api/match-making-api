@@ -59,6 +59,24 @@ services:
     networks:
       - svc
 
+  # Create matchmaking topics on first run (Story 2501-001)
+  topic-init:
+    image: confluentinc/cp-kafka:latest
+    container_name: matchmaking-topic-init
+    depends_on:
+      - kafka
+    command: >
+      sh -c "
+        sleep 10 &&
+        kafka-topics --bootstrap-server kafka:9092 --create --topic matchmaking.commands --partitions 12 --replication-factor 1 --config retention.ms=604800000 --if-not-exists &&
+        kafka-topics --bootstrap-server kafka:9092 --create --topic matchmaking.events --partitions 12 --replication-factor 1 --config retention.ms=2592000000 --if-not-exists &&
+        kafka-topics --bootstrap-server kafka:9092 --create --topic matchmaking.matches --partitions 12 --replication-factor 1 --config retention.ms=7776000000 --if-not-exists &&
+        echo 'Matchmaking topics created'
+      "
+    networks:
+      - svc
+    restart: "no"
+
 networks:
   svc:
     driver: bridge
