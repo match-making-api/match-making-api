@@ -178,7 +178,6 @@ func TestSendNotificationUseCase_Execute(t *testing.T) {
 					"en",
 				)
 				prefsReader.On("GetByUserID", mock.Anything, mock.Anything).Return(prefs, nil)
-				sender.On("GetChannel").Return(pairing_entities.NotificationChannelEmail)
 				sender.On("IsAvailable", mock.Anything).Return(false)
 			},
 			expectedError: "sender for channel 1 is not available",
@@ -234,7 +233,6 @@ func TestSendNotificationUseCase_Execute(t *testing.T) {
 			},
 			setupMocks: func(writer *mocks.MockPortNotificationWriter, reader *mocks.MockPortNotificationReader, prefsReader *mocks.MockPortUserNotificationPreferencesReader, sender *mocks.MockNotificationSender) {
 				prefsReader.On("GetByUserID", mock.Anything, mock.Anything).Return(nil, errors.New("not found"))
-				sender.On("GetChannel").Return(pairing_entities.NotificationChannelInApp)
 				sender.On("IsAvailable", mock.Anything).Return(true)
 				sender.On("Send", mock.Anything, mock.Anything).Return(nil)
 				writer.On("Save", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {

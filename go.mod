@@ -1,8 +1,6 @@
 module github.com/leet-gaming/match-making-api
 
-go 1.23.0
-
-toolchain go1.23.3
+go 1.25.4
 
 require (
 	github.com/gofrs/uuid v4.4.0+incompatible
@@ -10,8 +8,9 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1
 	github.com/joho/godotenv v1.5.1
+	github.com/replay-api/replay-common v0.0.0-20260105132037-5c54623d9838
 	github.com/segmentio/kafka-go v0.4.49
-	github.com/stretchr/testify v1.10.0
+	github.com/stretchr/testify v1.11.1
 	github.com/swaggo/http-swagger v1.3.4
 	go.mongodb.org/mongo-driver v1.17.3
 	go.uber.org/mock v0.5.2
@@ -33,6 +32,7 @@ require (
 	github.com/montanaflynn/stats v0.7.1 // indirect
 	github.com/pierrec/lz4/v4 v4.1.15 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/resource-ownership/go-common v0.0.0-20260105131913-f0c9a53e9a6d // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/swaggo/files v1.0.1 // indirect

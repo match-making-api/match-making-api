@@ -53,9 +53,14 @@ func TestCreateManualInvitationUseCase_Execute(t *testing.T) {
 					ConflictStatus: pairing_entities.ConflictStatusNone,
 				}
 				pairReader.On("GetByID", mock.Anything, mock.AnythingOfType("uuid.UUID")).Return(pair, nil)
-				writer.On("Save", mock.Anything, mock.AnythingOfType("*entities.Invitation")).Return(func(ctx context.Context, inv *pairing_entities.Invitation) *pairing_entities.Invitation {
-					inv.ID = uuid.New()
-					return inv
+				writer.On("Save", mock.Anything, mock.AnythingOfType("*entities.Invitation")).Return(&pairing_entities.Invitation{
+					BaseEntity: common.BaseEntity{ID: uuid.New()},
+					Type:       pairing_entities.InvitationTypeMatch,
+					UserID:     uuid.New(),
+					MatchID:    &matchID,
+					Message:    "You are invited to join a match",
+					Status:     pairing_entities.InvitationStatusPending,
+					CreatedBy:  uuid.New(),
 				}, nil)
 				notifier.On("NotifyInvitationCreated", mock.Anything, mock.AnythingOfType("uuid.UUID"), mock.AnythingOfType("uuid.UUID"), mock.AnythingOfType("string")).Return(nil)
 			},
@@ -193,6 +198,12 @@ func TestCreateManualInvitationUseCase_Execute(t *testing.T) {
 			},
 			setupMocks: func(writer *mocks.MockPortInvitationWriter, peerReader *mocks.MockPortPeerReader, pairReader *mocks.MockPortPairReader, notifier *mocks.MockInvitationNotifier) {
 				peerReader.On("GetByID", mock.AnythingOfType("uuid.UUID")).Return(&parties_entities.Peer{ID: uuid.New()}, nil)
+				matchID := uuid.New()
+				pair := &pairing_entities.Pair{
+					BaseEntity:     common.BaseEntity{ID: matchID},
+					ConflictStatus: pairing_entities.ConflictStatusNone,
+				}
+				pairReader.On("GetByID", mock.Anything, mock.AnythingOfType("uuid.UUID")).Return(pair, nil)
 			},
 			expectedError: "expiration date must be in the future",
 		},
