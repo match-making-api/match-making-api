@@ -108,6 +108,13 @@ install-tools: ## Install required Go tools (if not already installed)
 	@if ! hash $(GO_LICENSES) 2>/dev/null; then \
 		$(GO) install github.com/google/go-licenses@latest; \
 	fi
+	@$(GO) install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+
+.PHONY: proto-gen
+proto-gen: ## Generate Go code from event schemas (Protobuf)
+	@echo "Generating Go code from matchmaking event schemas..."
+	@protoc -I . --go_out=. --go_opt=module=github.com/leet-gaming/match-making-api pkg/infra/events/schemas/matchmaking_events.proto
+	@echo "Event schemas generated successfully!"
 
 # --- Additional Targets (Customize as needed) ---
 
