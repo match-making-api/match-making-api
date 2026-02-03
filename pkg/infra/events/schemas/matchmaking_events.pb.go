@@ -22,20 +22,22 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// EventEnvelope is the common wrapper for all matchmaking events.
+// EventEnvelope follows CloudEvents 1.0 spec (https://github.com/cloudevents/spec/blob/v1.0.2/cloudevents/spec.md).
 // Ensures replay-api and match-making-api agree on payload structure.
 type EventEnvelope struct {
-	state           protoimpl.MessageState `protogen:"open.v1"`
-	EventId         string                 `protobuf:"bytes,1,opt,name=event_id,json=eventId,proto3" json:"event_id,omitempty"`
-	EventType       string                 `protobuf:"bytes,2,opt,name=event_type,json=eventType,proto3" json:"event_type,omitempty"`
-	AggregateId     string                 `protobuf:"bytes,3,opt,name=aggregate_id,json=aggregateId,proto3" json:"aggregate_id,omitempty"`
-	Timestamp       *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
-	Version         int32                  `protobuf:"varint,5,opt,name=version,proto3" json:"version,omitempty"`                                         // Schema version for evolution; consumers can handle multiple versions.
-	Source          string                 `protobuf:"bytes,6,opt,name=source,proto3" json:"source,omitempty"`                                            // Service that produced the event (e.g. "replay-api", "match-making-api").
-	ResourceOwnerId string                 `protobuf:"bytes,7,opt,name=resource_owner_id,json=resourceOwnerId,proto3" json:"resource_owner_id,omitempty"` // RID or owner identifier for multi-tenancy/authorization.
-	CorrelationId   string                 `protobuf:"bytes,8,opt,name=correlation_id,json=correlationId,proto3" json:"correlation_id,omitempty"`         // Optional: for distributed tracing.
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	Id          string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`                   // CloudEvents: id (required) - uniquely identifies the event
+	Type        string                 `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`               // CloudEvents: type (required) - e.g. "PlayerQueued", "MatchCompleted"
+	Source      string                 `protobuf:"bytes,3,opt,name=source,proto3" json:"source,omitempty"`           // CloudEvents: source (required) - e.g. "replay-api", "match-making-api"
+	Specversion string                 `protobuf:"bytes,4,opt,name=specversion,proto3" json:"specversion,omitempty"` // CloudEvents: specversion (required) - e.g. "1.0"
+	Time        *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=time,proto3" json:"time,omitempty"`               // CloudEvents: time (optional) - when the event occurred
+	Subject     string                 `protobuf:"bytes,6,opt,name=subject,proto3" json:"subject,omitempty"`         // CloudEvents: subject (optional) - e.g. player_id, match_id
+	// Extension attributes
+	ResourceOwnerId   string `protobuf:"bytes,7,opt,name=resource_owner_id,json=resourceOwnerId,proto3" json:"resource_owner_id,omitempty"`      // RID or owner identifier for multi-tenancy/authorization
+	CorrelationId     string `protobuf:"bytes,8,opt,name=correlation_id,json=correlationId,proto3" json:"correlation_id,omitempty"`              // For distributed tracing
+	DataschemaVersion int32  `protobuf:"varint,9,opt,name=dataschema_version,json=dataschemaVersion,proto3" json:"dataschema_version,omitempty"` // Payload schema version for evolution; consumers can handle multiple versions
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *EventEnvelope) Reset() {
@@ -68,44 +70,44 @@ func (*EventEnvelope) Descriptor() ([]byte, []int) {
 	return file_pkg_infra_events_schemas_matchmaking_events_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *EventEnvelope) GetEventId() string {
+func (x *EventEnvelope) GetId() string {
 	if x != nil {
-		return x.EventId
+		return x.Id
 	}
 	return ""
 }
 
-func (x *EventEnvelope) GetEventType() string {
+func (x *EventEnvelope) GetType() string {
 	if x != nil {
-		return x.EventType
+		return x.Type
 	}
 	return ""
-}
-
-func (x *EventEnvelope) GetAggregateId() string {
-	if x != nil {
-		return x.AggregateId
-	}
-	return ""
-}
-
-func (x *EventEnvelope) GetTimestamp() *timestamppb.Timestamp {
-	if x != nil {
-		return x.Timestamp
-	}
-	return nil
-}
-
-func (x *EventEnvelope) GetVersion() int32 {
-	if x != nil {
-		return x.Version
-	}
-	return 0
 }
 
 func (x *EventEnvelope) GetSource() string {
 	if x != nil {
 		return x.Source
+	}
+	return ""
+}
+
+func (x *EventEnvelope) GetSpecversion() string {
+	if x != nil {
+		return x.Specversion
+	}
+	return ""
+}
+
+func (x *EventEnvelope) GetTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.Time
+	}
+	return nil
+}
+
+func (x *EventEnvelope) GetSubject() string {
+	if x != nil {
+		return x.Subject
 	}
 	return ""
 }
@@ -124,17 +126,24 @@ func (x *EventEnvelope) GetCorrelationId() string {
 	return ""
 }
 
-// MatchmakingEvent is the top-level message for Kafka. Combines envelope + typed payload.
+func (x *EventEnvelope) GetDataschemaVersion() int32 {
+	if x != nil {
+		return x.DataschemaVersion
+	}
+	return 0
+}
+
+// MatchmakingEvent is the top-level message for Kafka. Combines envelope + typed data (CloudEvents: data).
 type MatchmakingEvent struct {
 	state    protoimpl.MessageState `protogen:"open.v1"`
 	Envelope *EventEnvelope         `protobuf:"bytes,1,opt,name=envelope,proto3" json:"envelope,omitempty"`
-	// Types that are valid to be assigned to Payload:
+	// Types that are valid to be assigned to Data:
 	//
 	//	*MatchmakingEvent_PlayerQueued
 	//	*MatchmakingEvent_MatchCreated
 	//	*MatchmakingEvent_MatchCompleted
 	//	*MatchmakingEvent_RatingsUpdated
-	Payload       isMatchmakingEvent_Payload `protobuf_oneof:"payload"`
+	Data          isMatchmakingEvent_Data `protobuf_oneof:"data"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -176,16 +185,16 @@ func (x *MatchmakingEvent) GetEnvelope() *EventEnvelope {
 	return nil
 }
 
-func (x *MatchmakingEvent) GetPayload() isMatchmakingEvent_Payload {
+func (x *MatchmakingEvent) GetData() isMatchmakingEvent_Data {
 	if x != nil {
-		return x.Payload
+		return x.Data
 	}
 	return nil
 }
 
 func (x *MatchmakingEvent) GetPlayerQueued() *PlayerQueuedPayload {
 	if x != nil {
-		if x, ok := x.Payload.(*MatchmakingEvent_PlayerQueued); ok {
+		if x, ok := x.Data.(*MatchmakingEvent_PlayerQueued); ok {
 			return x.PlayerQueued
 		}
 	}
@@ -194,7 +203,7 @@ func (x *MatchmakingEvent) GetPlayerQueued() *PlayerQueuedPayload {
 
 func (x *MatchmakingEvent) GetMatchCreated() *MatchCreatedPayload {
 	if x != nil {
-		if x, ok := x.Payload.(*MatchmakingEvent_MatchCreated); ok {
+		if x, ok := x.Data.(*MatchmakingEvent_MatchCreated); ok {
 			return x.MatchCreated
 		}
 	}
@@ -203,7 +212,7 @@ func (x *MatchmakingEvent) GetMatchCreated() *MatchCreatedPayload {
 
 func (x *MatchmakingEvent) GetMatchCompleted() *MatchCompletedPayload {
 	if x != nil {
-		if x, ok := x.Payload.(*MatchmakingEvent_MatchCompleted); ok {
+		if x, ok := x.Data.(*MatchmakingEvent_MatchCompleted); ok {
 			return x.MatchCompleted
 		}
 	}
@@ -212,15 +221,15 @@ func (x *MatchmakingEvent) GetMatchCompleted() *MatchCompletedPayload {
 
 func (x *MatchmakingEvent) GetRatingsUpdated() *RatingsUpdatedPayload {
 	if x != nil {
-		if x, ok := x.Payload.(*MatchmakingEvent_RatingsUpdated); ok {
+		if x, ok := x.Data.(*MatchmakingEvent_RatingsUpdated); ok {
 			return x.RatingsUpdated
 		}
 	}
 	return nil
 }
 
-type isMatchmakingEvent_Payload interface {
-	isMatchmakingEvent_Payload()
+type isMatchmakingEvent_Data interface {
+	isMatchmakingEvent_Data()
 }
 
 type MatchmakingEvent_PlayerQueued struct {
@@ -239,13 +248,13 @@ type MatchmakingEvent_RatingsUpdated struct {
 	RatingsUpdated *RatingsUpdatedPayload `protobuf:"bytes,13,opt,name=ratings_updated,json=ratingsUpdated,proto3,oneof"`
 }
 
-func (*MatchmakingEvent_PlayerQueued) isMatchmakingEvent_Payload() {}
+func (*MatchmakingEvent_PlayerQueued) isMatchmakingEvent_Data() {}
 
-func (*MatchmakingEvent_MatchCreated) isMatchmakingEvent_Payload() {}
+func (*MatchmakingEvent_MatchCreated) isMatchmakingEvent_Data() {}
 
-func (*MatchmakingEvent_MatchCompleted) isMatchmakingEvent_Payload() {}
+func (*MatchmakingEvent_MatchCompleted) isMatchmakingEvent_Data() {}
 
-func (*MatchmakingEvent_RatingsUpdated) isMatchmakingEvent_Payload() {}
+func (*MatchmakingEvent_RatingsUpdated) isMatchmakingEvent_Data() {}
 
 type PlayerQueuedPayload struct {
 	state               protoimpl.MessageState `protogen:"open.v1"`
@@ -843,25 +852,25 @@ var File_pkg_infra_events_schemas_matchmaking_events_proto protoreflect.FileDesc
 
 const file_pkg_infra_events_schemas_matchmaking_events_proto_rawDesc = "" +
 	"\n" +
-	"1pkg/infra/events/schemas/matchmaking_events.proto\x12\x15matchmaking.events.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xab\x02\n" +
-	"\rEventEnvelope\x12\x19\n" +
-	"\bevent_id\x18\x01 \x01(\tR\aeventId\x12\x1d\n" +
-	"\n" +
-	"event_type\x18\x02 \x01(\tR\teventType\x12!\n" +
-	"\faggregate_id\x18\x03 \x01(\tR\vaggregateId\x128\n" +
-	"\ttimestamp\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\ttimestamp\x12\x18\n" +
-	"\aversion\x18\x05 \x01(\x05R\aversion\x12\x16\n" +
-	"\x06source\x18\x06 \x01(\tR\x06source\x12*\n" +
+	"1pkg/infra/events/schemas/matchmaking_events.proto\x12\x15matchmaking.events.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xb9\x02\n" +
+	"\rEventEnvelope\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04type\x18\x02 \x01(\tR\x04type\x12\x16\n" +
+	"\x06source\x18\x03 \x01(\tR\x06source\x12 \n" +
+	"\vspecversion\x18\x04 \x01(\tR\vspecversion\x12.\n" +
+	"\x04time\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\x04time\x12\x18\n" +
+	"\asubject\x18\x06 \x01(\tR\asubject\x12*\n" +
 	"\x11resource_owner_id\x18\a \x01(\tR\x0fresourceOwnerId\x12%\n" +
-	"\x0ecorrelation_id\x18\b \x01(\tR\rcorrelationId\"\xb7\x03\n" +
+	"\x0ecorrelation_id\x18\b \x01(\tR\rcorrelationId\x12-\n" +
+	"\x12dataschema_version\x18\t \x01(\x05R\x11dataschemaVersion\"\xb4\x03\n" +
 	"\x10MatchmakingEvent\x12@\n" +
 	"\benvelope\x18\x01 \x01(\v2$.matchmaking.events.v1.EventEnvelopeR\benvelope\x12Q\n" +
 	"\rplayer_queued\x18\n" +
 	" \x01(\v2*.matchmaking.events.v1.PlayerQueuedPayloadH\x00R\fplayerQueued\x12Q\n" +
 	"\rmatch_created\x18\v \x01(\v2*.matchmaking.events.v1.MatchCreatedPayloadH\x00R\fmatchCreated\x12W\n" +
 	"\x0fmatch_completed\x18\f \x01(\v2,.matchmaking.events.v1.MatchCompletedPayloadH\x00R\x0ematchCompleted\x12W\n" +
-	"\x0fratings_updated\x18\r \x01(\v2,.matchmaking.events.v1.RatingsUpdatedPayloadH\x00R\x0eratingsUpdatedB\t\n" +
-	"\apayload\"\xe8\x02\n" +
+	"\x0fratings_updated\x18\r \x01(\v2,.matchmaking.events.v1.RatingsUpdatedPayloadH\x00R\x0eratingsUpdatedB\x06\n" +
+	"\x04data\"\xe8\x02\n" +
 	"\x13PlayerQueuedPayload\x12\x1b\n" +
 	"\tplayer_id\x18\x01 \x01(\tR\bplayerId\x12\x17\n" +
 	"\agame_id\x18\x02 \x01(\tR\x06gameId\x12\x16\n" +
@@ -944,7 +953,7 @@ var file_pkg_infra_events_schemas_matchmaking_events_proto_goTypes = []any{
 	(*timestamppb.Timestamp)(nil), // 10: google.protobuf.Timestamp
 }
 var file_pkg_infra_events_schemas_matchmaking_events_proto_depIdxs = []int32{
-	10, // 0: matchmaking.events.v1.EventEnvelope.timestamp:type_name -> google.protobuf.Timestamp
+	10, // 0: matchmaking.events.v1.EventEnvelope.time:type_name -> google.protobuf.Timestamp
 	0,  // 1: matchmaking.events.v1.MatchmakingEvent.envelope:type_name -> matchmaking.events.v1.EventEnvelope
 	2,  // 2: matchmaking.events.v1.MatchmakingEvent.player_queued:type_name -> matchmaking.events.v1.PlayerQueuedPayload
 	4,  // 3: matchmaking.events.v1.MatchmakingEvent.match_created:type_name -> matchmaking.events.v1.MatchCreatedPayload
