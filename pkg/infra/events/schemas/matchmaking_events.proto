@@ -6,23 +6,25 @@ import "google/protobuf/timestamp.proto";
 
 option go_package = "github.com/leet-gaming/match-making-api/pkg/infra/events/schemas;schemas";
 
-// EventEnvelope is the common wrapper for all matchmaking events.
+// EventEnvelope follows CloudEvents 1.0 spec (https://github.com/cloudevents/spec/blob/v1.0.2/cloudevents/spec.md).
 // Ensures replay-api and match-making-api agree on payload structure.
 message EventEnvelope {
-  string event_id = 1;
-  string event_type = 2;
-  string aggregate_id = 3;
-  google.protobuf.Timestamp timestamp = 4;
-  int32 version = 5;  // Schema version for evolution; consumers can handle multiple versions.
-  string source = 6;  // Service that produced the event (e.g. "replay-api", "match-making-api").
-  string resource_owner_id = 7;  // RID or owner identifier for multi-tenancy/authorization.
-  string correlation_id = 8;  // Optional: for distributed tracing.
+  string id = 1;           // CloudEvents: id (required) - uniquely identifies the event
+  string type = 2;         // CloudEvents: type (required) - e.g. "PlayerQueued", "MatchCompleted"
+  string source = 3;        // CloudEvents: source (required) - e.g. "replay-api", "match-making-api"
+  string specversion = 4;   // CloudEvents: specversion (required) - e.g. "1.0"
+  google.protobuf.Timestamp time = 5;  // CloudEvents: time (optional) - when the event occurred
+  string subject = 6;      // CloudEvents: subject (optional) - e.g. player_id, match_id
+  // Extension attributes
+  string resource_owner_id = 7;  // RID or owner identifier for multi-tenancy/authorization
+  string correlation_id = 8;    // For distributed tracing
+  int32 dataschema_version = 9; // Payload schema version for evolution; consumers can handle multiple versions
 }
 
-// MatchmakingEvent is the top-level message for Kafka. Combines envelope + typed payload.
+// MatchmakingEvent is the top-level message for Kafka. Combines envelope + typed data (CloudEvents: data).
 message MatchmakingEvent {
   EventEnvelope envelope = 1;
-  oneof payload {
+  oneof data {
     PlayerQueuedPayload player_queued = 10;
     MatchCreatedPayload match_created = 11;
     MatchCompletedPayload match_completed = 12;
