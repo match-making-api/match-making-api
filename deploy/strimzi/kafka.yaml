@@ -1,0 +1,69 @@
+# Strimzi Kafka cluster for Leet Matchmaking 2026
+# Story 2501-001: Kafka Infrastructure Setup
+#
+# Prerequisites:
+#   - Strimzi Operator installed (https://strimzi.io/docs/operators/latest/full/deploying.html)
+#   - Apply namespace first: kubectl apply -f namespace.yaml
+#
+apiVersion: kafka.strimzi.io/v1beta2
+kind: Kafka
+metadata:
+  name: matchmaking-cluster
+  namespace: matchmaking
+  labels:
+    app.kubernetes.io/part-of: leet-matchmaking-2026
+spec:
+  kafka:
+    version: 3.6.0
+    replicas: 3
+    listeners:
+      - name: plain
+        port: 9092
+        type: internal
+        tls: false
+      - name: tls
+        port: 9093
+        type: internal
+        tls: true
+    config:
+      offsets.topic.replication.factor: 3
+      transaction.state.log.replication.factor: 3
+      transaction.state.log.min.isr: 2
+      default.replication.factor: 3
+      min.insync.replicas: 2
+      num.partitions: 12
+      log.retention.hours: 168
+      log.segment.bytes: 1073741824
+      log.retention.check.interval.ms: 300000
+    storage:
+      type: jbod
+      volumes:
+        - id: 0
+          type: persistent-claim
+          size: 100Gi
+          deleteClaim: false
+    resources:
+      requests:
+        memory: 1Gi
+        cpu: "500m"
+      limits:
+        memory: 2Gi
+        cpu: "2000m"
+  zookeeper:
+    replicas: 3
+    storage:
+      type: persistent-claim
+      size: 10Gi
+      deleteClaim: false
+    resources:
+      requests:
+        memory: 512Mi
+        cpu: "250m"
+      limits:
+        memory: 1Gi
+        cpu: "1000m"
+  entityOperator:
+    topicOperator:
+      reconciliationIntervalSeconds: 90
+    userOperator:
+      reconciliationIntervalSeconds: 120
