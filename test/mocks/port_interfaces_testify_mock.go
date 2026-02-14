@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 
+	"github.com/leet-gaming/match-making-api/pkg/common"
 	game_entities "github.com/leet-gaming/match-making-api/pkg/domain/game/entities"
 	"github.com/leet-gaming/match-making-api/pkg/domain/game/ports/out"
 	pairing_entities "github.com/leet-gaming/match-making-api/pkg/domain/pairing/entities"
@@ -35,7 +36,11 @@ func (m *MockPortGameWriter) Create(ctx context.Context, game *game_entities.Gam
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*game_entities.Game), args.Error(1)
+	if g, ok := args.Get(0).(*game_entities.Game); ok {
+		return g, args.Error(1)
+	}
+	// Fallback: return the original game (useful when using mock.Anything or Run())
+	return game, args.Error(1)
 }
 
 func (m *MockPortGameWriter) Update(ctx context.Context, game *game_entities.Game) (*game_entities.Game, error) {
@@ -90,7 +95,11 @@ func (m *MockPortGameModeWriter) Create(ctx context.Context, gameMode *game_enti
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*game_entities.GameMode), args.Error(1)
+	if gm, ok := args.Get(0).(*game_entities.GameMode); ok {
+		return gm, args.Error(1)
+	}
+	// Fallback: return the original gameMode (useful when using mock.Anything or Run())
+	return gameMode, args.Error(1)
 }
 
 func (m *MockPortGameModeWriter) Update(ctx context.Context, gameMode *game_entities.GameMode) (*game_entities.GameMode, error) {
@@ -145,7 +154,11 @@ func (m *MockPortRegionWriter) Create(ctx context.Context, region *game_entities
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*game_entities.Region), args.Error(1)
+	if r, ok := args.Get(0).(*game_entities.Region); ok {
+		return r, args.Error(1)
+	}
+	// Fallback: return the original region (useful when using mock.Anything or Run())
+	return region, args.Error(1)
 }
 
 func (m *MockPortRegionWriter) Update(ctx context.Context, region *game_entities.Region) (*game_entities.Region, error) {
@@ -199,7 +212,11 @@ func (m *MockPortInvitationWriter) Save(ctx context.Context, invitation *pairing
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*pairing_entities.Invitation), args.Error(1)
+	if inv, ok := args.Get(0).(*pairing_entities.Invitation); ok {
+		return inv, args.Error(1)
+	}
+	// Fallback: return the original invitation (useful when using mock.Anything or Run())
+	return invitation, args.Error(1)
 }
 
 // MockPortInvitationReader is a mock implementation of pairing_out.InvitationReader using testify/mock
@@ -505,5 +522,13 @@ func (m *MockPortUserNotificationPreferencesReader) GetByUserID(ctx context.Cont
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*pairing_entities.UserNotificationPreferences), args.Error(1)
+	if prefs, ok := args.Get(0).(*pairing_entities.UserNotificationPreferences); ok {
+		return prefs, args.Error(1)
+	}
+	// Fallback: return default preferences for the user
+	return pairing_entities.NewUserNotificationPreferences(
+		common.ResourceOwner{UserID: userID},
+		userID,
+		"en",
+	), args.Error(1)
 }

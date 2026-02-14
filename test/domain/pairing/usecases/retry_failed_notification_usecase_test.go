@@ -71,7 +71,7 @@ func TestRetryFailedNotificationUseCase_Execute(t *testing.T) {
 				ctx = context.WithValue(ctx, common.TenantIDKey, uuid.New())
 				ctx = context.WithValue(ctx, common.ClientIDKey, uuid.New())
 				ctx = context.WithValue(ctx, common.UserIDKey, uuid.New())
-				ctx = context.WithValue(ctx, common.AudienceKey, common.UserAudienceIDKey)
+				// No AudienceKey set so IsAdmin returns false
 				return ctx
 			},
 			setupMocks: func(reader *mocks.MockPortNotificationReader, writer *mocks.MockPortNotificationWriter, sender *mocks.MockNotificationSender, notificationID uuid.UUID) {

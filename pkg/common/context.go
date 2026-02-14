@@ -9,6 +9,9 @@ const (
 	GroupIDKey  ContextKey = "group_id"
 	UserIDKey   ContextKey = "user_id"
 
+	// Auth
+	AuthenticatedKey ContextKey = "auth"
+
 	// Parameters
 	GameIDParamKey  ContextKey = "game_id"
 	MatchIDParamKey ContextKey = "match_id"

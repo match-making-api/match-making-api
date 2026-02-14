@@ -2,13 +2,16 @@ package routing
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 
 	"github.com/golobby/container/v3"
 	"github.com/gorilla/mux"
 	"github.com/leet-gaming/match-making-api/cmd/rest-api/controllers"
 	"github.com/leet-gaming/match-making-api/cmd/rest-api/middlewares"
+	"github.com/leet-gaming/match-making-api/pkg/infra/config"
 	httpSwagger "github.com/swaggo/http-swagger"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 const (
@@ -128,6 +131,41 @@ func NewRouter(ctx context.Context, container container.Container) http.Handler 
 	resourceContextMiddleware.RegisterOperation("/notifications/users/{user_id}", "match-making:notifications:get-user")
 	resourceContextMiddleware.RegisterOperation("/notifications/{id}/read", "match-making:notifications:mark-read")
 	resourceContextMiddleware.RegisterOperation("/notifications/{id}/retry", "match-making:notifications:retry")
+
+	// lobbies - resolve MongoDB client and config for lobby controller
+	var mongoClient *mongo.Client
+	var cfg config.Config
+	if err := container.Resolve(&mongoClient); err != nil {
+		slog.Error("Failed to resolve MongoDB client for lobbies", "error", err)
+	}
+	if err := container.Resolve(&cfg); err != nil {
+		slog.Error("Failed to resolve config for lobbies", "error", err)
+	}
+	
+	if mongoClient != nil {
+		lobbyController := controllers.NewLobbyController(mongoClient, cfg.MongoDB.DBName)
+		
+		// Lobby CRUD
+		r.HandleFunc("/api/lobbies", lobbyController.List(ctx)).Methods("GET", "OPTIONS")
+		r.HandleFunc("/api/lobbies", lobbyController.Create(ctx)).Methods("POST", "OPTIONS")
+		r.HandleFunc("/api/lobbies/featured", lobbyController.GetFeatured(ctx)).Methods("GET", "OPTIONS")
+		r.HandleFunc("/api/lobbies/stats", lobbyController.GetStats(ctx)).Methods("GET", "OPTIONS")
+		r.HandleFunc("/api/lobbies/seed", lobbyController.SeedDemoLobbies(ctx)).Methods("POST", "OPTIONS")
+		r.HandleFunc("/api/lobbies/{id}", lobbyController.Get(ctx)).Methods("GET", "OPTIONS")
+		r.HandleFunc("/api/lobbies/{id}", lobbyController.Delete(ctx)).Methods("DELETE", "OPTIONS")
+		r.HandleFunc("/api/lobbies/{id}/join", lobbyController.Join(ctx)).Methods("POST", "OPTIONS")
+		
+		resourceContextMiddleware.RegisterOperation("/api/lobbies", "match-making:lobbies:list")
+		resourceContextMiddleware.RegisterOperation("/api/lobbies", "match-making:lobbies:create")
+		resourceContextMiddleware.RegisterOperation("/api/lobbies/featured", "match-making:lobbies:featured")
+		resourceContextMiddleware.RegisterOperation("/api/lobbies/stats", "match-making:lobbies:stats")
+		resourceContextMiddleware.RegisterOperation("/api/lobbies/seed", "match-making:lobbies:seed")
+		resourceContextMiddleware.RegisterOperation("/api/lobbies/{id}", "match-making:lobbies:get")
+		resourceContextMiddleware.RegisterOperation("/api/lobbies/{id}", "match-making:lobbies:delete")
+		resourceContextMiddleware.RegisterOperation("/api/lobbies/{id}/join", "match-making:lobbies:join")
+		
+		slog.Info("Lobby routes registered")
+	}
 
 	// Swagger UI
 	r.PathPrefix("/swagger/").Handler(httpSwagger.Handler(
