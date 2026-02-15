@@ -14,6 +14,7 @@ import (
 	"github.com/leet-gaming/match-making-api/pkg/domain/pairing/usecases"
 	pairing_value_objects "github.com/leet-gaming/match-making-api/pkg/domain/pairing/value-objects"
 	parties_entities "github.com/leet-gaming/match-making-api/pkg/domain/parties/entities"
+	"github.com/leet-gaming/match-making-api/pkg/infra/events/schemas"
 	"github.com/leet-gaming/match-making-api/pkg/infra/kafka"
 	"github.com/leet-gaming/match-making-api/test/mocks"
 )
@@ -552,5 +553,271 @@ func TestMatchmakingEventConsumer_HandleQueueEvent(t *testing.T) {
 
 		assert.NoError(t, err)
 		// Should just log and return
+	})
+}
+
+// --- HandlePlayerQueuedProto tests ---
+
+func newTestConsumer() (*usecases.MatchmakingEventConsumer, *MockAddAndFindNextPairUseCase, *MockEventPublisher, *mocks.MockPortRegionReader) {
+	mockAddAndFind := &MockAddAndFindNextPairUseCase{}
+	mockEventPublisher := &MockEventPublisher{}
+	mockRegionReader := &mocks.MockPortRegionReader{}
+	mockPoolReader := &mocks.MockPoolReader{}
+	mockPoolWriter := &mocks.MockPoolWriter{}
+
+	consumer := usecases.NewMatchmakingEventConsumer(
+		mockAddAndFind,
+		mockEventPublisher,
+		mockRegionReader,
+		mockPoolReader,
+		mockPoolWriter,
+	)
+
+	return consumer, mockAddAndFind, mockEventPublisher, mockRegionReader
+}
+
+func TestMatchmakingEventConsumer_HandlePlayerQueuedProto(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("Success - Player added to pool", func(t *testing.T) {
+		consumer, mockAddAndFind, _, mockRegionReader := newTestConsumer()
+
+		playerID := uuid.New()
+		gameID := uuid.New()
+		tenantID := uuid.New()
+		clientID := uuid.New()
+		resourceOwnerID := uuid.New()
+		regionSlug := "us-east-1"
+
+		region := &game_entities.Region{
+			Name: "US East",
+			Slug: regionSlug,
+		}
+		region.ID = uuid.New()
+
+		envelope := &schemas.EventEnvelope{
+			Id:              uuid.New().String(),
+			Type:            schemas.EventTypePlayerQueued,
+			Source:          "replay-api",
+			Specversion:     schemas.CloudEventsSpecVersion,
+			ResourceOwnerId: resourceOwnerID.String(),
+		}
+
+		minMMR := int32(1300)
+		maxMMR := int32(1700)
+		payload := &schemas.PlayerQueuedPayload{
+			PlayerId: playerID.String(),
+			GameId:   gameID.String(),
+			Region:   regionSlug,
+			TenantId: tenantID.String(),
+			ClientId: clientID.String(),
+			SkillRange: &schemas.SkillRange{
+				MinMmr: minMMR,
+				MaxMmr: maxMMR,
+			},
+		}
+
+		pool := &pairing_entities.Pool{}
+
+		mockRegionReader.On("Search", ctx, map[string]interface{}{"slug": regionSlug}).Return([]*game_entities.Region{region}, nil)
+		mockAddAndFind.On("Execute", mock.MatchedBy(func(p usecases.FindPairPayload) bool {
+			return p.PartyID == playerID &&
+				p.Criteria.GameID != nil && *p.Criteria.GameID == gameID &&
+				p.Criteria.Region == region &&
+				p.Criteria.SkillRange != nil &&
+				p.Criteria.SkillRange.MinMMR == 1300 &&
+				p.Criteria.SkillRange.MaxMMR == 1700
+		})).Return((*pairing_entities.Pair)(nil), pool, 1, nil)
+
+		err := consumer.HandlePlayerQueuedProto(ctx, envelope, payload)
+
+		assert.NoError(t, err)
+		mockRegionReader.AssertExpectations(t)
+		mockAddAndFind.AssertExpectations(t)
+	})
+
+	t.Run("Success - Match found and MatchCreated published", func(t *testing.T) {
+		consumer, mockAddAndFind, mockEventPublisher, mockRegionReader := newTestConsumer()
+
+		playerID := uuid.New()
+		gameID := uuid.New()
+		regionSlug := "eu-west-1"
+
+		region := &game_entities.Region{
+			Name: "EU West",
+			Slug: regionSlug,
+		}
+		region.ID = uuid.New()
+
+		envelope := &schemas.EventEnvelope{
+			Id:              uuid.New().String(),
+			Type:            schemas.EventTypePlayerQueued,
+			Source:          "replay-api",
+			Specversion:     schemas.CloudEventsSpecVersion,
+			ResourceOwnerId: uuid.New().String(),
+		}
+
+		payload := &schemas.PlayerQueuedPayload{
+			PlayerId: playerID.String(),
+			GameId:   gameID.String(),
+			Region:   regionSlug,
+			TenantId: uuid.New().String(),
+			ClientId: uuid.New().String(),
+		}
+
+		pool := &pairing_entities.Pool{}
+		pair := &pairing_entities.Pair{
+			Match: map[uuid.UUID]*parties_entities.Party{
+				playerID:   {ID: playerID},
+				uuid.New(): {ID: uuid.New()},
+			},
+		}
+		pair.ID = uuid.New()
+
+		mockRegionReader.On("Search", ctx, map[string]interface{}{"slug": regionSlug}).Return([]*game_entities.Region{region}, nil)
+		mockAddAndFind.On("Execute", mock.Anything).Return(pair, pool, 1, nil)
+		mockEventPublisher.On("PublishMatchCreated", ctx, mock.MatchedBy(func(e *kafka.MatchEvent) bool {
+			return e.MatchID == pair.ID && len(e.PlayerIDs) == 2
+		})).Return(nil)
+
+		err := consumer.HandlePlayerQueuedProto(ctx, envelope, payload)
+
+		assert.NoError(t, err)
+		mockRegionReader.AssertExpectations(t)
+		mockAddAndFind.AssertExpectations(t)
+		mockEventPublisher.AssertExpectations(t)
+	})
+
+	t.Run("Error - Missing resource_owner_id", func(t *testing.T) {
+		consumer, _, _, _ := newTestConsumer()
+
+		envelope := &schemas.EventEnvelope{
+			Id:              uuid.New().String(),
+			Type:            schemas.EventTypePlayerQueued,
+			ResourceOwnerId: "", // empty
+		}
+
+		payload := &schemas.PlayerQueuedPayload{
+			PlayerId: uuid.New().String(),
+			GameId:   uuid.New().String(),
+			Region:   "us-east-1",
+			TenantId: uuid.New().String(),
+			ClientId: uuid.New().String(),
+		}
+
+		err := consumer.HandlePlayerQueuedProto(ctx, envelope, payload)
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "resource_owner_id")
+	})
+
+	t.Run("Error - Invalid player_id UUID", func(t *testing.T) {
+		consumer, _, _, _ := newTestConsumer()
+
+		envelope := &schemas.EventEnvelope{
+			Id:              uuid.New().String(),
+			Type:            schemas.EventTypePlayerQueued,
+			ResourceOwnerId: uuid.New().String(),
+		}
+
+		payload := &schemas.PlayerQueuedPayload{
+			PlayerId: "not-a-uuid",
+			GameId:   uuid.New().String(),
+			Region:   "us-east-1",
+			TenantId: uuid.New().String(),
+			ClientId: uuid.New().String(),
+		}
+
+		err := consumer.HandlePlayerQueuedProto(ctx, envelope, payload)
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid player_id")
+	})
+
+	t.Run("Error - Invalid game_id UUID", func(t *testing.T) {
+		consumer, _, _, _ := newTestConsumer()
+
+		envelope := &schemas.EventEnvelope{
+			Id:              uuid.New().String(),
+			Type:            schemas.EventTypePlayerQueued,
+			ResourceOwnerId: uuid.New().String(),
+		}
+
+		payload := &schemas.PlayerQueuedPayload{
+			PlayerId: uuid.New().String(),
+			GameId:   "not-a-uuid",
+			Region:   "us-east-1",
+			TenantId: uuid.New().String(),
+			ClientId: uuid.New().String(),
+		}
+
+		err := consumer.HandlePlayerQueuedProto(ctx, envelope, payload)
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid game_id")
+	})
+
+	t.Run("Error - Region not found", func(t *testing.T) {
+		consumer, _, _, mockRegionReader := newTestConsumer()
+
+		envelope := &schemas.EventEnvelope{
+			Id:              uuid.New().String(),
+			Type:            schemas.EventTypePlayerQueued,
+			ResourceOwnerId: uuid.New().String(),
+		}
+
+		payload := &schemas.PlayerQueuedPayload{
+			PlayerId: uuid.New().String(),
+			GameId:   uuid.New().String(),
+			Region:   "nonexistent-region",
+			TenantId: uuid.New().String(),
+			ClientId: uuid.New().String(),
+		}
+
+		mockRegionReader.On("Search", ctx, map[string]interface{}{"slug": "nonexistent-region"}).Return([]*game_entities.Region{}, nil)
+
+		err := consumer.HandlePlayerQueuedProto(ctx, envelope, payload)
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "region not found")
+		mockRegionReader.AssertExpectations(t)
+	})
+
+	t.Run("Error - AddAndFindNextPair fails", func(t *testing.T) {
+		consumer, mockAddAndFind, _, mockRegionReader := newTestConsumer()
+
+		playerID := uuid.New()
+		gameID := uuid.New()
+		regionSlug := "us-east-1"
+
+		region := &game_entities.Region{
+			Name: "US East",
+			Slug: regionSlug,
+		}
+		region.ID = uuid.New()
+
+		envelope := &schemas.EventEnvelope{
+			Id:              uuid.New().String(),
+			Type:            schemas.EventTypePlayerQueued,
+			ResourceOwnerId: uuid.New().String(),
+		}
+
+		payload := &schemas.PlayerQueuedPayload{
+			PlayerId: playerID.String(),
+			GameId:   gameID.String(),
+			Region:   regionSlug,
+			TenantId: uuid.New().String(),
+			ClientId: uuid.New().String(),
+		}
+
+		mockRegionReader.On("Search", ctx, map[string]interface{}{"slug": regionSlug}).Return([]*game_entities.Region{region}, nil)
+		mockAddAndFind.On("Execute", mock.Anything).Return((*pairing_entities.Pair)(nil), (*pairing_entities.Pool)(nil), -1, fmt.Errorf("pool creation failed"))
+
+		err := consumer.HandlePlayerQueuedProto(ctx, envelope, payload)
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "pool creation failed")
+		mockRegionReader.AssertExpectations(t)
+		mockAddAndFind.AssertExpectations(t)
 	})
 }

@@ -9,14 +9,18 @@ import (
 
 // Topic constants for matchmaking events
 const (
-	TopicQueueEvents       = "matchmaking.queue.events"
-	TopicLobbyEvents       = "matchmaking.lobby.events"
-	TopicPrizePoolEvents   = "matchmaking.prizepool.events"
-	TopicMatchesCreated    = "matchmaking.matches.created"
-	TopicMatchesResults    = "matchmaking.matches.results"
-	TopicPlayerStatus      = "matchmaking.player-status"
+	TopicQueueEvents        = "matchmaking.queue.events"
+	TopicLobbyEvents        = "matchmaking.lobby.events"
+	TopicPrizePoolEvents    = "matchmaking.prizepool.events"
+	TopicMatchesCreated     = "matchmaking.matches.created"
+	TopicMatchesResults     = "matchmaking.matches.results"
+	TopicPlayerStatus       = "matchmaking.player-status"
 	TopicWebSocketBroadcast = "websocket.broadcasts"
-	TopicDLQ               = "matchmaking.dlq"
+	TopicDLQ                = "matchmaking.dlq"
+
+	// TopicMatchmakingCommands is the topic for canonical protobuf/CloudEvents commands
+	// from replay-api (e.g. PlayerQueued). Consumed by match-making-api.
+	TopicMatchmakingCommands = "matchmaking.commands"
 )
 
 // Event types

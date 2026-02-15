@@ -10,6 +10,7 @@ import (
 	"github.com/leet-gaming/match-making-api/pkg/domain"
 	"github.com/leet-gaming/match-making-api/pkg/infra"
 	"github.com/leet-gaming/match-making-api/pkg/infra/ioc"
+	"github.com/leet-gaming/match-making-api/pkg/infra/kafka"
 )
 
 func main() {
@@ -24,6 +25,22 @@ func main() {
 	c := builder.WithEnvFile().With(infra.Inject).With(domain.Inject).Build()
 
 	defer builder.Close(c)
+
+	// Start Kafka consumer for matchmaking commands (PlayerQueued from replay-api)
+	var playerQueuedConsumer *kafka.PlayerQueuedConsumer
+	if err := c.Resolve(&playerQueuedConsumer); err != nil {
+		slog.Warn("PlayerQueuedConsumer not available, skipping consumer startup", "err", err)
+	} else {
+		consumerCtx, consumerCancel := context.WithCancel(ctx)
+		defer consumerCancel()
+
+		go func() {
+			slog.Info("Starting PlayerQueuedConsumer for matchmaking.commands topic")
+			if err := playerQueuedConsumer.Start(consumerCtx); err != nil {
+				slog.Error("PlayerQueuedConsumer stopped with error", "error", err)
+			}
+		}()
+	}
 
 	router := routing.NewRouter(ctx, c)
 
