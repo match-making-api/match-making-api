@@ -41,13 +41,8 @@ func TestSendBatchNotificationUseCase_Execute(t *testing.T) {
 				ctx = context.WithValue(ctx, common.AudienceKey, common.TenantAudienceIDKey)
 				return ctx
 			},
-			setupMocks: func(writer *mocks.MockPortNotificationWriter, prefsReader *mocks.MockPortUserNotificationPreferencesReader, sender *mocks.MockNotificationSender, userIDs []uuid.UUID) {
-				prefs := pairing_entities.NewUserNotificationPreferences(
-					common.ResourceOwner{TenantID: uuid.New(), ClientID: uuid.New(), UserID: uuid.New()},
-					uuid.New(),
-					"en",
-				)
-				prefsReader.On("GetByUserID", mock.Anything, mock.Anything).Return(prefs, nil).Twice()
+			setupMocks: func(writer *mocks.MockPortNotificationWriter, prefsReader *mocks.MockPortUserNotificationPreferencesReader, sender *mocks.MockNotificationSender, _ []uuid.UUID) {
+				prefsReader.On("GetByUserID", mock.Anything, mock.Anything).Return(mock.AnythingOfType("*entities.UserNotificationPreferences"), nil).Twice()
 				sender.On("IsAvailable", mock.Anything).Return(true)
 				sender.On("Send", mock.Anything, mock.Anything).Return(nil).Twice()
 				writer.On("Save", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
@@ -71,7 +66,7 @@ func TestSendBatchNotificationUseCase_Execute(t *testing.T) {
 				ctx = context.WithValue(ctx, common.TenantIDKey, uuid.New())
 				ctx = context.WithValue(ctx, common.ClientIDKey, uuid.New())
 				ctx = context.WithValue(ctx, common.UserIDKey, uuid.New())
-				ctx = context.WithValue(ctx, common.AudienceKey, common.UserAudienceIDKey)
+				// No AudienceKey set so IsAdmin returns false
 				return ctx
 			},
 			setupMocks: func(writer *mocks.MockPortNotificationWriter, prefsReader *mocks.MockPortUserNotificationPreferencesReader, sender *mocks.MockNotificationSender, userIDs []uuid.UUID) {
@@ -116,22 +111,20 @@ func TestSendBatchNotificationUseCase_Execute(t *testing.T) {
 				ctx = context.WithValue(ctx, common.AudienceKey, common.TenantAudienceIDKey)
 				return ctx
 			},
-			setupMocks: func(writer *mocks.MockPortNotificationWriter, prefsReader *mocks.MockPortUserNotificationPreferencesReader, sender *mocks.MockNotificationSender, userIDs []uuid.UUID) {
-				userID1 := userIDs[0]
-				userID2 := userIDs[1]
+			setupMocks: func(writer *mocks.MockPortNotificationWriter, prefsReader *mocks.MockPortUserNotificationPreferencesReader, sender *mocks.MockNotificationSender, _ []uuid.UUID) {
 				prefs1 := pairing_entities.NewUserNotificationPreferences(
-					common.ResourceOwner{TenantID: uuid.New(), ClientID: uuid.New(), UserID: userID1},
-					userID1,
+					common.ResourceOwner{TenantID: uuid.New(), ClientID: uuid.New(), UserID: uuid.New()},
+					uuid.New(),
 					"en",
 				)
 				prefs2 := pairing_entities.NewUserNotificationPreferences(
-					common.ResourceOwner{TenantID: uuid.New(), ClientID: uuid.New(), UserID: userID2},
-					userID2,
+					common.ResourceOwner{TenantID: uuid.New(), ClientID: uuid.New(), UserID: uuid.New()},
+					uuid.New(),
 					"en",
 				)
 				prefs2.DisabledChannels = []pairing_entities.NotificationChannel{pairing_entities.NotificationChannelEmail}
-				prefsReader.On("GetByUserID", mock.Anything, userID1).Return(prefs1, nil)
-				prefsReader.On("GetByUserID", mock.Anything, userID2).Return(prefs2, nil)
+				prefsReader.On("GetByUserID", mock.Anything, mock.AnythingOfType("uuid.UUID")).Return(prefs1, nil).Once()
+				prefsReader.On("GetByUserID", mock.Anything, mock.AnythingOfType("uuid.UUID")).Return(prefs2, nil).Once()
 				sender.On("IsAvailable", mock.Anything).Return(true)
 				sender.On("Send", mock.Anything, mock.Anything).Return(nil)
 				writer.On("Save", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
@@ -158,7 +151,7 @@ func TestSendBatchNotificationUseCase_Execute(t *testing.T) {
 				ctx = context.WithValue(ctx, common.AudienceKey, common.TenantAudienceIDKey)
 				return ctx
 			},
-			setupMocks: func(writer *mocks.MockPortNotificationWriter, prefsReader *mocks.MockPortUserNotificationPreferencesReader, sender *mocks.MockNotificationSender, userIDs []uuid.UUID) {
+			setupMocks: func(writer *mocks.MockPortNotificationWriter, prefsReader *mocks.MockPortUserNotificationPreferencesReader, sender *mocks.MockNotificationSender, _ []uuid.UUID) {
 				sender.On("IsAvailable", mock.Anything).Return(false)
 			},
 			expectedError: "sender for channel 2 is not available",

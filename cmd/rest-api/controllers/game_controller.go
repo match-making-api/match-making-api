@@ -3,13 +3,13 @@ package controllers
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log/slog"
 	"net/http"
 
 	"github.com/golobby/container/v3"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/leet-gaming/match-making-api/pkg/common"
 	game_entities "github.com/leet-gaming/match-making-api/pkg/domain/game/entities"
 	game_in "github.com/leet-gaming/match-making-api/pkg/domain/game/ports/in"
 )
@@ -71,7 +71,7 @@ func (gc *GameController) Get(ctx context.Context) http.HandlerFunc {
 			w.WriteHeader(http.StatusNotFound)
 			json.NewEncoder(w).Encode(ErrorResponse{
 				Error:   "not_found",
-				Message: fmt.Sprintf("game not found: %v", err),
+				Message: "game not found",
 			})
 			return
 		}
@@ -95,13 +95,24 @@ func (gc *GameController) Create(ctx context.Context) http.HandlerFunc {
 			return
 		}
 
+		// SECURITY: Admin-only endpoint
+		if !common.IsAdmin(r.Context()) {
+			w.WriteHeader(http.StatusForbidden)
+			json.NewEncoder(w).Encode(ErrorResponse{
+				Error:   "forbidden",
+				Message: "administrator access required",
+			})
+			return
+		}
+
+		r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 		var game game_entities.Game
 		if err := json.NewDecoder(r.Body).Decode(&game); err != nil {
 			slog.ErrorContext(r.Context(), "failed to decode request body", "error", err)
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(ErrorResponse{
 				Error:   "invalid_request",
-				Message: fmt.Sprintf("invalid JSON: %v", err),
+				Message: "invalid request body",
 			})
 			return
 		}
@@ -123,7 +134,7 @@ func (gc *GameController) Create(ctx context.Context) http.HandlerFunc {
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(ErrorResponse{
 				Error:   "validation_error",
-				Message: err.Error(),
+				Message: "failed to create game",
 			})
 			return
 		}
@@ -143,6 +154,16 @@ func (gc *GameController) Update(ctx context.Context) http.HandlerFunc {
 			json.NewEncoder(w).Encode(ErrorResponse{
 				Error:   "method_not_allowed",
 				Message: "only PUT or PATCH methods are allowed",
+			})
+			return
+		}
+
+		// SECURITY: Admin-only endpoint
+		if !common.IsAdmin(r.Context()) {
+			w.WriteHeader(http.StatusForbidden)
+			json.NewEncoder(w).Encode(ErrorResponse{
+				Error:   "forbidden",
+				Message: "administrator access required",
 			})
 			return
 		}
@@ -169,12 +190,13 @@ func (gc *GameController) Update(ctx context.Context) http.HandlerFunc {
 		}
 
 		var game game_entities.Game
+		r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 		if err := json.NewDecoder(r.Body).Decode(&game); err != nil {
 			slog.ErrorContext(r.Context(), "failed to decode request body", "error", err)
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(ErrorResponse{
 				Error:   "invalid_request",
-				Message: fmt.Sprintf("invalid JSON: %v", err),
+				Message: "invalid request body",
 			})
 			return
 		}
@@ -196,7 +218,7 @@ func (gc *GameController) Update(ctx context.Context) http.HandlerFunc {
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(ErrorResponse{
 				Error:   "validation_error",
-				Message: err.Error(),
+				Message: "failed to update game",
 			})
 			return
 		}
@@ -216,6 +238,16 @@ func (gc *GameController) Delete(ctx context.Context) http.HandlerFunc {
 			json.NewEncoder(w).Encode(ErrorResponse{
 				Error:   "method_not_allowed",
 				Message: "only DELETE method is allowed",
+			})
+			return
+		}
+
+		// SECURITY: Admin-only endpoint
+		if !common.IsAdmin(r.Context()) {
+			w.WriteHeader(http.StatusForbidden)
+			json.NewEncoder(w).Encode(ErrorResponse{
+				Error:   "forbidden",
+				Message: "administrator access required",
 			})
 			return
 		}
@@ -257,7 +289,7 @@ func (gc *GameController) Delete(ctx context.Context) http.HandlerFunc {
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(ErrorResponse{
 				Error:   "delete_error",
-				Message: err.Error(),
+				Message: "failed to delete game",
 			})
 			return
 		}

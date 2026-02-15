@@ -2,6 +2,7 @@ package usecases
 
 import (
 	"context"
+	"log/slog"
 
 	pairing_entities "github.com/leet-gaming/match-making-api/pkg/domain/pairing/entities"
 )
@@ -54,15 +55,17 @@ func (s *EmailNotificationSender) GetChannel() pairing_entities.NotificationChan
 }
 
 func (s *EmailNotificationSender) IsAvailable(ctx context.Context) bool {
-	// TODO: Check if email service is configured
-	// For now, return true as placeholder
-	return true
+	// Email sending requires SMTP/SendGrid/SES configuration
+	// Returns false until a real email adapter is implemented
+	return false
 }
 
 func (s *EmailNotificationSender) Send(ctx context.Context, notification *pairing_entities.Notification) error {
-	// TODO: Implement actual email sending logic
-	// This should integrate with an email service (SMTP, SendGrid, SES, etc.)
-	// For now, this is a placeholder
+	// NoOp: logs and marks as sent. Replace with real email adapter when configured.
+	slog.InfoContext(ctx, "email notification skipped (no email adapter configured)",
+		"notification_type", notification.Type,
+		"user_id", notification.UserID,
+	)
 	notification.MarkAsSent()
 	return nil
 }
@@ -79,15 +82,17 @@ func (s *SMSNotificationSender) GetChannel() pairing_entities.NotificationChanne
 }
 
 func (s *SMSNotificationSender) IsAvailable(ctx context.Context) bool {
-	// TODO: Check if SMS service is configured
-	// For now, return false as SMS is optional
+	// SMS sending requires Twilio/AWS SNS configuration
+	// Returns false until a real SMS adapter is implemented
 	return false
 }
 
 func (s *SMSNotificationSender) Send(ctx context.Context, notification *pairing_entities.Notification) error {
-	// TODO: Implement actual SMS sending logic
-	// This should integrate with an SMS service (Twilio, AWS SNS, etc.)
-	// For now, this is a placeholder
+	// NoOp: logs and marks as sent. Replace with real SMS adapter when configured.
+	slog.InfoContext(ctx, "SMS notification skipped (no SMS adapter configured)",
+		"notification_type", notification.Type,
+		"user_id", notification.UserID,
+	)
 	notification.MarkAsSent()
 	return nil
 }

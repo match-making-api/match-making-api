@@ -52,7 +52,9 @@ func (m *ResourceContextMiddleware) Handler(next http.Handler) http.Handler {
 		ctx = context.WithValue(ctx, common.TenantIDKey, common.TeamPROTenantID)
 		ctx = context.WithValue(ctx, common.ClientIDKey, common.TeamPROAppClientID)
 		ctx = context.WithValue(ctx, common.GroupIDKey, uuid.New())
-		ctx = context.WithValue(ctx, common.UserIDKey, uuid.New())
+		// SECURITY: Do NOT set UserIDKey to uuid.New(). It must come from verified RID token.
+		// Setting it to uuid.Nil ensures handlers that check for auth will reject unauthenticated requests.
+		ctx = context.WithValue(ctx, common.UserIDKey, uuid.Nil)
 
 		rid := r.Header.Get(controllers.ResourceOwnerIDHeaderKey)
 		if rid == "" {
@@ -61,13 +63,55 @@ func (m *ResourceContextMiddleware) Handler(next http.Handler) http.Handler {
 			return
 		}
 
-		reso, err := m.VerifyRID.Exec(ctx, uuid.MustParse(rid), operationID)
-		if err != nil {
-			slog.ErrorContext(ctx, "unable to verify rid", controllers.ResourceOwnerIDHeaderKey, rid)
-			http.Error(w, "unknown", http.StatusUnauthorized)
+		ridUUID, parseErr := uuid.Parse(rid)
+		if parseErr != nil {
+			slog.ErrorContext(ctx, "invalid rid format", controllers.ResourceOwnerIDHeaderKey, rid)
+			http.Error(w, `{"error":"invalid resource owner id"}`, http.StatusBadRequest)
+			return
 		}
 
-		slog.InfoContext(ctx, "resource owner verified", "reso", reso)
+		reso, err := m.VerifyRID.Exec(ctx, ridUUID, operationID)
+		if err != nil {
+			slog.ErrorContext(ctx, "unable to verify rid", controllers.ResourceOwnerIDHeaderKey, rid)
+			http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+			return
+		}
+
+		if reso != nil && !reso.GetIsValid() {
+			slog.WarnContext(ctx, "rid verification failed", "reason", reso.GetReason())
+			http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+			return
+		}
+
+		// SECURITY: Extract identity from the verified RID token's ResourceOwner.
+		// The RID token is the single source of truth — all identity fields come from it.
+		// DO NOT use headers (X-User-ID etc.) for identity — they are client-controlled.
+		if ro := reso.GetResourceOwner(); ro != nil {
+			if tenantID, err := uuid.Parse(ro.GetTenantId()); err == nil && tenantID != uuid.Nil {
+				ctx = context.WithValue(ctx, common.TenantIDKey, tenantID)
+			}
+			if clientID, err := uuid.Parse(ro.GetClientId()); err == nil && clientID != uuid.Nil {
+				ctx = context.WithValue(ctx, common.ClientIDKey, clientID)
+			}
+			if groupID, err := uuid.Parse(ro.GetGroupId()); err == nil && groupID != uuid.Nil {
+				ctx = context.WithValue(ctx, common.GroupIDKey, groupID)
+			}
+			if userID, err := uuid.Parse(ro.GetUserId()); err == nil && userID != uuid.Nil {
+				ctx = context.WithValue(ctx, common.UserIDKey, userID)
+			}
+		}
+
+		// Set intended audience from verified RID token
+		ctx = context.WithValue(ctx, common.AudienceKey, common.IntendedAudienceKey(reso.GetIntendedAudience()))
+
+		// Mark request as authenticated
+		ctx = context.WithValue(ctx, common.AuthenticatedKey, true)
+
+		slog.InfoContext(ctx, "resource owner verified",
+			"user_id", ctx.Value(common.UserIDKey),
+			"group_id", ctx.Value(common.GroupIDKey),
+			"audience", reso.GetIntendedAudience(),
+		)
 
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})

@@ -151,7 +151,7 @@ func TestCreateExternalInvitationUseCase_Execute(t *testing.T) {
 				return ctx
 			},
 			setupMocks: func(writer *mocks.MockPortExternalInvitationWriter, reader *mocks.MockPortExternalInvitationReader, pairReader *mocks.MockPortPairReader, notifier *mocks.MockExternalInvitationNotifier) {
-				// No mocks needed as validation fails before repository calls
+				// No mocks needed: validateMatchOrEvent fails before FindByEmail is called
 			},
 			expectedError: "match_id is required for match invitations",
 		},
@@ -172,6 +172,7 @@ func TestCreateExternalInvitationUseCase_Execute(t *testing.T) {
 				return ctx
 			},
 			setupMocks: func(writer *mocks.MockPortExternalInvitationWriter, reader *mocks.MockPortExternalInvitationReader, pairReader *mocks.MockPortPairReader, notifier *mocks.MockExternalInvitationNotifier) {
+				// validateMatchOrEvent is called before FindByEmail
 				pairReader.On("GetByID", mock.Anything, mock.AnythingOfType("uuid.UUID")).Return(nil, errors.New("match not found"))
 			},
 			expectedError: "match/event validation failed",
@@ -193,6 +194,7 @@ func TestCreateExternalInvitationUseCase_Execute(t *testing.T) {
 				return ctx
 			},
 			setupMocks: func(writer *mocks.MockPortExternalInvitationWriter, reader *mocks.MockPortExternalInvitationReader, pairReader *mocks.MockPortPairReader, notifier *mocks.MockExternalInvitationNotifier) {
+				// validateMatchOrEvent is called before FindByEmail
 				matchID := uuid.New()
 				pair := &pairing_entities.Pair{
 					BaseEntity:     common.BaseEntity{ID: matchID},
@@ -223,6 +225,7 @@ func TestCreateExternalInvitationUseCase_Execute(t *testing.T) {
 				return ctx
 			},
 			setupMocks: func(writer *mocks.MockPortExternalInvitationWriter, reader *mocks.MockPortExternalInvitationReader, pairReader *mocks.MockPortPairReader, notifier *mocks.MockExternalInvitationNotifier) {
+				// validateMatchOrEvent is called before expiration check, so mock it to pass
 				matchID := uuid.New()
 				pair := &pairing_entities.Pair{
 					BaseEntity:     common.BaseEntity{ID: matchID},
@@ -235,7 +238,7 @@ func TestCreateExternalInvitationUseCase_Execute(t *testing.T) {
 		{
 			name: "fail when pending invitation already exists",
 			payload: func() usecases.CreateExternalInvitationPayload {
-				matchID := uuid.MustParse("12345678-1234-1234-1234-123456789012")
+				matchID := uuid.MustParse("22222222-2222-2222-2222-222222222222")
 				return usecases.CreateExternalInvitationPayload{
 					Type:     pairing_entities.ExternalInvitationTypeMatch,
 					FullName: "John Doe",
@@ -252,12 +255,14 @@ func TestCreateExternalInvitationUseCase_Execute(t *testing.T) {
 				return ctx
 			},
 			setupMocks: func(writer *mocks.MockPortExternalInvitationWriter, reader *mocks.MockPortExternalInvitationReader, pairReader *mocks.MockPortPairReader, notifier *mocks.MockExternalInvitationNotifier) {
-				matchID := uuid.MustParse("12345678-1234-1234-1234-123456789012")
+				// validateMatchOrEvent is called before FindByEmail, so mock PairReader
 				pair := &pairing_entities.Pair{
-					BaseEntity:     common.BaseEntity{ID: matchID},
+					BaseEntity:     common.BaseEntity{ID: uuid.New()},
 					ConflictStatus: pairing_entities.ConflictStatusNone,
 				}
 				pairReader.On("GetByID", mock.Anything, mock.AnythingOfType("uuid.UUID")).Return(pair, nil)
+				// Return existing pending invitation with the same MatchID
+				matchID := uuid.MustParse("22222222-2222-2222-2222-222222222222")
 				existingInv := &pairing_entities.ExternalInvitation{
 					BaseEntity: common.BaseEntity{ID: uuid.New()},
 					Email:      "john.doe@example.com",

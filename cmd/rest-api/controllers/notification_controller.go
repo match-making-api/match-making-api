@@ -3,7 +3,6 @@ package controllers
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -11,6 +10,7 @@ import (
 	"github.com/golobby/container/v3"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/leet-gaming/match-making-api/pkg/common"
 	pairing_entities "github.com/leet-gaming/match-making-api/pkg/domain/pairing/entities"
 	pairing_out "github.com/leet-gaming/match-making-api/pkg/domain/pairing/ports/out"
 	"github.com/leet-gaming/match-making-api/pkg/domain/pairing/usecases"
@@ -64,13 +64,14 @@ func (nc *NotificationController) Send(ctx context.Context) http.HandlerFunc {
 			return
 		}
 
+		r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 		var req SendNotificationRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			slog.ErrorContext(r.Context(), "failed to decode request body", "error", err)
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(ErrorResponse{
 				Error:   "invalid_request",
-				Message: fmt.Sprintf("invalid JSON: %v", err),
+				Message: "invalid request body",
 			})
 			return
 		}
@@ -178,7 +179,7 @@ func (nc *NotificationController) Send(ctx context.Context) http.HandlerFunc {
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(ErrorResponse{
 				Error:   "validation_error",
-				Message: err.Error(),
+				Message: "failed to send notification",
 			})
 			return
 		}
@@ -202,13 +203,14 @@ func (nc *NotificationController) SendBatch(ctx context.Context) http.HandlerFun
 			return
 		}
 
+		r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 		var req SendBatchNotificationRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			slog.ErrorContext(r.Context(), "failed to decode request body", "error", err)
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(ErrorResponse{
 				Error:   "invalid_request",
-				Message: fmt.Sprintf("invalid JSON: %v", err),
+				Message: "invalid request body",
 			})
 			return
 		}
@@ -305,11 +307,9 @@ func (nc *NotificationController) SendBatch(ctx context.Context) http.HandlerFun
 		}
 		
 		if len(errors) > 0 {
-			errorMessages := make([]string, len(errors))
-			for i, err := range errors {
-				errorMessages[i] = err.Error()
+			for _, batchErr := range errors {
+				slog.ErrorContext(r.Context(), "batch notification error", "error", batchErr)
 			}
-			response["errors"] = errorMessages
 		}
 
 		w.WriteHeader(http.StatusOK)
@@ -340,6 +340,19 @@ func (nc *NotificationController) GetUserNotifications(ctx context.Context) http
 				Error:   "invalid_id",
 				Message: "invalid user_id format",
 			})
+			return
+		}
+
+		// SECURITY: Verify user can only access their own notifications
+		currentUserID, ok := r.Context().Value(common.UserIDKey).(uuid.UUID)
+		if !ok || currentUserID == uuid.Nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			json.NewEncoder(w).Encode(ErrorResponse{Error: "unauthorized", Message: "authentication required"})
+			return
+		}
+		if userID != currentUserID && !common.IsAdmin(r.Context()) {
+			w.WriteHeader(http.StatusForbidden)
+			json.NewEncoder(w).Encode(ErrorResponse{Error: "forbidden", Message: "access denied"})
 			return
 		}
 
@@ -378,7 +391,7 @@ func (nc *NotificationController) GetUserNotifications(ctx context.Context) http
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(ErrorResponse{
 				Error:   "validation_error",
-				Message: err.Error(),
+				Message: "failed to retrieve notifications",
 			})
 			return
 		}
@@ -423,6 +436,14 @@ func (nc *NotificationController) MarkAsRead(ctx context.Context) http.HandlerFu
 			return
 		}
 
+		// SECURITY: Verify user is authenticated
+		currentUserID, ok := r.Context().Value(common.UserIDKey).(uuid.UUID)
+		if !ok || currentUserID == uuid.Nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			json.NewEncoder(w).Encode(ErrorResponse{Error: "unauthorized", Message: "authentication required"})
+			return
+		}
+
 		var notificationReader pairing_out.NotificationReader
 		var notificationWriter pairing_out.NotificationWriter
 		if err := nc.Container.Resolve(&notificationReader); err != nil {
@@ -444,6 +465,20 @@ func (nc *NotificationController) MarkAsRead(ctx context.Context) http.HandlerFu
 			return
 		}
 
+		// SECURITY: Verify notification belongs to user
+		notification, err := notificationReader.GetByID(r.Context(), notificationID)
+		if err != nil {
+			slog.ErrorContext(r.Context(), "failed to get notification for ownership check", "error", err, "notification_id", notificationID)
+			w.WriteHeader(http.StatusNotFound)
+			json.NewEncoder(w).Encode(ErrorResponse{Error: "not_found", Message: "notification not found"})
+			return
+		}
+		if notification.UserID != currentUserID && !common.IsAdmin(r.Context()) {
+			w.WriteHeader(http.StatusForbidden)
+			json.NewEncoder(w).Encode(ErrorResponse{Error: "forbidden", Message: "access denied"})
+			return
+		}
+
 		markReadUseCase := &usecases.MarkNotificationReadUseCase{
 			NotificationReader: notificationReader,
 			NotificationWriter:  notificationWriter,
@@ -454,7 +489,7 @@ func (nc *NotificationController) MarkAsRead(ctx context.Context) http.HandlerFu
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(ErrorResponse{
 				Error:   "validation_error",
-				Message: err.Error(),
+				Message: "failed to mark notification as read",
 			})
 			return
 		}
@@ -532,7 +567,7 @@ func (nc *NotificationController) Retry(ctx context.Context) http.HandlerFunc {
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(ErrorResponse{
 				Error:   "validation_error",
-				Message: err.Error(),
+				Message: "failed to retry notification",
 			})
 			return
 		}

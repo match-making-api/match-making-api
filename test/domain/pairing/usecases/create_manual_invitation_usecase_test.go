@@ -53,15 +53,10 @@ func TestCreateManualInvitationUseCase_Execute(t *testing.T) {
 					ConflictStatus: pairing_entities.ConflictStatusNone,
 				}
 				pairReader.On("GetByID", mock.Anything, mock.AnythingOfType("uuid.UUID")).Return(pair, nil)
-				writer.On("Save", mock.Anything, mock.AnythingOfType("*entities.Invitation")).Return(&pairing_entities.Invitation{
-					BaseEntity: common.BaseEntity{ID: uuid.New()},
-					Type:       pairing_entities.InvitationTypeMatch,
-					UserID:     uuid.New(),
-					MatchID:    &matchID,
-					Message:    "You are invited to join a match",
-					Status:     pairing_entities.InvitationStatusPending,
-					CreatedBy:  uuid.New(),
-				}, nil)
+				writer.On("Save", mock.Anything, mock.AnythingOfType("*entities.Invitation")).Run(func(args mock.Arguments) {
+					inv := args.Get(1).(*pairing_entities.Invitation)
+					inv.ID = uuid.New()
+				}).Return(mock.AnythingOfType("*entities.Invitation"), nil)
 				notifier.On("NotifyInvitationCreated", mock.Anything, mock.AnythingOfType("uuid.UUID"), mock.AnythingOfType("uuid.UUID"), mock.AnythingOfType("string")).Return(nil)
 			},
 			validate: func(t *testing.T, inv *pairing_entities.Invitation) {
