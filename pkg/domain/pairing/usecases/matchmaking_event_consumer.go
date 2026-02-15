@@ -4,12 +4,14 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"github.com/google/uuid"
 	game_out "github.com/leet-gaming/match-making-api/pkg/domain/game/ports/out"
 	pairing_entities "github.com/leet-gaming/match-making-api/pkg/domain/pairing/entities"
 	pairing_out "github.com/leet-gaming/match-making-api/pkg/domain/pairing/ports/out"
 	pairing_value_objects "github.com/leet-gaming/match-making-api/pkg/domain/pairing/value-objects"
+	"github.com/leet-gaming/match-making-api/pkg/infra/events/schemas"
 	"github.com/leet-gaming/match-making-api/pkg/infra/kafka"
 )
 
@@ -229,6 +231,138 @@ func (c *MatchmakingEventConsumer) handleQueueLeft(ctx context.Context, event *k
 	}
 
 	slog.InfoContext(ctx, "Player removed from matchmaking pool", "player_id", event.PlayerID)
+
+	return nil
+}
+
+// HandlePlayerQueuedProto processes a PlayerQueued event from the canonical protobuf/CloudEvents schema (#16/#17).
+// This is the handler for events consumed from the matchmaking.commands topic.
+//
+// Flow:
+//  1. Validate resource ownership from envelope
+//  2. Parse player_id and game_id as UUIDs
+//  3. Lookup region by slug
+//  4. Map to FindPairPayload with criteria from the event
+//  5. Add player to pool via AddAndFindNextPair
+//  6. If a pair is found, publish MatchCreated event
+func (c *MatchmakingEventConsumer) HandlePlayerQueuedProto(ctx context.Context, envelope *schemas.EventEnvelope, payload *schemas.PlayerQueuedPayload) error {
+	slog.InfoContext(ctx, "Processing PlayerQueued proto event",
+		"event_id", envelope.GetId(),
+		"player_id", payload.GetPlayerId(),
+		"game_id", payload.GetGameId(),
+		"region", payload.GetRegion(),
+		"resource_owner_id", envelope.GetResourceOwnerId())
+
+	// Validate resource ownership (defense-in-depth — consumer validates too)
+	if strings.TrimSpace(envelope.GetResourceOwnerId()) == "" {
+		slog.ErrorContext(ctx, "PlayerQueued event missing resource_owner_id, skipping",
+			"event_id", envelope.GetId())
+		return fmt.Errorf("resource_owner_id is required")
+	}
+
+	// Parse player_id
+	playerID, err := uuid.Parse(payload.GetPlayerId())
+	if err != nil {
+		slog.ErrorContext(ctx, "Invalid player_id UUID", "player_id", payload.GetPlayerId(), "error", err)
+		return fmt.Errorf("invalid player_id: %w", err)
+	}
+
+	// Parse game_id
+	gameID, err := uuid.Parse(payload.GetGameId())
+	if err != nil {
+		slog.ErrorContext(ctx, "Invalid game_id UUID", "game_id", payload.GetGameId(), "error", err)
+		return fmt.Errorf("invalid game_id: %w", err)
+	}
+
+	// Lookup region by slug
+	regions, err := c.regionReader.Search(ctx, map[string]interface{}{"slug": payload.GetRegion()})
+	if err != nil {
+		slog.ErrorContext(ctx, "Failed to lookup region", "region_slug", payload.GetRegion(), "error", err)
+		return fmt.Errorf("failed to lookup region %s: %w", payload.GetRegion(), err)
+	}
+	if len(regions) == 0 {
+		slog.ErrorContext(ctx, "Region not found", "region_slug", payload.GetRegion())
+		return fmt.Errorf("region not found: %s", payload.GetRegion())
+	}
+	region := regions[0]
+
+	// Parse tenant_id and client_id for criteria
+	var tenantID, clientID *uuid.UUID
+	if tid, err := uuid.Parse(payload.GetTenantId()); err == nil {
+		tenantID = &tid
+	}
+	if cid, err := uuid.Parse(payload.GetClientId()); err == nil {
+		clientID = &cid
+	}
+
+	// Build criteria from event payload
+	criteria := pairing_value_objects.Criteria{
+		GameID:   &gameID,
+		Region:   region,
+		PairSize: 2, // Default to 1v1; TODO: derive from game mode or event metadata
+		TenantID: tenantID,
+		ClientID: clientID,
+	}
+
+	// Map skill range if provided
+	if sr := payload.GetSkillRange(); sr != nil {
+		criteria.SkillRange = &pairing_value_objects.SkillRange{
+			MinMMR: int(sr.GetMinMmr()),
+			MaxMMR: int(sr.GetMaxMmr()),
+		}
+	}
+
+	// Map priority boost
+	if pb := payload.PriorityBoost; pb != nil {
+		criteria.PriorityBoost = *pb > 0
+	}
+
+	findPairPayload := FindPairPayload{
+		PartyID:  playerID,
+		Criteria: criteria,
+	}
+
+	pair, pool, position, err := c.addAndFindNextPair.Execute(findPairPayload)
+	if err != nil {
+		slog.ErrorContext(ctx, "Failed to add player to matchmaking pool",
+			"error", err,
+			"player_id", playerID,
+			"event_id", envelope.GetId())
+		return err
+	}
+
+	if pair != nil {
+		slog.InfoContext(ctx, "Match found from PlayerQueued event!",
+			"pair_id", pair.ID,
+			"players", pair.Match,
+			"event_id", envelope.GetId())
+
+		// Extract player IDs from the pair
+		playerIDs := make([]uuid.UUID, 0, len(pair.Match))
+		for pid := range pair.Match {
+			playerIDs = append(playerIDs, pid)
+		}
+
+		// Publish match created event via legacy EventPublisher
+		matchEvent := &kafka.MatchEvent{
+			MatchID:   pair.ID,
+			LobbyID:   pair.ID,
+			EventType: kafka.EventTypeMatchCreated,
+			GameType:  payload.GetGameId(),
+			Region:    payload.GetRegion(),
+			PlayerIDs: playerIDs,
+		}
+		if err := c.eventPublisher.PublishMatchCreated(ctx, matchEvent); err != nil {
+			slog.ErrorContext(ctx, "Failed to publish match created event", "error", err, "pair_id", pair.ID)
+			// Don't return error — the match was created, just the notification failed
+		}
+	} else {
+		slog.InfoContext(ctx, "Player added to pool from PlayerQueued event",
+			"pool_size", len(pool.Parties),
+			"position", position,
+			"player_id", playerID,
+			"event_id", envelope.GetId())
+	}
 
 	return nil
 }
