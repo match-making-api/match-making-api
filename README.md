@@ -2,22 +2,23 @@
 
 ### Services
 
-This repository produces **two** independent binaries:
+This repository produces **three** independent binaries:
 
-| Binary | Path | Description |
-|---|---|---|
-| `match-making-api` | `cmd/rest-api/` | HTTP REST API (port 4991) |
-| `matchmaking-worker` | `cmd/workers/matchmaking/` | Kafka consumer + periodic ticker (no HTTP) |
+| Binary | Type | Path | Description |
+|---|---|---|---|
+| `match-making-api` | REST API | `cmd/rest-api/` | HTTP REST API (port 4991) |
+| `consumer-matchmaking-commands` | Consumer | `cmd/consumers/matchmaking-commands/` | Kafka consumer for `PlayerQueued` events |
+| `worker-queue-status` | Worker | `cmd/workers/queue-status/` | Periodic ticker for queue position updates |
 
 The **REST API** handles HTTP requests (games, lobbies, invitations, etc.).
 
-The **Matchmaking Worker** runs background processes:
-- **PlayerQueuedConsumer** — consumes `PlayerQueued` events from `matchmaking.commands` topic and adds players to the matchmaking pool.
-- **QueueStatusTicker** — every 5s, reads active queue entries from Dragonfly, refreshes positions from pool state, and publishes `QueueStatusUpdated` events to `websocket.broadcasts`.
+The **Consumer** (`consumer-matchmaking-commands`) consumes `PlayerQueued` events from the `matchmaking.commands` Kafka topic and adds players to the matchmaking pool via Dragonfly.
 
-Both share the same codebase (`pkg/`) but use different DI injection:
+The **Worker** (`worker-queue-status`) runs a periodic ticker (every 5s) that reads active queue entries from Dragonfly, refreshes positions from pool state, and publishes `QueueStatusUpdated` events to `websocket.broadcasts`.
+
+All three share the same codebase (`pkg/`) but use different DI injection:
 - API: `infra.Inject` + `domain.Inject` (full stack: MongoDB, Kafka, Redis, IAM, billing, etc.)
-- Worker: `infra.InjectWorker` + `domain.InjectWorker` (slim: MongoDB, Kafka, Redis, game, pairing, schedules)
+- Consumer / Worker: `infra.InjectWorker` + `domain.InjectWorker` (slim: MongoDB, Kafka, Redis, game, pairing, schedules)
 
 ### Infrastructure
 
@@ -30,13 +31,14 @@ Both share the same codebase (`pkg/`) but use different DI injection:
 ### Quick Start
 
 ```bash
-# Start all services (API + worker + infra)
+# Start all services (API + consumer + worker + infra)
 docker-compose -f docker-compose.dev.yml up -d
 
 # Or build locally
 make build-all
-make start-rest-api          # terminal 1
-make start-matchmaking-worker # terminal 2
+make start-rest-api               # terminal 1
+make start-consumer-matchmaking   # terminal 2
+make start-worker-queue-status    # terminal 3
 ```
 
 ### Environment Variables

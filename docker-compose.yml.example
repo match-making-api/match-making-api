@@ -23,12 +23,33 @@ services:
     networks:
       - svc
 
-  matchmaking-worker:
-    container_name: "matchmaking-worker"
+  consumer-matchmaking-commands:
+    container_name: "consumer-matchmaking-commands"
     build:
       context: .
       dockerfile: Dockerfile
-      target: matchmaking-worker
+      target: consumer-matchmaking-commands
+    depends_on:
+      - mongodb
+      - kafka
+      - dragonfly
+    env_file:
+      - .env
+    environment:
+      - DEV_ENV="docker"
+      - MONGO_URI=mongodb://mongodb:37019/match-making
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - REDIS_ADDR=dragonfly:6379
+    networks:
+      - svc
+    restart: unless-stopped
+
+  worker-queue-status:
+    container_name: "worker-queue-status"
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: worker-queue-status
     depends_on:
       - mongodb
       - kafka

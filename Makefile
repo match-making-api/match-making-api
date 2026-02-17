@@ -13,10 +13,12 @@ endif
 # Define the output binary names based on the OS
 ifeq ($(DETECTED_OS),Windows)
 	BINARY_REST_API := match-making-api-http-service.exe
-	BINARY_MATCHMAKING_WORKER := matchmaking-worker.exe
+	BINARY_CONSUMER_MATCHMAKING := consumer-matchmaking-commands.exe
+	BINARY_WORKER_QUEUE_STATUS := worker-queue-status.exe
 else
 	BINARY_REST_API := match-making-api-http-service
-	BINARY_MATCHMAKING_WORKER := matchmaking-worker
+	BINARY_CONSUMER_MATCHMAKING := consumer-matchmaking-commands
+	BINARY_WORKER_QUEUE_STATUS := worker-queue-status
 endif
 
 build-rest-api:
@@ -27,15 +29,23 @@ else
 	CGO_ENABLED=0 go build -o $(BINARY_REST_API) ./cmd/rest-api/main.go
 endif
 
-build-matchmaking-worker:
-	@echo "Building Matchmaking Worker for $(DETECTED_OS)"
+build-consumer-matchmaking:
+	@echo "Building Matchmaking Commands Consumer for $(DETECTED_OS)"
 ifeq ($(DETECTED_OS),Windows)
-	@go build -o $(BINARY_MATCHMAKING_WORKER) ./cmd/workers/matchmaking/main.go
+	@go build -o $(BINARY_CONSUMER_MATCHMAKING) ./cmd/consumers/matchmaking-commands/main.go
 else
-	CGO_ENABLED=0 go build -o $(BINARY_MATCHMAKING_WORKER) ./cmd/workers/matchmaking/main.go
+	CGO_ENABLED=0 go build -o $(BINARY_CONSUMER_MATCHMAKING) ./cmd/consumers/matchmaking-commands/main.go
 endif
 
-build-all: build-rest-api build-matchmaking-worker
+build-worker-queue-status:
+	@echo "Building Queue Status Worker for $(DETECTED_OS)"
+ifeq ($(DETECTED_OS),Windows)
+	@go build -o $(BINARY_WORKER_QUEUE_STATUS) ./cmd/workers/queue-status/main.go
+else
+	CGO_ENABLED=0 go build -o $(BINARY_WORKER_QUEUE_STATUS) ./cmd/workers/queue-status/main.go
+endif
+
+build-all: build-rest-api build-consumer-matchmaking build-worker-queue-status
 	@echo "All binaries built successfully"
 
 start-rest-api:
@@ -43,10 +53,15 @@ start-rest-api:
 	@export DEV_ENV="true"
 	@./$(BINARY_REST_API)
 
-start-matchmaking-worker:
-	@echo "Running Matchmaking Worker"
+start-consumer-matchmaking:
+	@echo "Running Matchmaking Commands Consumer"
 	@export DEV_ENV="true"
-	@./$(BINARY_MATCHMAKING_WORKER)
+	@./$(BINARY_CONSUMER_MATCHMAKING)
+
+start-worker-queue-status:
+	@echo "Running Queue Status Worker"
+	@export DEV_ENV="true"
+	@./$(BINARY_WORKER_QUEUE_STATUS)
 
 test-docker:
 	@echo "Running tests"

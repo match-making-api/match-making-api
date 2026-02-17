@@ -7,7 +7,8 @@ COPY . .
 COPY .env .env
 
 RUN CGO_ENABLED=0 go build -v -o match-making-api-http-service ./cmd/rest-api/main.go
-RUN CGO_ENABLED=0 go build -v -o matchmaking-worker ./cmd/workers/matchmaking/main.go
+RUN CGO_ENABLED=0 go build -v -o consumer-matchmaking-commands ./cmd/consumers/matchmaking-commands/main.go
+RUN CGO_ENABLED=0 go build -v -o worker-queue-status ./cmd/workers/queue-status/main.go
 RUN mkdir -p /app/match_making_files
 RUN mkdir -p /app/coverage
 
@@ -22,11 +23,20 @@ ENV GODEBUG=stackguard=99999000000000
 EXPOSE 4991
 CMD ["./app/match-making-api-http-service"]
 
-# runtime — Matchmaking Worker (consumer + ticker)
-FROM scratch AS matchmaking-worker
-COPY --from=build /app/matchmaking-worker ./app/
+# consumer — Matchmaking Commands (Kafka consumer for PlayerQueued events)
+FROM scratch AS consumer-matchmaking-commands
+COPY --from=build /app/consumer-matchmaking-commands ./app/
 COPY --from=build /app/.env ./.env
 
 ENV GODEBUG=stackguard=99999000000000
 
-CMD ["./app/matchmaking-worker"]
+CMD ["./app/consumer-matchmaking-commands"]
+
+# worker — Queue Status (periodic ticker for queue position updates)
+FROM scratch AS worker-queue-status
+COPY --from=build /app/worker-queue-status ./app/
+COPY --from=build /app/.env ./.env
+
+ENV GODEBUG=stackguard=99999000000000
+
+CMD ["./app/worker-queue-status"]
