@@ -29,6 +29,7 @@ message MatchmakingEvent {
     MatchCreatedPayload match_created = 11;
     MatchCompletedPayload match_completed = 12;
     RatingsUpdatedPayload ratings_updated = 13;
+    PlayerLeftQueuePayload player_left_queue = 14;
   }
 }
 
@@ -48,6 +49,19 @@ message PlayerQueuedPayload {
 message SkillRange {
   int32 min_mmr = 1;
   int32 max_mmr = 2;
+}
+
+// --- PlayerLeftQueue (replay-api → match-making-api) ---
+// Inverse of PlayerQueued: emitted when a player cancels or leaves the queue.
+// Consumer must handle idempotently (no-op if player is not in queue).
+
+message PlayerLeftQueuePayload {
+  string player_id = 1;
+  string game_id = 2;
+  string region = 3;
+  string tenant_id = 4;
+  string client_id = 5;
+  string reason = 6;  // Optional: e.g. "user_cancelled", "timeout", "disconnect"
 }
 
 // --- MatchCreated (match-making-api → replay-api) ---

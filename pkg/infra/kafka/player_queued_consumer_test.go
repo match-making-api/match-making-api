@@ -245,6 +245,306 @@ func TestPlayerQueuedConsumer_handleMessage(t *testing.T) {
 	})
 }
 
+func TestPlayerQueuedConsumer_handleMessage_PlayerLeftQueue(t *testing.T) {
+
+	t.Run("Valid PlayerLeftQueue event is dispatched to handler", func(t *testing.T) {
+		queuedHandlerCalled := false
+		leftQueueHandlerCalled := false
+		var receivedEnvelope *schemas.EventEnvelope
+		var receivedPayload *schemas.PlayerLeftQueuePayload
+
+		queuedHandler := func(ctx context.Context, envelope *schemas.EventEnvelope, payload *schemas.PlayerQueuedPayload) error {
+			queuedHandlerCalled = true
+			return nil
+		}
+
+		leftQueueHandler := func(ctx context.Context, envelope *schemas.EventEnvelope, payload *schemas.PlayerLeftQueuePayload) error {
+			leftQueueHandlerCalled = true
+			receivedEnvelope = envelope
+			receivedPayload = payload
+			return nil
+		}
+
+		pqc := &PlayerQueuedConsumer{handler: queuedHandler, leftQueueHandler: leftQueueHandler}
+
+		playerID := uuid.New().String()
+		gameID := uuid.New().String()
+		tenantID := uuid.New().String()
+		clientID := uuid.New().String()
+		resourceOwnerID := uuid.New().String()
+
+		event := &schemas.MatchmakingEvent{
+			Envelope: &schemas.EventEnvelope{
+				Id:                uuid.New().String(),
+				Type:              schemas.EventTypePlayerLeftQueue,
+				Source:            "replay-api",
+				Specversion:       schemas.CloudEventsSpecVersion,
+				Time:              timestamppb.Now(),
+				Subject:           playerID,
+				ResourceOwnerId:   resourceOwnerID,
+				DataschemaVersion: schemas.SchemaVersionV1,
+			},
+			Data: &schemas.MatchmakingEvent_PlayerLeftQueue{
+				PlayerLeftQueue: &schemas.PlayerLeftQueuePayload{
+					PlayerId: playerID,
+					GameId:   gameID,
+					Region:   "us-east-1",
+					TenantId: tenantID,
+					ClientId: clientID,
+					Reason:   "user_cancelled",
+				},
+			},
+		}
+
+		value, err := protojson.Marshal(event)
+		assert.NoError(t, err)
+
+		msg := &kafkago.Message{
+			Topic: TopicMatchmakingCommands,
+			Value: value,
+		}
+
+		err = pqc.handleMessage(context.Background(), msg)
+
+		assert.NoError(t, err)
+		assert.True(t, leftQueueHandlerCalled, "left queue handler should have been called")
+		assert.False(t, queuedHandlerCalled, "queued handler should NOT be called")
+		assert.Equal(t, resourceOwnerID, receivedEnvelope.GetResourceOwnerId())
+		assert.Equal(t, playerID, receivedPayload.GetPlayerId())
+		assert.Equal(t, gameID, receivedPayload.GetGameId())
+		assert.Equal(t, "us-east-1", receivedPayload.GetRegion())
+		assert.Equal(t, "user_cancelled", receivedPayload.GetReason())
+	})
+
+	t.Run("PlayerLeftQueue with nil handler is skipped", func(t *testing.T) {
+		pqc := &PlayerQueuedConsumer{
+			handler:          func(ctx context.Context, envelope *schemas.EventEnvelope, payload *schemas.PlayerQueuedPayload) error { return nil },
+			leftQueueHandler: nil,
+		}
+
+		playerID := uuid.New().String()
+
+		event := &schemas.MatchmakingEvent{
+			Envelope: &schemas.EventEnvelope{
+				Id:              uuid.New().String(),
+				Type:            schemas.EventTypePlayerLeftQueue,
+				Source:          "replay-api",
+				ResourceOwnerId: uuid.New().String(),
+			},
+			Data: &schemas.MatchmakingEvent_PlayerLeftQueue{
+				PlayerLeftQueue: &schemas.PlayerLeftQueuePayload{
+					PlayerId: playerID,
+					GameId:   uuid.New().String(),
+					Region:   "us-east-1",
+					TenantId: uuid.New().String(),
+					ClientId: uuid.New().String(),
+				},
+			},
+		}
+
+		value, err := protojson.Marshal(event)
+		assert.NoError(t, err)
+
+		msg := &kafkago.Message{
+			Topic: TopicMatchmakingCommands,
+			Value: value,
+		}
+
+		err = pqc.handleMessage(context.Background(), msg)
+		assert.NoError(t, err, "should skip gracefully when handler is nil")
+	})
+
+	t.Run("PlayerLeftQueue with missing resource_owner_id is skipped", func(t *testing.T) {
+		handlerCalled := false
+		leftQueueHandler := func(ctx context.Context, envelope *schemas.EventEnvelope, payload *schemas.PlayerLeftQueuePayload) error {
+			handlerCalled = true
+			return nil
+		}
+
+		pqc := &PlayerQueuedConsumer{
+			handler:          func(ctx context.Context, envelope *schemas.EventEnvelope, payload *schemas.PlayerQueuedPayload) error { return nil },
+			leftQueueHandler: leftQueueHandler,
+		}
+
+		event := &schemas.MatchmakingEvent{
+			Envelope: &schemas.EventEnvelope{
+				Id:              uuid.New().String(),
+				Type:            schemas.EventTypePlayerLeftQueue,
+				Source:          "replay-api",
+				ResourceOwnerId: "", // empty
+			},
+			Data: &schemas.MatchmakingEvent_PlayerLeftQueue{
+				PlayerLeftQueue: &schemas.PlayerLeftQueuePayload{
+					PlayerId: uuid.New().String(),
+					GameId:   uuid.New().String(),
+					Region:   "us-east-1",
+					TenantId: uuid.New().String(),
+					ClientId: uuid.New().String(),
+				},
+			},
+		}
+
+		value, err := protojson.Marshal(event)
+		assert.NoError(t, err)
+
+		msg := &kafkago.Message{
+			Topic: TopicMatchmakingCommands,
+			Value: value,
+		}
+
+		err = pqc.handleMessage(context.Background(), msg)
+		assert.NoError(t, err, "events failing ownership validation should be skipped")
+		assert.False(t, handlerCalled, "handler should NOT be called for invalid ownership")
+	})
+
+	t.Run("PlayerLeftQueue with missing player_id is skipped", func(t *testing.T) {
+		handlerCalled := false
+		leftQueueHandler := func(ctx context.Context, envelope *schemas.EventEnvelope, payload *schemas.PlayerLeftQueuePayload) error {
+			handlerCalled = true
+			return nil
+		}
+
+		pqc := &PlayerQueuedConsumer{
+			handler:          func(ctx context.Context, envelope *schemas.EventEnvelope, payload *schemas.PlayerQueuedPayload) error { return nil },
+			leftQueueHandler: leftQueueHandler,
+		}
+
+		event := &schemas.MatchmakingEvent{
+			Envelope: &schemas.EventEnvelope{
+				Id:              uuid.New().String(),
+				Type:            schemas.EventTypePlayerLeftQueue,
+				Source:          "replay-api",
+				ResourceOwnerId: uuid.New().String(),
+			},
+			Data: &schemas.MatchmakingEvent_PlayerLeftQueue{
+				PlayerLeftQueue: &schemas.PlayerLeftQueuePayload{
+					PlayerId: "", // empty
+					GameId:   uuid.New().String(),
+					Region:   "us-east-1",
+					TenantId: uuid.New().String(),
+					ClientId: uuid.New().String(),
+				},
+			},
+		}
+
+		value, err := protojson.Marshal(event)
+		assert.NoError(t, err)
+
+		msg := &kafkago.Message{
+			Topic: TopicMatchmakingCommands,
+			Value: value,
+		}
+
+		err = pqc.handleMessage(context.Background(), msg)
+		assert.NoError(t, err, "events failing ownership validation should be skipped")
+		assert.False(t, handlerCalled)
+	})
+
+	t.Run("PlayerLeftQueue with missing tenant_id is skipped", func(t *testing.T) {
+		handlerCalled := false
+		leftQueueHandler := func(ctx context.Context, envelope *schemas.EventEnvelope, payload *schemas.PlayerLeftQueuePayload) error {
+			handlerCalled = true
+			return nil
+		}
+
+		pqc := &PlayerQueuedConsumer{
+			handler:          func(ctx context.Context, envelope *schemas.EventEnvelope, payload *schemas.PlayerQueuedPayload) error { return nil },
+			leftQueueHandler: leftQueueHandler,
+		}
+
+		event := &schemas.MatchmakingEvent{
+			Envelope: &schemas.EventEnvelope{
+				Id:              uuid.New().String(),
+				Type:            schemas.EventTypePlayerLeftQueue,
+				Source:          "replay-api",
+				ResourceOwnerId: uuid.New().String(),
+			},
+			Data: &schemas.MatchmakingEvent_PlayerLeftQueue{
+				PlayerLeftQueue: &schemas.PlayerLeftQueuePayload{
+					PlayerId: uuid.New().String(),
+					GameId:   uuid.New().String(),
+					Region:   "us-east-1",
+					TenantId: "", // empty
+					ClientId: uuid.New().String(),
+				},
+			},
+		}
+
+		value, err := protojson.Marshal(event)
+		assert.NoError(t, err)
+
+		msg := &kafkago.Message{
+			Topic: TopicMatchmakingCommands,
+			Value: value,
+		}
+
+		err = pqc.handleMessage(context.Background(), msg)
+		assert.NoError(t, err, "events failing ownership validation should be skipped")
+		assert.False(t, handlerCalled)
+	})
+}
+
+func TestValidateLeftQueueResourceOwnership(t *testing.T) {
+	t.Run("Valid ownership", func(t *testing.T) {
+		envelope := &schemas.EventEnvelope{ResourceOwnerId: uuid.New().String()}
+		payload := &schemas.PlayerLeftQueuePayload{
+			PlayerId: uuid.New().String(),
+			TenantId: uuid.New().String(),
+			ClientId: uuid.New().String(),
+		}
+		err := validateLeftQueueResourceOwnership(envelope, payload)
+		assert.NoError(t, err)
+	})
+
+	t.Run("Empty resource_owner_id", func(t *testing.T) {
+		envelope := &schemas.EventEnvelope{ResourceOwnerId: ""}
+		payload := &schemas.PlayerLeftQueuePayload{
+			PlayerId: uuid.New().String(),
+			TenantId: uuid.New().String(),
+			ClientId: uuid.New().String(),
+		}
+		err := validateLeftQueueResourceOwnership(envelope, payload)
+		assert.Error(t, err)
+		assert.ErrorIs(t, err, ErrResourceOwnershipInvalid)
+	})
+
+	t.Run("Empty tenant_id", func(t *testing.T) {
+		envelope := &schemas.EventEnvelope{ResourceOwnerId: uuid.New().String()}
+		payload := &schemas.PlayerLeftQueuePayload{
+			PlayerId: uuid.New().String(),
+			TenantId: "",
+			ClientId: uuid.New().String(),
+		}
+		err := validateLeftQueueResourceOwnership(envelope, payload)
+		assert.Error(t, err)
+		assert.ErrorIs(t, err, ErrResourceOwnershipInvalid)
+	})
+
+	t.Run("Empty client_id", func(t *testing.T) {
+		envelope := &schemas.EventEnvelope{ResourceOwnerId: uuid.New().String()}
+		payload := &schemas.PlayerLeftQueuePayload{
+			PlayerId: uuid.New().String(),
+			TenantId: uuid.New().String(),
+			ClientId: "",
+		}
+		err := validateLeftQueueResourceOwnership(envelope, payload)
+		assert.Error(t, err)
+		assert.ErrorIs(t, err, ErrResourceOwnershipInvalid)
+	})
+
+	t.Run("Empty player_id", func(t *testing.T) {
+		envelope := &schemas.EventEnvelope{ResourceOwnerId: uuid.New().String()}
+		payload := &schemas.PlayerLeftQueuePayload{
+			PlayerId: "",
+			TenantId: uuid.New().String(),
+			ClientId: uuid.New().String(),
+		}
+		err := validateLeftQueueResourceOwnership(envelope, payload)
+		assert.Error(t, err)
+		assert.ErrorIs(t, err, ErrResourceOwnershipInvalid)
+	})
+}
+
 func TestValidateResourceOwnership(t *testing.T) {
 	t.Run("Valid ownership", func(t *testing.T) {
 		envelope := &schemas.EventEnvelope{ResourceOwnerId: uuid.New().String()}
