@@ -111,14 +111,19 @@ func Inject(c container.Container) error {
 		return err
 	}
 
-	// Register PlayerQueuedConsumer — consumes PlayerQueued events from matchmaking.commands topic.
-	// Wires the MatchmakingEventConsumer.HandlePlayerQueuedProto as the domain handler.
+	// Register PlayerQueuedConsumer — consumes matchmaking command events from matchmaking.commands topic.
+	// Wires HandlePlayerQueuedProto and HandlePlayerLeftQueueProto as domain handlers.
 	if err := c.Singleton(func(
 		client *kafka.Client,
 		eventConsumer *usecases.MatchmakingEventConsumer,
 	) *kafka.PlayerQueuedConsumer {
 		groupID := "match-making-api-commands"
-		return kafka.NewPlayerQueuedConsumer(client, groupID, eventConsumer.HandlePlayerQueuedProto)
+		return kafka.NewPlayerQueuedConsumer(
+			client,
+			groupID,
+			eventConsumer.HandlePlayerQueuedProto,
+			eventConsumer.HandlePlayerLeftQueueProto,
+		)
 	}); err != nil {
 		return err
 	}

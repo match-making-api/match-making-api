@@ -239,6 +239,118 @@ func (c *MatchmakingEventConsumer) handleQueueLeft(ctx context.Context, event *k
 	return nil
 }
 
+// HandlePlayerLeftQueueProto processes a PlayerLeftQueue event from the canonical protobuf/CloudEvents schema.
+// This is the inverse of HandlePlayerQueuedProto: removes the player from the matchmaking pool
+// and cleans up the active queue store entry.
+//
+// Flow:
+//  1. Validate resource ownership from envelope (defense-in-depth)
+//  2. Parse player_id and game_id as UUIDs
+//  3. Lookup region by slug
+//  4. Find the pool matching the criteria
+//  5. Remove player from pool and persist
+//  6. Remove player from active queue store (Redis)
+//
+// Idempotency: if the player is not in the pool or active queue, the operation is a no-op.
+func (c *MatchmakingEventConsumer) HandlePlayerLeftQueueProto(ctx context.Context, envelope *schemas.EventEnvelope, payload *schemas.PlayerLeftQueuePayload) error {
+	slog.InfoContext(ctx, "Processing PlayerLeftQueue proto event",
+		"event_id", envelope.GetId(),
+		"player_id", payload.GetPlayerId(),
+		"game_id", payload.GetGameId(),
+		"region", payload.GetRegion(),
+		"reason", payload.GetReason(),
+		"resource_owner_id", envelope.GetResourceOwnerId())
+
+	// Validate resource ownership (defense-in-depth — consumer validates too)
+	if strings.TrimSpace(envelope.GetResourceOwnerId()) == "" {
+		slog.ErrorContext(ctx, "PlayerLeftQueue event missing resource_owner_id, skipping",
+			"event_id", envelope.GetId())
+		return fmt.Errorf("resource_owner_id is required")
+	}
+
+	// Parse player_id
+	playerID, err := uuid.Parse(payload.GetPlayerId())
+	if err != nil {
+		slog.ErrorContext(ctx, "Invalid player_id UUID", "player_id", payload.GetPlayerId(), "error", err)
+		return fmt.Errorf("invalid player_id: %w", err)
+	}
+
+	// Parse game_id
+	gameID, err := uuid.Parse(payload.GetGameId())
+	if err != nil {
+		slog.ErrorContext(ctx, "Invalid game_id UUID", "game_id", payload.GetGameId(), "error", err)
+		return fmt.Errorf("invalid game_id: %w", err)
+	}
+
+	// Lookup region by slug
+	regions, err := c.regionReader.Search(ctx, map[string]interface{}{"slug": payload.GetRegion()})
+	if err != nil {
+		slog.ErrorContext(ctx, "Failed to lookup region", "region_slug", payload.GetRegion(), "error", err)
+		return fmt.Errorf("failed to lookup region %s: %w", payload.GetRegion(), err)
+	}
+	if len(regions) == 0 {
+		slog.ErrorContext(ctx, "Region not found", "region_slug", payload.GetRegion())
+		return fmt.Errorf("region not found: %s", payload.GetRegion())
+	}
+	region := regions[0]
+
+	// Build criteria to find the pool
+	criteria := pairing_value_objects.Criteria{
+		GameID:   &gameID,
+		Region:   region,
+		PairSize: 2, // Default to 1v1; TODO: derive from game mode or event metadata
+	}
+
+	// Find the pool
+	pool, err := c.poolReader.FindPool(&criteria)
+	if err != nil {
+		slog.ErrorContext(ctx, "Failed to find pool for removal",
+			"error", err, "player_id", playerID, "event_id", envelope.GetId())
+		return err
+	}
+
+	if pool != nil {
+		// Remove the player from the pool (idempotent: Remove returns error if not found, which we handle)
+		_, err = pool.Remove(playerID)
+		if err != nil {
+			slog.WarnContext(ctx, "Player not found in pool (idempotent no-op)",
+				"player_id", playerID,
+				"event_id", envelope.GetId(),
+				"error", err)
+			// Not a fatal error — player may have already been removed or matched
+		} else {
+			// Persist the updated pool
+			if _, err := c.poolWriter.Save(pool); err != nil {
+				slog.ErrorContext(ctx, "Failed to save pool after removal",
+					"error", err, "player_id", playerID, "event_id", envelope.GetId())
+				return err
+			}
+		}
+	} else {
+		slog.WarnContext(ctx, "Pool not found for player removal (idempotent no-op)",
+			"player_id", playerID,
+			"event_id", envelope.GetId())
+	}
+
+	// Remove from active queue store (Redis) — idempotent
+	if c.activeQueueStore != nil {
+		if err := c.activeQueueStore.Remove(ctx, playerID); err != nil {
+			slog.WarnContext(ctx, "Failed to remove player from active queue store",
+				"player_id", playerID, "error", err)
+			// Non-fatal — best-effort cleanup
+		}
+	}
+
+	slog.InfoContext(ctx, "Player removed from matchmaking queue",
+		"player_id", playerID,
+		"game_id", gameID,
+		"region", payload.GetRegion(),
+		"reason", payload.GetReason(),
+		"event_id", envelope.GetId())
+
+	return nil
+}
+
 // HandlePlayerQueuedProto processes a PlayerQueued event from the canonical protobuf/CloudEvents schema (#16/#17).
 // This is the handler for events consumed from the matchmaking.commands topic.
 //

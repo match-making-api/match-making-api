@@ -69,6 +69,21 @@ Emitted when a player joins the queue.
 - `tenant_id`, `client_id` (required)
 - `resource_permissions` (optional): e.g. `["read", "write"]`
 
+### PlayerLeftQueue (replay-api → match-making-api)
+
+Emitted when a player leaves (cancels) the queue. Inverse of `PlayerQueued`. Consumer handles this idempotently — leaving when not in queue or duplicate leave events result in a no-op.
+
+**Payload:**
+- `player_id`, `game_id`, `region` (required)
+- `tenant_id`, `client_id` (required)
+- `reason` (optional): leave reason, e.g. `"user_cancelled"`, `"timeout"`, `"disconnect"`
+
+**Consumer behavior:**
+- Validates resource ownership (envelope + payload)
+- Removes player from matchmaking pool (if present)
+- Removes player from active queue store (Redis/Dragonfly)
+- If player is not in pool or active queue, the operation is a no-op (idempotent)
+
 ### MatchCreated (match-making-api → replay-api)
 
 Emitted when a match is created.
@@ -113,6 +128,7 @@ Placeholder. Will notify players when the match has officially started. Publishe
 | Topic | Direction | Events | Proto Message | `dataschema_version` |
 |-------|-----------|--------|---------------|----------------------|
 | `matchmaking.commands` | replay-api → match-making-api | PlayerQueued | `PlayerQueuedPayload` | 1 |
+| `matchmaking.commands` | replay-api → match-making-api | PlayerLeftQueue | `PlayerLeftQueuePayload` | 1 |
 | `matchmaking.matches.created` | match-making-api → replay-api | MatchCreated | `MatchCreatedPayload` | 1 |
 | `matchmaking.matches` | match-making-api → replay-api | MatchCompleted | `MatchCompletedPayload` | 1 |
 | (TBD) | match-making-api → replay-api | RatingsUpdated | `RatingsUpdatedPayload` | 1 |
@@ -302,6 +318,7 @@ message PlayerQueuedPayload {
 |--------|-------|-----------|---------------------|
 | `EventEnvelope` | Platform team | Platform team | Platform team lead |
 | `PlayerQueuedPayload` | replay-api team | replay-api team | replay-api + match-making-api leads |
+| `PlayerLeftQueuePayload` | replay-api team | replay-api team | replay-api + match-making-api leads |
 | `MatchCreatedPayload` | match-making-api team | match-making-api team | match-making-api + replay-api leads |
 | `MatchCompletedPayload` | match-making-api team | match-making-api team | match-making-api + replay-api leads |
 | `RatingsUpdatedPayload` | match-making-api team | match-making-api team | match-making-api + replay-api leads |
