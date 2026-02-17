@@ -41,6 +41,7 @@ const (
 	EventTypeMatchCompleted     = "MATCH_COMPLETED"
 	EventTypeMatchCancelled     = "MATCH_CANCELLED"
 	EventTypeQueueStatusUpdated = "QUEUE_STATUS_UPDATED"
+	EventTypeMatchReady         = "MATCH_READY"   // Planned (#26): lobby is full, match ready to start
 )
 
 // QueueStatusPayload is the payload for QUEUE_STATUS_UPDATED events.
