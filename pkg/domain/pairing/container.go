@@ -11,7 +11,9 @@ import (
 	"github.com/leet-gaming/match-making-api/pkg/domain/pairing/usecases"
 	pairing_value_objects "github.com/leet-gaming/match-making-api/pkg/domain/pairing/value-objects"
 	schedules_in_ports "github.com/leet-gaming/match-making-api/pkg/domain/schedules/ports/in"
+	"github.com/leet-gaming/match-making-api/pkg/infra/cache"
 	"github.com/leet-gaming/match-making-api/pkg/infra/kafka"
+	"github.com/redis/go-redis/v9"
 )
 
 // mockPoolReader is a simple in-memory implementation for development
@@ -88,6 +90,13 @@ func Inject(c container.Container) error {
 		return err
 	}
 
+	// Register ActiveQueueStore — backed by Redis/Dragonfly for distributed access (#22)
+	if err := c.Singleton(func(redisClient *redis.Client) pairing_out.ActiveQueueStore {
+		return cache.NewRedisActiveQueueStore(redisClient)
+	}); err != nil {
+		return err
+	}
+
 	// Register MatchmakingEventConsumer
 	if err := c.Singleton(func(
 		addAndFindNextPair *usecases.AddAndFindNextPairUseCase,
@@ -95,8 +104,9 @@ func Inject(c container.Container) error {
 		regionReader game_out.RegionReader,
 		poolReader pairing_out.PoolReader,
 		poolWriter pairing_out.PoolWriter,
+		aqStore pairing_out.ActiveQueueStore,
 	) *usecases.MatchmakingEventConsumer {
-		return usecases.NewMatchmakingEventConsumer(addAndFindNextPair, eventPublisher, regionReader, poolReader, poolWriter)
+		return usecases.NewMatchmakingEventConsumer(addAndFindNextPair, eventPublisher, regionReader, poolReader, poolWriter, aqStore)
 	}); err != nil {
 		return err
 	}
@@ -109,6 +119,19 @@ func Inject(c container.Container) error {
 	) *kafka.PlayerQueuedConsumer {
 		groupID := "match-making-api-commands"
 		return kafka.NewPlayerQueuedConsumer(client, groupID, eventConsumer.HandlePlayerQueuedProto)
+	}); err != nil {
+		return err
+	}
+
+	// Register QueueStatusTicker — periodic broadcaster of queue position updates (#22)
+	if err := c.Singleton(func(
+		aqStore pairing_out.ActiveQueueStore,
+		poolReader pairing_out.PoolReader,
+		regionReader game_out.RegionReader,
+		eventPublisher *kafka.EventPublisher,
+	) *usecases.QueueStatusTicker {
+		cfg := usecases.DefaultQueueStatusTickerConfig()
+		return usecases.NewQueueStatusTicker(aqStore, poolReader, regionReader, eventPublisher, cfg)
 	}); err != nil {
 		return err
 	}

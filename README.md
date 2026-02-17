@@ -1,4 +1,56 @@
-Tenacity Scheme:
+## Architecture
+
+### Services
+
+This repository produces **two** independent binaries:
+
+| Binary | Path | Description |
+|---|---|---|
+| `match-making-api` | `cmd/rest-api/` | HTTP REST API (port 4991) |
+| `matchmaking-worker` | `cmd/workers/matchmaking/` | Kafka consumer + periodic ticker (no HTTP) |
+
+The **REST API** handles HTTP requests (games, lobbies, invitations, etc.).
+
+The **Matchmaking Worker** runs background processes:
+- **PlayerQueuedConsumer** — consumes `PlayerQueued` events from `matchmaking.commands` topic and adds players to the matchmaking pool.
+- **QueueStatusTicker** — every 5s, reads active queue entries from Dragonfly, refreshes positions from pool state, and publishes `QueueStatusUpdated` events to `websocket.broadcasts`.
+
+Both share the same codebase (`pkg/`) but use different DI injection:
+- API: `infra.Inject` + `domain.Inject` (full stack: MongoDB, Kafka, Redis, IAM, billing, etc.)
+- Worker: `infra.InjectWorker` + `domain.InjectWorker` (slim: MongoDB, Kafka, Redis, game, pairing, schedules)
+
+### Infrastructure
+
+| Service | Purpose | Default Port |
+|---|---|---|
+| MongoDB | Persistent storage (games, regions, pools) | 37019 |
+| Kafka | Event streaming (commands, events, broadcasts) | 29092 |
+| Dragonfly | Distributed queue state (`ActiveQueueStore`) | 6379 |
+
+### Quick Start
+
+```bash
+# Start all services (API + worker + infra)
+docker-compose -f docker-compose.dev.yml up -d
+
+# Or build locally
+make build-all
+make start-rest-api          # terminal 1
+make start-matchmaking-worker # terminal 2
+```
+
+### Environment Variables
+
+See `.env.example` for all available settings. Key additions:
+
+```env
+REDIS_ADDR=localhost:6379    # Dragonfly/Redis address
+REDIS_PASSWORD=              # Optional auth
+```
+
+---
+
+Tenancy Scheme:
 ```mermaid
 graph TD
     Tenant[Tenant]
