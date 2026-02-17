@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	game_out "github.com/leet-gaming/match-making-api/pkg/domain/game/ports/out"
@@ -32,6 +33,7 @@ type MatchmakingEventConsumer struct {
 	regionReader       game_out.RegionReader
 	poolReader         pairing_out.PoolReader
 	poolWriter         pairing_out.PoolWriter
+	activeQueueStore   pairing_out.ActiveQueueStore
 }
 
 // NewMatchmakingEventConsumer creates a new consumer for matchmaking events
@@ -41,6 +43,7 @@ func NewMatchmakingEventConsumer(
 	regionReader game_out.RegionReader,
 	poolReader pairing_out.PoolReader,
 	poolWriter pairing_out.PoolWriter,
+	activeQueueStore pairing_out.ActiveQueueStore,
 ) *MatchmakingEventConsumer {
 	return &MatchmakingEventConsumer{
 		addAndFindNextPair: addAndFindNextPair,
@@ -48,6 +51,7 @@ func NewMatchmakingEventConsumer(
 		regionReader:       regionReader,
 		poolReader:         poolReader,
 		poolWriter:         poolWriter,
+		activeQueueStore:   activeQueueStore,
 	}
 }
 
@@ -337,6 +341,16 @@ func (c *MatchmakingEventConsumer) HandlePlayerQueuedProto(ctx context.Context, 
 			"players", pair.Match,
 			"event_id", envelope.GetId())
 
+		// Remove matched players from active queue (#22 — they no longer need position updates)
+		if c.activeQueueStore != nil {
+			for pid := range pair.Match {
+				if err := c.activeQueueStore.Remove(ctx, pid); err != nil {
+					slog.WarnContext(ctx, "Failed to remove matched player from active queue",
+						"player_id", pid, "error", err)
+				}
+			}
+		}
+
 		// Extract player IDs from the pair
 		playerIDs := make([]uuid.UUID, 0, len(pair.Match))
 		for pid := range pair.Match {
@@ -357,6 +371,23 @@ func (c *MatchmakingEventConsumer) HandlePlayerQueuedProto(ctx context.Context, 
 			// Don't return error — the match was created, just the notification failed
 		}
 	} else {
+		// Register player in active queue for periodic position updates (#22)
+		if c.activeQueueStore != nil {
+			if err := c.activeQueueStore.Register(ctx, &pairing_entities.ActiveQueueEntry{
+				PlayerID:        playerID,
+				GameID:          gameID,
+				RegionSlug:      payload.GetRegion(),
+				TenantID:        payload.GetTenantId(),
+				ClientID:        payload.GetClientId(),
+				ResourceOwnerID: envelope.GetResourceOwnerId(),
+				Position:        position,
+				JoinedAt:        time.Now().UTC(),
+			}); err != nil {
+				slog.WarnContext(ctx, "Failed to register player in active queue",
+					"player_id", playerID, "error", err)
+			}
+		}
+
 		slog.InfoContext(ctx, "Player added to pool from PlayerQueued event",
 			"pool_size", len(pool.Parties),
 			"position", position,

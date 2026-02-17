@@ -40,7 +40,21 @@ const (
 	EventTypeMatchStarted       = "MATCH_STARTED"
 	EventTypeMatchCompleted     = "MATCH_COMPLETED"
 	EventTypeMatchCancelled     = "MATCH_CANCELLED"
+	EventTypeQueueStatusUpdated = "QUEUE_STATUS_UPDATED"
 )
+
+// QueueStatusPayload is the payload for QUEUE_STATUS_UPDATED events.
+// Broadcast via WebSocket to the player to show live queue position changes.
+type QueueStatusPayload struct {
+	PlayerID        uuid.UUID `json:"player_id"`
+	GameID          uuid.UUID `json:"game_id"`
+	Region          string    `json:"region"`
+	Position        int       `json:"position"`
+	EstimatedWaitMs int64     `json:"estimated_wait_ms"`
+	TotalInQueue    int       `json:"total_in_queue"`
+	EventType       string    `json:"event_type"`
+	Timestamp       int64     `json:"timestamp"`
+}
 
 // EventPublisher publishes domain events to Kafka topics
 type EventPublisher struct {

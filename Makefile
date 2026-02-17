@@ -10,27 +10,43 @@ else
 	DETECTED_OS := $(shell uname -s)
 endif
 
-# Define the output binary name based on the OS
+# Define the output binary names based on the OS
 ifeq ($(DETECTED_OS),Windows)
-	BINARY_NAME := match-making-api-http-service.exe
+	BINARY_REST_API := match-making-api-http-service.exe
+	BINARY_MATCHMAKING_WORKER := matchmaking-worker.exe
 else
-	BINARY_NAME := match-making-api-http-service
+	BINARY_REST_API := match-making-api-http-service
+	BINARY_MATCHMAKING_WORKER := matchmaking-worker
 endif
 
 build-rest-api:
-	@echo "Building API for $(DETECTED_OS)"
+	@echo "Building REST API for $(DETECTED_OS)"
 ifeq ($(DETECTED_OS),Windows)
-	@echo "Building for Windows"
-	@go build -o $(BINARY_NAME) ./cmd/rest-api/main.go
+	@go build -o $(BINARY_REST_API) ./cmd/rest-api/main.go
 else
-	@echo "Building for Unix-like system"
-	CGO_ENABLED=0 go build -o $(BINARY_NAME) ./cmd/rest-api/main.go
+	CGO_ENABLED=0 go build -o $(BINARY_REST_API) ./cmd/rest-api/main.go
 endif
 
+build-matchmaking-worker:
+	@echo "Building Matchmaking Worker for $(DETECTED_OS)"
+ifeq ($(DETECTED_OS),Windows)
+	@go build -o $(BINARY_MATCHMAKING_WORKER) ./cmd/workers/matchmaking/main.go
+else
+	CGO_ENABLED=0 go build -o $(BINARY_MATCHMAKING_WORKER) ./cmd/workers/matchmaking/main.go
+endif
+
+build-all: build-rest-api build-matchmaking-worker
+	@echo "All binaries built successfully"
+
 start-rest-api:
-	@echo "Running API"
+	@echo "Running REST API"
 	@export DEV_ENV="true"
-	@./$(BINARY_NAME)
+	@./$(BINARY_REST_API)
+
+start-matchmaking-worker:
+	@echo "Running Matchmaking Worker"
+	@export DEV_ENV="true"
+	@./$(BINARY_MATCHMAKING_WORKER)
 
 test-docker:
 	@echo "Running tests"

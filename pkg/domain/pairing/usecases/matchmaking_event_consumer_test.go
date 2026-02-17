@@ -59,6 +59,7 @@ func TestMatchmakingEventConsumer_HandleQueueEvent(t *testing.T) {
 			mockRegionReader,
 			mockPoolReader,
 			mockPoolWriter,
+			pairing_entities.NewInMemoryActiveQueueStore(),
 		)
 
 		playerID := uuid.New()
@@ -117,6 +118,7 @@ func TestMatchmakingEventConsumer_HandleQueueEvent(t *testing.T) {
 			mockRegionReader,
 			mockPoolReader,
 			mockPoolWriter,
+			pairing_entities.NewInMemoryActiveQueueStore(),
 		)
 
 		playerID := uuid.New()
@@ -163,6 +165,7 @@ func TestMatchmakingEventConsumer_HandleQueueEvent(t *testing.T) {
 			mockRegionReader,
 			mockPoolReader,
 			mockPoolWriter,
+			pairing_entities.NewInMemoryActiveQueueStore(),
 		)
 
 		playerID := uuid.New()
@@ -201,6 +204,7 @@ func TestMatchmakingEventConsumer_HandleQueueEvent(t *testing.T) {
 			mockRegionReader,
 			mockPoolReader,
 			mockPoolWriter,
+			pairing_entities.NewInMemoryActiveQueueStore(),
 		)
 
 		playerID := uuid.New()
@@ -235,6 +239,7 @@ func TestMatchmakingEventConsumer_HandleQueueEvent(t *testing.T) {
 			mockRegionReader,
 			mockPoolReader,
 			mockPoolWriter,
+			pairing_entities.NewInMemoryActiveQueueStore(),
 		)
 
 		playerID := uuid.New()
@@ -286,6 +291,7 @@ func TestMatchmakingEventConsumer_HandleQueueEvent(t *testing.T) {
 			mockRegionReader,
 			mockPoolReader,
 			mockPoolWriter,
+			pairing_entities.NewInMemoryActiveQueueStore(),
 		)
 
 		playerID := uuid.New()
@@ -330,6 +336,7 @@ func TestMatchmakingEventConsumer_HandleQueueEvent(t *testing.T) {
 			mockRegionReader,
 			mockPoolReader,
 			mockPoolWriter,
+			pairing_entities.NewInMemoryActiveQueueStore(),
 		)
 
 		event := &kafka.QueueEvent{
@@ -357,6 +364,7 @@ func TestMatchmakingEventConsumer_HandleQueueEvent(t *testing.T) {
 			mockRegionReader,
 			mockPoolReader,
 			mockPoolWriter,
+			pairing_entities.NewInMemoryActiveQueueStore(),
 		)
 
 		playerID := uuid.New()
@@ -395,6 +403,7 @@ func TestMatchmakingEventConsumer_HandleQueueEvent(t *testing.T) {
 			mockRegionReader,
 			mockPoolReader,
 			mockPoolWriter,
+			pairing_entities.NewInMemoryActiveQueueStore(),
 		)
 
 		playerID := uuid.New()
@@ -447,6 +456,7 @@ func TestMatchmakingEventConsumer_HandleQueueEvent(t *testing.T) {
 			mockRegionReader,
 			mockPoolReader,
 			mockPoolWriter,
+			pairing_entities.NewInMemoryActiveQueueStore(),
 		)
 
 		playerID := uuid.New()
@@ -508,6 +518,7 @@ func TestMatchmakingEventConsumer_HandleQueueEvent(t *testing.T) {
 			mockRegionReader,
 			mockPoolReader,
 			mockPoolWriter,
+			pairing_entities.NewInMemoryActiveQueueStore(),
 		)
 
 		lobbyID := uuid.New()
@@ -542,6 +553,7 @@ func TestMatchmakingEventConsumer_HandleQueueEvent(t *testing.T) {
 			mockRegionReader,
 			mockPoolReader,
 			mockPoolWriter,
+			pairing_entities.NewInMemoryActiveQueueStore(),
 		)
 
 		event := &kafka.LobbyEvent{
@@ -564,6 +576,7 @@ func newTestConsumer() (*usecases.MatchmakingEventConsumer, *MockAddAndFindNextP
 	mockRegionReader := &mocks.MockPortRegionReader{}
 	mockPoolReader := &mocks.MockPoolReader{}
 	mockPoolWriter := &mocks.MockPoolWriter{}
+	activeQueueStore := pairing_entities.NewInMemoryActiveQueueStore()
 
 	consumer := usecases.NewMatchmakingEventConsumer(
 		mockAddAndFind,
@@ -571,6 +584,7 @@ func newTestConsumer() (*usecases.MatchmakingEventConsumer, *MockAddAndFindNextP
 		mockRegionReader,
 		mockPoolReader,
 		mockPoolWriter,
+		activeQueueStore,
 	)
 
 	return consumer, mockAddAndFind, mockEventPublisher, mockRegionReader

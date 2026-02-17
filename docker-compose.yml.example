@@ -4,20 +4,45 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      target: runtime
     ports:
       - "4991:4991"
     volumes:
       - .blob:/app/match_making_files
     depends_on:
       - mongodb
+      - kafka
+      - dragonfly
     env_file:
       - .env
     environment:
       - DEV_ENV="docker"
       - MONGO_URI=mongodb://mongodb:37019/match-making
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - REDIS_ADDR=dragonfly:6379
     networks:
       - svc
+
+  matchmaking-worker:
+    container_name: "matchmaking-worker"
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: matchmaking-worker
+    depends_on:
+      - mongodb
+      - kafka
+      - dragonfly
+    env_file:
+      - .env
+    environment:
+      - DEV_ENV="docker"
+      - MONGO_URI=mongodb://mongodb:37019/match-making
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - REDIS_ADDR=dragonfly:6379
+    networks:
+      - svc
+    restart: unless-stopped
 
   mongodb:
     container_name: "mongodb"
@@ -28,6 +53,16 @@ services:
       - .mongodb:/data/db
     networks:
       - default
+      - svc
+
+  dragonfly:
+    container_name: "dragonfly"
+    image: docker.dragonflydb.io/dragonflydb/dragonfly:latest
+    ports:
+      - "6379:6379"
+    volumes:
+      - .dragonfly:/data
+    networks:
       - svc
 
   zookeeper:
