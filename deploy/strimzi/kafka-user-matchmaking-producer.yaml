@@ -1,0 +1,43 @@
+# KafkaUser for the matchmaking event producer.
+# Used by both the REST API and matchmaking-worker to publish events.
+#
+# Auth: SCRAM-SHA-512 (Strimzi manages credentials via Secret)
+# ACLs: Write on all matchmaking topics + websocket.broadcasts
+#
+# Prerequisites:
+#   - Strimzi Operator installed
+#   - Kafka cluster "matchmaking" deployed with authentication.type: scram-sha-512
+#
+# Apply: kubectl apply -f kafka-user-matchmaking-producer.yaml
+# Secret: kubectl get secret matchmaking-producer -o jsonpath='{.data.password}' | base64 -d
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaUser
+metadata:
+  name: matchmaking-producer
+  labels:
+    strimzi.io/cluster: matchmaking
+spec:
+  authentication:
+    type: scram-sha-512
+  authorization:
+    type: simple
+    acls:
+      # Write to matchmaking event topics
+      - resource:
+          type: topic
+          name: matchmaking.
+          patternType: prefix
+        operations:
+          - Write
+          - Describe
+          - Create
+        host: "*"
+      # Write to websocket.broadcasts (QueueStatusUpdated events)
+      - resource:
+          type: topic
+          name: websocket.broadcasts
+          patternType: literal
+        operations:
+          - Write
+          - Describe
+        host: "*"
