@@ -86,7 +86,29 @@ Placeholder for producer use (2501-003). Payload includes `match_id`, `player_id
 
 Placeholder for the epic. Payload includes `deltas[]` of MMR per player.
 
+### QueueStatusUpdated (match-making-api → replay-api, via `websocket.broadcasts`)
+
+Emitted every 5s by the `worker-queue-status` for each active queue entry. Delivered to the player's WebSocket connection via `replay-api`.
+
+**Payload** (`QueueStatusPayload` — JSON, not Protobuf):
+- `player_id`, `game_id`, `region` (required)
+- `position` (int): current queue position
+- `estimated_wait_ms` (int64): estimated remaining wait in milliseconds
+- `total_in_queue` (int): total players in the queue
+- `event_type`: `"QUEUE_STATUS_UPDATED"`
+- `timestamp` (int64): Unix epoch ms
+
+### MatchReady (planned, #26)
+
+Placeholder. Will notify players when a lobby is full and the match is ready to start. Published to `websocket.broadcasts` with `TargetIDs` set to lobby player IDs.
+
+### MatchStarted (planned, #27)
+
+Placeholder. Will notify players when the match has officially started. Published to `websocket.broadcasts` with `LobbyID` set.
+
 ## Topic → Schema Mapping
+
+### Domain Events (Protobuf/CloudEvents)
 
 | Topic | Direction | Events | Proto Message | `dataschema_version` |
 |-------|-----------|--------|---------------|----------------------|
@@ -94,6 +116,26 @@ Placeholder for the epic. Payload includes `deltas[]` of MMR per player.
 | `matchmaking.matches.created` | match-making-api → replay-api | MatchCreated | `MatchCreatedPayload` | 1 |
 | `matchmaking.matches` | match-making-api → replay-api | MatchCompleted | `MatchCompletedPayload` | 1 |
 | (TBD) | match-making-api → replay-api | RatingsUpdated | `RatingsUpdatedPayload` | 1 |
+
+### Real-Time Notifications (JSON, via `websocket.broadcasts`)
+
+> **Decision**: We do NOT use a dedicated `matchmaking.notifications` topic. Notification events are published directly to `websocket.broadcasts` for WebSocket delivery. See [ADR-002](ADR-002-notifications-topic-decision.md).
+
+| Topic | Direction | Events | Payload Format | Delivery |
+|-------|-----------|--------|----------------|----------|
+| `websocket.broadcasts` | match-making-api → replay-api | QueueStatusUpdated | `QueueStatusPayload` (JSON) | `TargetIDs: [playerID]` |
+| `websocket.broadcasts` | match-making-api → replay-api | MatchReady (#26) | TBD | `TargetIDs: [playerIDs...]` or `LobbyID` |
+| `websocket.broadcasts` | match-making-api → replay-api | MatchStarted (#27) | TBD | `LobbyID` |
+| `websocket.broadcasts` | match-making-api → replay-api | LobbyUpdated, PlayerJoined, etc. | `WebSocketBroadcastEvent` (JSON) | `LobbyID` |
+
+### Other Topics
+
+| Topic | Direction | Events | Notes |
+|-------|-----------|--------|-------|
+| `matchmaking.queue.events` | match-making-api internal | QueueJoined, QueueLeft, Searching | Legacy queue events |
+| `matchmaking.lobby.events` | match-making-api → replay-api | LobbyCreated, LobbyUpdated, etc. | Lobby lifecycle events |
+| `matchmaking.player-status` | match-making-api → replay-api | Player status changes | Player online/offline |
+| `matchmaking.dlq` | match-making-api internal | Failed events | Dead letter queue |
 
 ---
 

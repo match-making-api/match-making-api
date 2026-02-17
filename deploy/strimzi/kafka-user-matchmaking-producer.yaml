@@ -1,8 +1,8 @@
 # KafkaUser for the matchmaking event producer.
-# Used by both the REST API and matchmaking-worker to publish events.
+# Used by the REST API, consumer-matchmaking-commands, and worker-queue-status to publish events.
 #
 # Auth: SCRAM-SHA-512 (Strimzi manages credentials via Secret)
-# ACLs: Write on all matchmaking topics + websocket.broadcasts
+# ACLs: Write on all matchmaking topics + websocket.broadcasts (real-time notifications)
 #
 # Prerequisites:
 #   - Strimzi Operator installed
@@ -32,7 +32,8 @@ spec:
           - Describe
           - Create
         host: "*"
-      # Write to websocket.broadcasts (QueueStatusUpdated events)
+      # Write to websocket.broadcasts (real-time notifications: QueueStatusUpdated, MatchReady, MatchStarted)
+      # See ADR-002: notifications are routed via websocket.broadcasts, not a separate topic
       - resource:
           type: topic
           name: websocket.broadcasts
