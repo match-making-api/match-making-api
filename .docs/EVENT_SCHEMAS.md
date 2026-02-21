@@ -149,9 +149,13 @@ Emitted when a game server is allocated for a match. match-making-api consumes, 
 
 Emitted after ServerAllocated is consumed. Broadcast to all players in the match via `websocket.broadcasts` with `TargetIDs: [player_ids]`. Payload: `match_id`, `server_id`, `region`, `connection_url`, `connection_token`, `resource_owner_id`.
 
-### MatchStarted (planned, #27)
+### MatchStarted (#27)
 
-Placeholder. Will notify players when the match has officially started. Published to `websocket.broadcasts` with `LobbyID` set.
+Emitted when a match is about to begin (e.g. countdown finished, all players ready). match-making-api consumes from `matchmaking.match.started`, validates, and broadcasts to all match participants via `websocket.broadcasts`.
+
+**Payload (Proto):** `match_id`, `resource_owner_id`, `player_ids[]`, optional `countdown_seconds`, optional `start_timestamp_epoch_ms`.
+
+**Broadcast:** `Type: MATCH_STARTED`, `TargetIDs: player_ids`, `LobbyID: match_id`.
 
 ## Topic → Schema Mapping
 
@@ -164,6 +168,7 @@ Placeholder. Will notify players when the match has officially started. Publishe
 | `matchmaking.queue.confirmed` | match-making-api → replay-api | PlayerQueueConfirmed | `PlayerQueueConfirmedPayload` | 1 |
 | `matchmaking.matches.created` | match-making-api → replay-api | MatchCreated | `MatchCreatedPayload` | 1 |
 | `matchmaking.server.allocated` | game server / replay-api → match-making-api | ServerAllocated | `ServerAllocatedPayload` | 1 |
+| `matchmaking.match.started` | game server / replay-api → match-making-api | MatchStarted | `MatchStartedPayload` | 1 |
 | `matchmaking.matches` | match-making-api → replay-api | MatchCompleted | `MatchCompletedPayload` | 1 |
 | (TBD) | match-making-api → replay-api | RatingsUpdated | `RatingsUpdatedPayload` | 1 |
 
@@ -175,7 +180,7 @@ Placeholder. Will notify players when the match has officially started. Publishe
 |-------|-----------|--------|----------------|----------|
 | `websocket.broadcasts` | match-making-api → replay-api | QueueStatusUpdated | `QueueStatusPayload` (JSON) | `TargetIDs: [playerID]` |
 | `websocket.broadcasts` | match-making-api → replay-api | MatchReady (#26) | TBD | `TargetIDs: [playerIDs...]` or `LobbyID` |
-| `websocket.broadcasts` | match-making-api → replay-api | MatchStarted (#27) | TBD | `LobbyID` |
+| `websocket.broadcasts` | match-making-api → replay-api | MatchStarted (#27) | `MatchStartedBroadcastPayload` (JSON) | `TargetIDs: [playerIDs...]`, `LobbyID` |
 | `websocket.broadcasts` | match-making-api → replay-api | LobbyUpdated, PlayerJoined, etc. | `WebSocketBroadcastEvent` (JSON) | `LobbyID` |
 
 ### Other Topics

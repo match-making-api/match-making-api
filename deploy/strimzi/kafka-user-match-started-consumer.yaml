@@ -1,0 +1,40 @@
+# KafkaUser for the match-started consumer group.
+# Used by match-making-api to consume MatchStarted events and broadcast to participants (#27).
+#
+# Auth: SCRAM-SHA-512 (Strimzi manages credentials via Secret)
+# ACLs: Read on matchmaking.match.started topic + consumer group
+#
+# Prerequisites:
+#   - Strimzi Operator installed
+#   - Kafka cluster "matchmaking" deployed with authentication.type: scram-sha-512
+#
+# Apply: kubectl apply -f kafka-user-match-started-consumer.yaml
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaUser
+metadata:
+  name: match-started-consumer
+  labels:
+    strimzi.io/cluster: matchmaking
+spec:
+  authentication:
+    type: scram-sha-512
+  authorization:
+    type: simple
+    acls:
+      # Read from matchmaking.match.started topic
+      - resource:
+          type: topic
+          name: matchmaking.match.started
+          patternType: literal
+        operations:
+          - Read
+          - Describe
+        host: "*"
+      # Consumer group access
+      - resource:
+          type: group
+          name: match-making-api-match-started
+          patternType: literal
+        operations:
+          - Read
+        host: "*"
