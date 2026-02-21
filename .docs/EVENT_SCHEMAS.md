@@ -103,12 +103,21 @@ Emitted after adding a player to the matchmaking pool. Enables the async round-t
 
 ### MatchCreated (match-making-api → replay-api)
 
-Emitted when a match is created.
+Emitted when a match is created. Flow: PotentialMatchFound (AddAndFindNextPair returns pair) → validation → MatchCreated.
 
 **Payload:**
 - `match_id`, `lobby_id`, `tenant_id`, `client_id` (required)
 - `players[]`: `player_id`, `party_id`, `resource_permissions`
-- `game_server`: `server_id`, `region`, `resource_owner_id`
+- `game_server`: `server_id` (placeholder until 2503-002), `region`, `resource_owner_id`
+
+**Validation (before publish):**
+- `resource_owner_id` present (envelope)
+- `tenant_id`, `client_id` present (required for downstream access control)
+- Pair exists with players and match_id
+
+**Resource ownership transfer:** `game_server.resource_owner_id` and envelope carry ownership context for replay-api / game server access control.
+
+**Failure modes:** Validation failure → log, skip MatchCreated (pair remains in DB). Produce failure → log, non-fatal (reconciliation may be needed).
 
 ### MatchCompleted (optional)
 
