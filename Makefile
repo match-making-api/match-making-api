@@ -14,10 +14,12 @@ endif
 ifeq ($(DETECTED_OS),Windows)
 	BINARY_REST_API := match-making-api-http-service.exe
 	BINARY_CONSUMER_MATCHMAKING := consumer-matchmaking-commands.exe
+	BINARY_CONSUMER_SERVER_ALLOCATED := consumer-server-allocated.exe
 	BINARY_WORKER_QUEUE_STATUS := worker-queue-status.exe
 else
 	BINARY_REST_API := match-making-api-http-service
 	BINARY_CONSUMER_MATCHMAKING := consumer-matchmaking-commands
+	BINARY_CONSUMER_SERVER_ALLOCATED := consumer-server-allocated
 	BINARY_WORKER_QUEUE_STATUS := worker-queue-status
 endif
 
@@ -37,6 +39,14 @@ else
 	CGO_ENABLED=0 go build -o $(BINARY_CONSUMER_MATCHMAKING) ./cmd/consumers/matchmaking-commands/main.go
 endif
 
+build-consumer-server-allocated:
+	@echo "Building Server Allocated Consumer for $(DETECTED_OS)"
+ifeq ($(DETECTED_OS),Windows)
+	@go build -o $(BINARY_CONSUMER_SERVER_ALLOCATED) ./cmd/consumers/server-allocated/main.go
+else
+	CGO_ENABLED=0 go build -o $(BINARY_CONSUMER_SERVER_ALLOCATED) ./cmd/consumers/server-allocated/main.go
+endif
+
 build-worker-queue-status:
 	@echo "Building Queue Status Worker for $(DETECTED_OS)"
 ifeq ($(DETECTED_OS),Windows)
@@ -45,7 +55,7 @@ else
 	CGO_ENABLED=0 go build -o $(BINARY_WORKER_QUEUE_STATUS) ./cmd/workers/queue-status/main.go
 endif
 
-build-all: build-rest-api build-consumer-matchmaking build-worker-queue-status
+build-all: build-rest-api build-consumer-matchmaking build-consumer-server-allocated build-worker-queue-status
 	@echo "All binaries built successfully"
 
 start-rest-api:

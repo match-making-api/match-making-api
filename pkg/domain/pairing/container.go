@@ -141,5 +141,23 @@ func Inject(c container.Container) error {
 		return err
 	}
 
+	// Register ServerAllocatedHandler — processes ServerAllocated, broadcasts MatchReady (#26)
+	if err := c.Singleton(func(eventPublisher *kafka.EventPublisher) *usecases.ServerAllocatedHandler {
+		return usecases.NewServerAllocatedHandler(eventPublisher) // EventPublisher implements WebSocketBroadcastPublisher
+	}); err != nil {
+		return err
+	}
+
+	// Register ServerAllocatedConsumer — consumes matchmaking.server.allocated
+	if err := c.Singleton(func(
+		client *kafka.Client,
+		handler *usecases.ServerAllocatedHandler,
+	) *kafka.ServerAllocatedConsumer {
+		groupID := "match-making-api-server-allocated"
+		return kafka.NewServerAllocatedConsumer(client, groupID, handler.Handle)
+	}); err != nil {
+		return err
+	}
+
 	return nil
 }

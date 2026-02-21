@@ -31,7 +31,22 @@ message MatchmakingEvent {
     RatingsUpdatedPayload ratings_updated = 13;
     PlayerLeftQueuePayload player_left_queue = 14;
     PlayerQueueConfirmedPayload player_queue_confirmed = 15;
+    ServerAllocatedPayload server_allocated = 16;
   }
+}
+
+// --- ServerAllocated (game server / replay-api → match-making-api) ---
+// Emitted when a game server is allocated for a match. match-making-api consumes,
+// validates resource ownership, then produces MatchReady broadcast to players.
+
+message ServerAllocatedPayload {
+  string match_id = 1;
+  string server_id = 2;
+  string region = 3;
+  string resource_owner_id = 4;
+  repeated string player_ids = 5;  // Players to receive MatchReady; from MatchCreated.
+  optional string connection_url = 6;   // Optional: URL or token reference for connection.
+  optional string connection_token = 7; // Optional: short-lived token for auth.
 }
 
 // --- PlayerQueueConfirmed (match-making-api → replay-api) ---
