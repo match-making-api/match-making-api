@@ -29,6 +29,11 @@ const (
 	// (match-making-api → replay-api). Emitted after adding player to pool.
 	// replay-api consumes to respond 200 OK with position/ETA to the client.
 	TopicPlayerQueueConfirmed = "matchmaking.queue.confirmed"
+
+	// TopicServerAllocated is the topic for ServerAllocated events
+	// (game server / replay-api → match-making-api). Emitted when a game server
+	// is allocated for a match. match-making-api consumes and broadcasts MatchReady.
+	TopicServerAllocated = "matchmaking.server.allocated"
 )
 
 // Event types

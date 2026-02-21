@@ -139,9 +139,15 @@ Emitted every 5s by the `worker-queue-status` for each active queue entry. Deliv
 - `event_type`: `"QUEUE_STATUS_UPDATED"`
 - `timestamp` (int64): Unix epoch ms
 
-### MatchReady (planned, #26)
+### ServerAllocated (game server / replay-api → match-making-api)
 
-Placeholder. Will notify players when a lobby is full and the match is ready to start. Published to `websocket.broadcasts` with `TargetIDs` set to lobby player IDs.
+Emitted when a game server is allocated for a match. match-making-api consumes, validates, broadcasts MatchReady.
+
+**Payload:** `match_id`, `server_id`, `region`, `resource_owner_id`, `player_ids[]`, optional `connection_url`, `connection_token`.
+
+### MatchReady (#26)
+
+Emitted after ServerAllocated is consumed. Broadcast to all players in the match via `websocket.broadcasts` with `TargetIDs: [player_ids]`. Payload: `match_id`, `server_id`, `region`, `connection_url`, `connection_token`, `resource_owner_id`.
 
 ### MatchStarted (planned, #27)
 
@@ -157,6 +163,7 @@ Placeholder. Will notify players when the match has officially started. Publishe
 | `matchmaking.commands` | replay-api → match-making-api | PlayerLeftQueue | `PlayerLeftQueuePayload` | 1 |
 | `matchmaking.queue.confirmed` | match-making-api → replay-api | PlayerQueueConfirmed | `PlayerQueueConfirmedPayload` | 1 |
 | `matchmaking.matches.created` | match-making-api → replay-api | MatchCreated | `MatchCreatedPayload` | 1 |
+| `matchmaking.server.allocated` | game server / replay-api → match-making-api | ServerAllocated | `ServerAllocatedPayload` | 1 |
 | `matchmaking.matches` | match-making-api → replay-api | MatchCompleted | `MatchCompletedPayload` | 1 |
 | (TBD) | match-making-api → replay-api | RatingsUpdated | `RatingsUpdatedPayload` | 1 |
 

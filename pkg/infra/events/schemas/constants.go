@@ -10,6 +10,7 @@ const (
 	EventTypeMatchCreated         = "MatchCreated"
 	EventTypeMatchCompleted       = "MatchCompleted"
 	EventTypeRatingsUpdated       = "RatingsUpdated"
+	EventTypeServerAllocated      = "ServerAllocated"
 )
 
 // CloudEventsSpecVersion is the CloudEvents specification version (e.g. "1.0").
