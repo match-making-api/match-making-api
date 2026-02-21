@@ -42,6 +42,11 @@ func (m *MockEventPublisher) PublishMatchCreated(ctx context.Context, event *kaf
 	return args.Error(0)
 }
 
+func (m *MockEventPublisher) PublishPlayerQueueConfirmed(ctx context.Context, event *schemas.MatchmakingEvent) error {
+	args := m.Called(ctx, event)
+	return args.Error(0)
+}
+
 func TestMatchmakingEventConsumer_HandleQueueEvent(t *testing.T) {
 	ctx := context.Background()
 
@@ -630,7 +635,7 @@ func TestMatchmakingEventConsumer_HandlePlayerQueuedProto(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("Success - Player added to pool", func(t *testing.T) {
-		consumer, mockAddAndFind, _, mockRegionReader := newTestConsumer()
+		consumer, mockAddAndFind, mockEventPublisher, mockRegionReader := newTestConsumer()
 
 		playerID := uuid.New()
 		gameID := uuid.New()
@@ -678,12 +683,17 @@ func TestMatchmakingEventConsumer_HandlePlayerQueuedProto(t *testing.T) {
 				p.Criteria.SkillRange.MinMMR == 1300 &&
 				p.Criteria.SkillRange.MaxMMR == 1700
 		})).Return((*pairing_entities.Pair)(nil), pool, 1, nil)
+		mockEventPublisher.On("PublishPlayerQueueConfirmed", ctx, mock.MatchedBy(func(e *schemas.MatchmakingEvent) bool {
+			p := e.GetPlayerQueueConfirmed()
+			return p != nil && p.GetPlayerId() == playerID.String() && p.GetPosition() == 1 && p.GetEtaSeconds() == 30
+		})).Return(nil)
 
 		err := consumer.HandlePlayerQueuedProto(ctx, envelope, payload)
 
 		assert.NoError(t, err)
 		mockRegionReader.AssertExpectations(t)
 		mockAddAndFind.AssertExpectations(t)
+		mockEventPublisher.AssertExpectations(t)
 	})
 
 	t.Run("Success - Match found and MatchCreated published", func(t *testing.T) {
@@ -728,6 +738,10 @@ func TestMatchmakingEventConsumer_HandlePlayerQueuedProto(t *testing.T) {
 		mockAddAndFind.On("Execute", mock.Anything).Return(pair, pool, 1, nil)
 		mockEventPublisher.On("PublishMatchCreated", ctx, mock.MatchedBy(func(e *kafka.MatchEvent) bool {
 			return e.MatchID == pair.ID && len(e.PlayerIDs) == 2
+		})).Return(nil)
+		mockEventPublisher.On("PublishPlayerQueueConfirmed", ctx, mock.MatchedBy(func(e *schemas.MatchmakingEvent) bool {
+			p := e.GetPlayerQueueConfirmed()
+			return p != nil && p.GetPlayerId() == playerID.String() && p.GetPosition() == 0 && p.GetEtaSeconds() == 0
 		})).Return(nil)
 
 		err := consumer.HandlePlayerQueuedProto(ctx, envelope, payload)

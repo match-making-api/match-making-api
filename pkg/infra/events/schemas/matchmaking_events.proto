@@ -30,7 +30,23 @@ message MatchmakingEvent {
     MatchCompletedPayload match_completed = 12;
     RatingsUpdatedPayload ratings_updated = 13;
     PlayerLeftQueuePayload player_left_queue = 14;
+    PlayerQueueConfirmedPayload player_queue_confirmed = 15;
   }
+}
+
+// --- PlayerQueueConfirmed (match-making-api → replay-api) ---
+// Emitted after adding player to pool. replay-api consumes to respond 200 OK with position/ETA.
+// Enables async round-trip: join → PlayerQueued → pool add → PlayerQueueConfirmed → 200 OK.
+
+message PlayerQueueConfirmedPayload {
+  string player_id = 1;
+  string game_id = 2;
+  string region = 3;
+  int32 position = 4;           // Queue position (1-based). 0 if match found immediately.
+  int32 eta_seconds = 5;        // Best-effort estimated wait in seconds. 0 if match found.
+  string tenant_id = 6;
+  string client_id = 7;
+  string resource_owner_id = 8; // From envelope; included for convenience.
 }
 
 // --- PlayerQueued (replay-api → match-making-api) ---
