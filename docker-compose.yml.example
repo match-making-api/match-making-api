@@ -65,6 +65,27 @@ services:
       - svc
     restart: unless-stopped
 
+  consumer-match-started:
+    container_name: "consumer-match-started"
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: consumer-match-started
+    depends_on:
+      - mongodb
+      - kafka
+      - dragonfly
+    env_file:
+      - .env
+    environment:
+      - DEV_ENV="docker"
+      - MONGO_URI=mongodb://mongodb:37019/match-making
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - REDIS_ADDR=dragonfly:6379
+    networks:
+      - svc
+    restart: unless-stopped
+
   worker-queue-status:
     container_name: "worker-queue-status"
     build:

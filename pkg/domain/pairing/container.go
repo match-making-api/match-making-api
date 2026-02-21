@@ -159,5 +159,23 @@ func Inject(c container.Container) error {
 		return err
 	}
 
+	// Register MatchStartedHandler — processes MatchStarted, broadcasts to participants (#27)
+	if err := c.Singleton(func(eventPublisher *kafka.EventPublisher) *usecases.MatchStartedHandler {
+		return usecases.NewMatchStartedHandler(eventPublisher)
+	}); err != nil {
+		return err
+	}
+
+	// Register MatchStartedConsumer — consumes matchmaking.match.started
+	if err := c.Singleton(func(
+		client *kafka.Client,
+		handler *usecases.MatchStartedHandler,
+	) *kafka.MatchStartedConsumer {
+		groupID := "match-making-api-match-started"
+		return kafka.NewMatchStartedConsumer(client, groupID, handler.Handle)
+	}); err != nil {
+		return err
+	}
+
 	return nil
 }

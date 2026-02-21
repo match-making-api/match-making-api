@@ -9,6 +9,7 @@ COPY .env .env
 RUN CGO_ENABLED=0 go build -v -o match-making-api-http-service ./cmd/rest-api/main.go
 RUN CGO_ENABLED=0 go build -v -o consumer-matchmaking-commands ./cmd/consumers/matchmaking-commands/main.go
 RUN CGO_ENABLED=0 go build -v -o consumer-server-allocated ./cmd/consumers/server-allocated/main.go
+RUN CGO_ENABLED=0 go build -v -o consumer-match-started ./cmd/consumers/match-started/main.go
 RUN CGO_ENABLED=0 go build -v -o worker-queue-status ./cmd/workers/queue-status/main.go
 RUN mkdir -p /app/match_making_files
 RUN mkdir -p /app/coverage
@@ -41,6 +42,15 @@ COPY --from=build /app/.env ./.env
 ENV GODEBUG=stackguard=99999000000000
 
 CMD ["./app/consumer-server-allocated"]
+
+# consumer — Match Started (Kafka consumer for MatchStarted events, broadcasts to participants)
+FROM scratch AS consumer-match-started
+COPY --from=build /app/consumer-match-started ./app/
+COPY --from=build /app/.env ./.env
+
+ENV GODEBUG=stackguard=99999000000000
+
+CMD ["./app/consumer-match-started"]
 
 # worker — Queue Status (periodic ticker for queue position updates)
 FROM scratch AS worker-queue-status

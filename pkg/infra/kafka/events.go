@@ -34,6 +34,11 @@ const (
 	// (game server / replay-api → match-making-api). Emitted when a game server
 	// is allocated for a match. match-making-api consumes and broadcasts MatchReady.
 	TopicServerAllocated = "matchmaking.server.allocated"
+
+	// TopicMatchStarted is the topic for MatchStarted events
+	// (game server / replay-api → match-making-api). Emitted when match is about to begin.
+	// match-making-api consumes and broadcasts to all match participants via WebSocket.
+	TopicMatchStarted = "matchmaking.match.started"
 )
 
 // Event types

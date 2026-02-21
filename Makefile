@@ -3,11 +3,19 @@
 .PHONY: test-kafka
 .PHONY: coverage
 
-# Detect the operating system
+# Detect the operating system (use go env - reliable when Go is installed)
+DETECTED_GOOS := $(shell go env GOOS)
+ifeq ($(DETECTED_GOOS),windows)
+	DETECTED_OS := Windows
+else
 ifeq ($(OS),Windows_NT)
 	DETECTED_OS := Windows
 else
 	DETECTED_OS := $(shell uname -s)
+endif
+endif
+ifeq ($(DETECTED_OS),)
+	DETECTED_OS := Windows
 endif
 
 # Define the output binary names based on the OS
@@ -15,11 +23,13 @@ ifeq ($(DETECTED_OS),Windows)
 	BINARY_REST_API := match-making-api-http-service.exe
 	BINARY_CONSUMER_MATCHMAKING := consumer-matchmaking-commands.exe
 	BINARY_CONSUMER_SERVER_ALLOCATED := consumer-server-allocated.exe
+	BINARY_CONSUMER_MATCH_STARTED := consumer-match-started.exe
 	BINARY_WORKER_QUEUE_STATUS := worker-queue-status.exe
 else
 	BINARY_REST_API := match-making-api-http-service
 	BINARY_CONSUMER_MATCHMAKING := consumer-matchmaking-commands
 	BINARY_CONSUMER_SERVER_ALLOCATED := consumer-server-allocated
+	BINARY_CONSUMER_MATCH_STARTED := consumer-match-started
 	BINARY_WORKER_QUEUE_STATUS := worker-queue-status
 endif
 
@@ -47,6 +57,14 @@ else
 	CGO_ENABLED=0 go build -o $(BINARY_CONSUMER_SERVER_ALLOCATED) ./cmd/consumers/server-allocated/main.go
 endif
 
+build-consumer-match-started:
+	@echo "Building Match Started Consumer for $(DETECTED_OS)"
+ifeq ($(DETECTED_OS),Windows)
+	@go build -o $(BINARY_CONSUMER_MATCH_STARTED) ./cmd/consumers/match-started/main.go
+else
+	CGO_ENABLED=0 go build -o $(BINARY_CONSUMER_MATCH_STARTED) ./cmd/consumers/match-started/main.go
+endif
+
 build-worker-queue-status:
 	@echo "Building Queue Status Worker for $(DETECTED_OS)"
 ifeq ($(DETECTED_OS),Windows)
@@ -55,7 +73,7 @@ else
 	CGO_ENABLED=0 go build -o $(BINARY_WORKER_QUEUE_STATUS) ./cmd/workers/queue-status/main.go
 endif
 
-build-all: build-rest-api build-consumer-matchmaking build-consumer-server-allocated build-worker-queue-status
+build-all: build-rest-api build-consumer-matchmaking build-consumer-server-allocated build-consumer-match-started build-worker-queue-status
 	@echo "All binaries built successfully"
 
 start-rest-api:

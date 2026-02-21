@@ -32,7 +32,20 @@ message MatchmakingEvent {
     PlayerLeftQueuePayload player_left_queue = 14;
     PlayerQueueConfirmedPayload player_queue_confirmed = 15;
     ServerAllocatedPayload server_allocated = 16;
+    MatchStartedPayload match_started = 17;
   }
+}
+
+// --- MatchStarted (game server / replay-api → match-making-api) ---
+// Emitted when the match is about to begin (countdown finished, all players ready).
+// match-making-api consumes and broadcasts to all match participants via WebSocket.
+
+message MatchStartedPayload {
+  string match_id = 1;
+  string resource_owner_id = 2;
+  repeated string player_ids = 3;  // Players to receive MatchStarted notification.
+  optional int32 countdown_seconds = 4;  // Countdown duration (if applicable).
+  optional int64 start_timestamp_epoch_ms = 5;  // When match starts/started.
 }
 
 // --- ServerAllocated (game server / replay-api → match-making-api) ---
