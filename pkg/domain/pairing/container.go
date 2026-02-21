@@ -97,6 +97,23 @@ func Inject(c container.Container) error {
 		return err
 	}
 
+	// Register ServerAllocationQueueStore — queue for matches waiting for server (#queue-for-server)
+	if err := c.Singleton(func(redisClient *redis.Client) pairing_out.ServerAllocationQueueStore {
+		return cache.NewRedisServerAllocationQueueStore(redisClient)
+	}); err != nil {
+		return err
+	}
+
+	// Register ServerAllocationEnqueuer — enqueues matches and broadcasts WaitingForServer
+	if err := c.Singleton(func(
+		queueStore pairing_out.ServerAllocationQueueStore,
+		eventPublisher *kafka.EventPublisher,
+	) *usecases.ServerAllocationEnqueuerImpl {
+		return usecases.NewServerAllocationEnqueuer(queueStore, eventPublisher)
+	}); err != nil {
+		return err
+	}
+
 	// Register MatchmakingEventConsumer
 	if err := c.Singleton(func(
 		addAndFindNextPair *usecases.AddAndFindNextPairUseCase,
@@ -105,8 +122,9 @@ func Inject(c container.Container) error {
 		poolReader pairing_out.PoolReader,
 		poolWriter pairing_out.PoolWriter,
 		aqStore pairing_out.ActiveQueueStore,
+		serverAllocEnqueuer *usecases.ServerAllocationEnqueuerImpl,
 	) *usecases.MatchmakingEventConsumer {
-		return usecases.NewMatchmakingEventConsumer(addAndFindNextPair, eventPublisher, regionReader, poolReader, poolWriter, aqStore)
+		return usecases.NewMatchmakingEventConsumer(addAndFindNextPair, eventPublisher, regionReader, poolReader, poolWriter, aqStore, serverAllocEnqueuer)
 	}); err != nil {
 		return err
 	}
@@ -162,6 +180,17 @@ func Inject(c container.Container) error {
 	// Register MatchStartedHandler — processes MatchStarted, broadcasts to participants (#27)
 	if err := c.Singleton(func(eventPublisher *kafka.EventPublisher) *usecases.MatchStartedHandler {
 		return usecases.NewMatchStartedHandler(eventPublisher)
+	}); err != nil {
+		return err
+	}
+
+	// Register ServerAllocationTimeoutWorker — abandons matches waiting too long for server (#queue-for-server)
+	if err := c.Singleton(func(
+		queueStore pairing_out.ServerAllocationQueueStore,
+		eventPublisher *kafka.EventPublisher,
+	) *usecases.ServerAllocationTimeoutWorker {
+		cfg := usecases.DefaultServerAllocationTimeoutConfig()
+		return usecases.NewServerAllocationTimeoutWorker(queueStore, eventPublisher, cfg)
 	}); err != nil {
 		return err
 	}

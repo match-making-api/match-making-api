@@ -29,14 +29,21 @@ type EventPublisherInterface interface {
 	PublishPlayerQueueConfirmed(ctx context.Context, event *schemas.MatchmakingEvent) error
 }
 
+// ServerAllocationEnqueuer enqueues matches for server allocation and broadcasts WaitingForServer.
+// Optional: when nil, queue-for-server flow is disabled.
+type ServerAllocationEnqueuer interface {
+	EnqueueAndBroadcast(ctx context.Context, matchID, gameID uuid.UUID, region string, playerIDs []uuid.UUID, tenantID, clientID, resourceOwnerID string) error
+}
+
 // MatchmakingEventConsumer consumes events from replay-api and processes them
 type MatchmakingEventConsumer struct {
-	addAndFindNextPair AddAndFindNextPairExecutor
-	eventPublisher     EventPublisherInterface
-	regionReader       game_out.RegionReader
-	poolReader         pairing_out.PoolReader
-	poolWriter         pairing_out.PoolWriter
-	activeQueueStore   pairing_out.ActiveQueueStore
+	addAndFindNextPair       AddAndFindNextPairExecutor
+	eventPublisher           EventPublisherInterface
+	regionReader             game_out.RegionReader
+	poolReader               pairing_out.PoolReader
+	poolWriter               pairing_out.PoolWriter
+	activeQueueStore         pairing_out.ActiveQueueStore
+	serverAllocationEnqueuer ServerAllocationEnqueuer // Optional: queue for server (#queue-for-server)
 }
 
 // NewMatchmakingEventConsumer creates a new consumer for matchmaking events
@@ -47,14 +54,16 @@ func NewMatchmakingEventConsumer(
 	poolReader pairing_out.PoolReader,
 	poolWriter pairing_out.PoolWriter,
 	activeQueueStore pairing_out.ActiveQueueStore,
+	serverAllocationEnqueuer ServerAllocationEnqueuer,
 ) *MatchmakingEventConsumer {
 	return &MatchmakingEventConsumer{
-		addAndFindNextPair: addAndFindNextPair,
-		eventPublisher:     eventPublisher,
-		regionReader:       regionReader,
-		poolReader:         poolReader,
-		poolWriter:         poolWriter,
-		activeQueueStore:   activeQueueStore,
+		addAndFindNextPair:       addAndFindNextPair,
+		eventPublisher:           eventPublisher,
+		regionReader:             regionReader,
+		poolReader:               poolReader,
+		poolWriter:               poolWriter,
+		activeQueueStore:         activeQueueStore,
+		serverAllocationEnqueuer: serverAllocationEnqueuer,
 	}
 }
 
@@ -496,6 +505,17 @@ func (c *MatchmakingEventConsumer) HandlePlayerQueuedProto(ctx context.Context, 
 				"pair_id", pair.ID,
 				"event_id", envelope.GetId())
 			// Non-fatal: match exists, notification failed. Replay-api may need reconciliation.
+		} else if c.serverAllocationEnqueuer != nil {
+			// Enqueue for server allocation and broadcast WaitingForServer (#queue-for-server)
+			playerIDs := make([]uuid.UUID, 0, len(pair.Match))
+			for pid := range pair.Match {
+				playerIDs = append(playerIDs, pid)
+			}
+			if err := c.serverAllocationEnqueuer.EnqueueAndBroadcast(ctx, pair.ID, gameID, payload.GetRegion(), playerIDs, payload.GetTenantId(), payload.GetClientId(), envelope.GetResourceOwnerId()); err != nil {
+				slog.WarnContext(ctx, "Failed to enqueue match for server allocation",
+					"match_id", pair.ID,
+					"error", err)
+			}
 		}
 
 		// Publish PlayerQueueConfirmed (position=0, eta=0 — match found immediately)
@@ -596,6 +616,7 @@ func (c *MatchmakingEventConsumer) publishMatchCreatedProto(
 				LobbyId:    pair.ID.String(),
 				TenantId:   payload.GetTenantId(),
 				ClientId:   payload.GetClientId(),
+				GameId:     payload.GetGameId(),
 			},
 		},
 	}

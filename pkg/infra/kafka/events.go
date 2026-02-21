@@ -58,8 +58,10 @@ const (
 	EventTypeMatchStarted       = "MATCH_STARTED"
 	EventTypeMatchCompleted     = "MATCH_COMPLETED"
 	EventTypeMatchCancelled     = "MATCH_CANCELLED"
-	EventTypeQueueStatusUpdated = "QUEUE_STATUS_UPDATED"
-	EventTypeMatchReady         = "MATCH_READY"   // Planned (#26): lobby is full, match ready to start
+	EventTypeQueueStatusUpdated      = "QUEUE_STATUS_UPDATED"
+	EventTypeMatchReady              = "MATCH_READY"               // (#26): lobby is full, match ready to start
+	EventTypeWaitingForServer        = "WAITING_FOR_SERVER"        // Match enqueued for server allocation
+	EventTypeServerAllocationTimeout = "SERVER_ALLOCATION_TIMEOUT" // Match abandoned after timeout
 )
 
 // QueueStatusPayload is the payload for QUEUE_STATUS_UPDATED events.
