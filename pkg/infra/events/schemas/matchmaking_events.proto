@@ -117,6 +117,7 @@ message MatchCreatedPayload {
   string lobby_id = 4;
   string tenant_id = 5;
   string client_id = 6;
+  string game_id = 7;  // For server allocation queue (FIFO per game/region).
 }
 
 message MatchPlayer {

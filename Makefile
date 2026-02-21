@@ -25,12 +25,14 @@ ifeq ($(DETECTED_OS),Windows)
 	BINARY_CONSUMER_SERVER_ALLOCATED := consumer-server-allocated.exe
 	BINARY_CONSUMER_MATCH_STARTED := consumer-match-started.exe
 	BINARY_WORKER_QUEUE_STATUS := worker-queue-status.exe
+	BINARY_WORKER_SERVER_ALLOCATION_TIMEOUT := worker-server-allocation-timeout.exe
 else
 	BINARY_REST_API := match-making-api-http-service
 	BINARY_CONSUMER_MATCHMAKING := consumer-matchmaking-commands
 	BINARY_CONSUMER_SERVER_ALLOCATED := consumer-server-allocated
 	BINARY_CONSUMER_MATCH_STARTED := consumer-match-started
 	BINARY_WORKER_QUEUE_STATUS := worker-queue-status
+	BINARY_WORKER_SERVER_ALLOCATION_TIMEOUT := worker-server-allocation-timeout
 endif
 
 build-rest-api:
@@ -73,7 +75,15 @@ else
 	CGO_ENABLED=0 go build -o $(BINARY_WORKER_QUEUE_STATUS) ./cmd/workers/queue-status/main.go
 endif
 
-build-all: build-rest-api build-consumer-matchmaking build-consumer-server-allocated build-consumer-match-started build-worker-queue-status
+build-worker-server-allocation-timeout:
+	@echo "Building Server Allocation Timeout Worker for $(DETECTED_OS)"
+ifeq ($(DETECTED_OS),Windows)
+	@go build -o $(BINARY_WORKER_SERVER_ALLOCATION_TIMEOUT) ./cmd/workers/server-allocation-timeout/main.go
+else
+	CGO_ENABLED=0 go build -o $(BINARY_WORKER_SERVER_ALLOCATION_TIMEOUT) ./cmd/workers/server-allocation-timeout/main.go
+endif
+
+build-all: build-rest-api build-consumer-matchmaking build-consumer-server-allocated build-consumer-match-started build-worker-queue-status build-worker-server-allocation-timeout
 	@echo "All binaries built successfully"
 
 start-rest-api:

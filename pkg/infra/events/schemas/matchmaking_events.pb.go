@@ -832,6 +832,7 @@ type MatchCreatedPayload struct {
 	LobbyId       string                 `protobuf:"bytes,4,opt,name=lobby_id,json=lobbyId,proto3" json:"lobby_id,omitempty"`
 	TenantId      string                 `protobuf:"bytes,5,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
 	ClientId      string                 `protobuf:"bytes,6,opt,name=client_id,json=clientId,proto3" json:"client_id,omitempty"`
+	GameId        string                 `protobuf:"bytes,7,opt,name=game_id,json=gameId,proto3" json:"game_id,omitempty"` // For server allocation queue (FIFO per game/region).
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -904,6 +905,13 @@ func (x *MatchCreatedPayload) GetTenantId() string {
 func (x *MatchCreatedPayload) GetClientId() string {
 	if x != nil {
 		return x.ClientId
+	}
+	return ""
+}
+
+func (x *MatchCreatedPayload) GetGameId() string {
+	if x != nil {
+		return x.GameId
 	}
 	return ""
 }

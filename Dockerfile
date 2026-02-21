@@ -11,6 +11,7 @@ RUN CGO_ENABLED=0 go build -v -o consumer-matchmaking-commands ./cmd/consumers/m
 RUN CGO_ENABLED=0 go build -v -o consumer-server-allocated ./cmd/consumers/server-allocated/main.go
 RUN CGO_ENABLED=0 go build -v -o consumer-match-started ./cmd/consumers/match-started/main.go
 RUN CGO_ENABLED=0 go build -v -o worker-queue-status ./cmd/workers/queue-status/main.go
+RUN CGO_ENABLED=0 go build -v -o worker-server-allocation-timeout ./cmd/workers/server-allocation-timeout/main.go
 RUN mkdir -p /app/match_making_files
 RUN mkdir -p /app/coverage
 
@@ -60,3 +61,12 @@ COPY --from=build /app/.env ./.env
 ENV GODEBUG=stackguard=99999000000000
 
 CMD ["./app/worker-queue-status"]
+
+# worker — Server Allocation Timeout (abandons matches waiting too long for server)
+FROM scratch AS worker-server-allocation-timeout
+COPY --from=build /app/worker-server-allocation-timeout ./app/
+COPY --from=build /app/.env ./.env
+
+ENV GODEBUG=stackguard=99999000000000
+
+CMD ["./app/worker-server-allocation-timeout"]
