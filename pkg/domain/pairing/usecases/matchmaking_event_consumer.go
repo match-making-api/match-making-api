@@ -25,6 +25,7 @@ type AddAndFindNextPairExecutor interface {
 // EventPublisherInterface defines the interface for publishing events
 type EventPublisherInterface interface {
 	PublishMatchCreated(ctx context.Context, event *kafka.MatchEvent) error
+	PublishMatchCreatedProto(ctx context.Context, event *schemas.MatchmakingEvent) error
 	PublishPlayerQueueConfirmed(ctx context.Context, event *schemas.MatchmakingEvent) error
 }
 
@@ -471,18 +472,30 @@ func (c *MatchmakingEventConsumer) HandlePlayerQueuedProto(ctx context.Context, 
 			playerIDs = append(playerIDs, pid)
 		}
 
-		// Publish match created event via legacy EventPublisher
-		matchEvent := &kafka.MatchEvent{
-			MatchID:   pair.ID,
-			LobbyID:   pair.ID,
-			EventType: kafka.EventTypeMatchCreated,
-			GameType:  payload.GetGameId(),
-			Region:    payload.GetRegion(),
-			PlayerIDs: playerIDs,
+		// Validate before producing MatchCreated (PotentialMatchFound → validation → MatchCreated)
+		validator := NewMatchValidator()
+		validationParams := MatchValidationParams{
+			Pair:            pair,
+			Envelope:        envelope,
+			Payload:         payload,
+			ResourceOwnerID: envelope.GetResourceOwnerId(),
+			TenantID:        payload.GetTenantId(),
+			ClientID:        payload.GetClientId(),
 		}
-		if err := c.eventPublisher.PublishMatchCreated(ctx, matchEvent); err != nil {
-			slog.ErrorContext(ctx, "Failed to publish match created event", "error", err, "pair_id", pair.ID)
-			// Don't return error — the match was created, just the notification failed
+		if err := validator.Validate(ctx, validationParams); err != nil {
+			slog.ErrorContext(ctx, "Match validation failed, skipping MatchCreated",
+				"error", err,
+				"pair_id", pair.ID,
+				"event_id", envelope.GetId())
+			// Pair already exists in DB; validation failure prevents publishing.
+			// No orphaned state: pair remains, replay-api won't allocate until MatchCreated.
+			// Consider reconciliation job for unpaired matches.
+		} else if err := c.publishMatchCreatedProto(ctx, envelope, payload, pair); err != nil {
+			slog.ErrorContext(ctx, "Failed to publish MatchCreated event",
+				"error", err,
+				"pair_id", pair.ID,
+				"event_id", envelope.GetId())
+			// Non-fatal: match exists, notification failed. Replay-api may need reconciliation.
 		}
 
 		// Publish PlayerQueueConfirmed (position=0, eta=0 — match found immediately)
@@ -530,6 +543,64 @@ func (c *MatchmakingEventConsumer) estimateETA(position int) int32 {
 		eta = 300
 	}
 	return int32(eta)
+}
+
+// publishMatchCreatedProto builds and publishes a MatchCreated event with full schema (Epic §9).
+// Resource ownership is transferred to game_server context for downstream access control.
+func (c *MatchmakingEventConsumer) publishMatchCreatedProto(
+	ctx context.Context,
+	envelope *schemas.EventEnvelope,
+	payload *schemas.PlayerQueuedPayload,
+	pair *pairing_entities.Pair,
+) error {
+	// Build players[] from pair.Match
+	players := make([]*schemas.MatchPlayer, 0, len(pair.Match))
+	for partyID := range pair.Match {
+		perms := []string{}
+		// Joining player's resource_permissions; others get empty (solo queue)
+		if partyID.String() == payload.GetPlayerId() {
+			perms = payload.GetResourcePermissions()
+		}
+		players = append(players, &schemas.MatchPlayer{
+			PlayerId:            partyID.String(),
+			PartyId:             partyID.String(), // Solo: party_id = player_id
+			ResourcePermissions: perms,
+		})
+	}
+
+	// Game server: placeholder until 2503-002 implements allocation.
+	// Resource ownership transferred for access control.
+	gameServer := &schemas.GameServer{
+		ServerId:        "", // To be allocated by replay-api / game server manager
+		Region:          payload.GetRegion(),
+		ResourceOwnerId: envelope.GetResourceOwnerId(),
+	}
+
+	matchCreatedEvent := &schemas.MatchmakingEvent{
+		Envelope: &schemas.EventEnvelope{
+			Id:                uuid.New().String(),
+			Type:              schemas.EventTypeMatchCreated,
+			Source:             "match-making-api",
+			Specversion:        schemas.CloudEventsSpecVersion,
+			Time:               timestamppb.Now(),
+			Subject:            pair.ID.String(),
+			ResourceOwnerId:    envelope.GetResourceOwnerId(),
+			CorrelationId:      envelope.GetCorrelationId(),
+			DataschemaVersion:  schemas.SchemaVersionV1,
+		},
+		Data: &schemas.MatchmakingEvent_MatchCreated{
+			MatchCreated: &schemas.MatchCreatedPayload{
+				MatchId:    pair.ID.String(),
+				Players:    players,
+				GameServer: gameServer,
+				LobbyId:    pair.ID.String(),
+				TenantId:   payload.GetTenantId(),
+				ClientId:   payload.GetClientId(),
+			},
+		},
+	}
+
+	return c.eventPublisher.PublishMatchCreatedProto(ctx, matchCreatedEvent)
 }
 
 // publishPlayerQueueConfirmed builds and publishes a PlayerQueueConfirmed event.

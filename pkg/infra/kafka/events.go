@@ -246,7 +246,32 @@ func (p *EventPublisher) PublishPlayerQueueConfirmed(ctx context.Context, event 
 	return p.client.PublishBytes(ctx, TopicPlayerQueueConfirmed, key, value, headers)
 }
 
-// PublishMatchCreated publishes a match creation event
+// PublishMatchCreatedProto publishes a MatchCreated event with full Protobuf payload (Epic §9).
+// Includes match_id, players[], game_server (with resource ownership), lobby_id, tenant_id, client_id.
+// Partition key: match_id for per-match ordering.
+func (p *EventPublisher) PublishMatchCreatedProto(ctx context.Context, event *schemas.MatchmakingEvent) error {
+	value, err := protojson.Marshal(event)
+	if err != nil {
+		return fmt.Errorf("failed to marshal MatchCreated: %w", err)
+	}
+
+	key := ""
+	if payload := event.GetMatchCreated(); payload != nil {
+		key = payload.GetMatchId()
+	}
+	if key == "" {
+		key = uuid.New().String()
+	}
+
+	headers := map[string]string{
+		"ce_type":   schemas.EventTypeMatchCreated,
+		"ce_source": "match-making-api",
+	}
+
+	return p.client.PublishBytes(ctx, TopicMatchesCreated, key, value, headers)
+}
+
+// PublishMatchCreated publishes a match creation event (legacy JSON format)
 func (p *EventPublisher) PublishMatchCreated(ctx context.Context, event *MatchEvent) error {
 	event.EventID = uuid.New()
 	event.EventType = EventTypeMatchCreated

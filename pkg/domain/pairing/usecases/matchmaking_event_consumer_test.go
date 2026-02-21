@@ -42,6 +42,11 @@ func (m *MockEventPublisher) PublishMatchCreated(ctx context.Context, event *kaf
 	return args.Error(0)
 }
 
+func (m *MockEventPublisher) PublishMatchCreatedProto(ctx context.Context, event *schemas.MatchmakingEvent) error {
+	args := m.Called(ctx, event)
+	return args.Error(0)
+}
+
 func (m *MockEventPublisher) PublishPlayerQueueConfirmed(ctx context.Context, event *schemas.MatchmakingEvent) error {
 	args := m.Called(ctx, event)
 	return args.Error(0)
@@ -736,8 +741,11 @@ func TestMatchmakingEventConsumer_HandlePlayerQueuedProto(t *testing.T) {
 
 		mockRegionReader.On("Search", ctx, map[string]interface{}{"slug": regionSlug}).Return([]*game_entities.Region{region}, nil)
 		mockAddAndFind.On("Execute", mock.Anything).Return(pair, pool, 1, nil)
-		mockEventPublisher.On("PublishMatchCreated", ctx, mock.MatchedBy(func(e *kafka.MatchEvent) bool {
-			return e.MatchID == pair.ID && len(e.PlayerIDs) == 2
+		mockEventPublisher.On("PublishMatchCreatedProto", ctx, mock.MatchedBy(func(e *schemas.MatchmakingEvent) bool {
+			mc := e.GetMatchCreated()
+			return mc != nil && mc.GetMatchId() == pair.ID.String() && len(mc.GetPlayers()) == 2 &&
+				mc.GetGameServer() != nil && mc.GetGameServer().GetResourceOwnerId() != "" &&
+				mc.GetTenantId() != "" && mc.GetClientId() != ""
 		})).Return(nil)
 		mockEventPublisher.On("PublishPlayerQueueConfirmed", ctx, mock.MatchedBy(func(e *schemas.MatchmakingEvent) bool {
 			p := e.GetPlayerQueueConfirmed()
@@ -749,6 +757,56 @@ func TestMatchmakingEventConsumer_HandlePlayerQueuedProto(t *testing.T) {
 		assert.NoError(t, err)
 		mockRegionReader.AssertExpectations(t)
 		mockAddAndFind.AssertExpectations(t)
+		mockEventPublisher.AssertExpectations(t)
+	})
+
+	t.Run("Success - Match found but validation fails (missing tenant_id)", func(t *testing.T) {
+		consumer, mockAddAndFind, mockEventPublisher, mockRegionReader := newTestConsumer()
+
+		playerID := uuid.New()
+		gameID := uuid.New()
+		regionSlug := "eu-west-1"
+
+		region := &game_entities.Region{
+			Name: "EU West",
+			Slug: regionSlug,
+		}
+		region.ID = uuid.New()
+
+		envelope := &schemas.EventEnvelope{
+			Id:              uuid.New().String(),
+			Type:            schemas.EventTypePlayerQueued,
+			Source:          "replay-api",
+			Specversion:     schemas.CloudEventsSpecVersion,
+			ResourceOwnerId: uuid.New().String(),
+		}
+
+		payload := &schemas.PlayerQueuedPayload{
+			PlayerId: playerID.String(),
+			GameId:   gameID.String(),
+			Region:   regionSlug,
+			TenantId: "", // Missing - validation should fail
+			ClientId: uuid.New().String(),
+		}
+
+		pool := &pairing_entities.Pool{}
+		pair := &pairing_entities.Pair{
+			Match: map[uuid.UUID]*parties_entities.Party{
+				playerID:   {ID: playerID},
+				uuid.New(): {ID: uuid.New()},
+			},
+		}
+		pair.ID = uuid.New()
+
+		mockRegionReader.On("Search", ctx, map[string]interface{}{"slug": regionSlug}).Return([]*game_entities.Region{region}, nil)
+		mockAddAndFind.On("Execute", mock.Anything).Return(pair, pool, 1, nil)
+		// PublishMatchCreatedProto should NOT be called (validation fails)
+		mockEventPublisher.On("PublishPlayerQueueConfirmed", ctx, mock.Anything).Return(nil)
+
+		err := consumer.HandlePlayerQueuedProto(ctx, envelope, payload)
+
+		assert.NoError(t, err)
+		mockEventPublisher.AssertNotCalled(t, "PublishMatchCreatedProto", mock.Anything, mock.Anything)
 		mockEventPublisher.AssertExpectations(t)
 	})
 
