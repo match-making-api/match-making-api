@@ -218,6 +218,39 @@ type Message struct {
 	Timestamp time.Time
 }
 
+// PublishBytes sends a message with raw bytes to the specified topic.
+// Used for protobuf/protojson serialized payloads.
+func (c *Client) PublishBytes(ctx context.Context, topic string, key string, value []byte, headers map[string]string) error {
+	kafkaHeaders := make([]kafka.Header, 0, len(headers)+1)
+	for k, v := range headers {
+		kafkaHeaders = append(kafkaHeaders, kafka.Header{Key: k, Value: []byte(v)})
+	}
+	kafkaHeaders = append(kafkaHeaders, kafka.Header{Key: "region", Value: []byte(c.config.Region)})
+
+	kafkaMsg := kafka.Message{
+		Key:     []byte(key),
+		Value:   value,
+		Headers: kafkaHeaders,
+		Time:    time.Now(),
+	}
+
+	writer := c.GetWriter(topic)
+	if err := writer.WriteMessages(ctx, kafkaMsg); err != nil {
+		slog.Error("Failed to publish message",
+			"topic", topic,
+			"key", key,
+			"error", err)
+		return fmt.Errorf("failed to write message: %w", err)
+	}
+
+	slog.Debug("Published message",
+		"topic", topic,
+		"key", key,
+		"region", c.config.Region)
+
+	return nil
+}
+
 // Publish sends a message to the specified topic
 func (c *Client) Publish(ctx context.Context, topic string, msg *Message) error {
 	value, err := json.Marshal(msg.Value)

@@ -84,6 +84,23 @@ Emitted when a player leaves (cancels) the queue. Inverse of `PlayerQueued`. Con
 - Removes player from active queue store (Redis/Dragonfly)
 - If player is not in pool or active queue, the operation is a no-op (idempotent)
 
+### PlayerQueueConfirmed (match-making-api → replay-api)
+
+Emitted after adding a player to the matchmaking pool. Enables the async round-trip: join → PlayerQueued → pool add → PlayerQueueConfirmed → 200 OK (position/ETA) to the client.
+
+**Payload:**
+- `player_id`, `game_id`, `region` (required)
+- `position` (int32): queue position (1-based). 0 if match found immediately.
+- `eta_seconds` (int32): best-effort estimated wait in seconds. 0 if match found.
+- `tenant_id`, `client_id`, `resource_owner_id` (required)
+
+**Consumer (replay-api) behavior:**
+- Consume from `matchmaking.queue.confirmed`
+- Use `correlation_id` from envelope to associate with the original join request
+- Respond 200 OK with `{ position, eta_seconds }` to the client (or deliver via WebSocket/polling)
+
+**Approach:** Async. The replay-api produces PlayerQueued and returns 202 Accepted (or holds the connection). When it consumes PlayerQueueConfirmed, it responds 200 OK with position/ETA. Alternative: sync via request-reply over Kafka (replay-api blocks until PlayerQueueConfirmed with matching correlation_id) — not implemented; async is preferred for scalability.
+
 ### MatchCreated (match-making-api → replay-api)
 
 Emitted when a match is created.
@@ -129,6 +146,7 @@ Placeholder. Will notify players when the match has officially started. Publishe
 |-------|-----------|--------|---------------|----------------------|
 | `matchmaking.commands` | replay-api → match-making-api | PlayerQueued | `PlayerQueuedPayload` | 1 |
 | `matchmaking.commands` | replay-api → match-making-api | PlayerLeftQueue | `PlayerLeftQueuePayload` | 1 |
+| `matchmaking.queue.confirmed` | match-making-api → replay-api | PlayerQueueConfirmed | `PlayerQueueConfirmedPayload` | 1 |
 | `matchmaking.matches.created` | match-making-api → replay-api | MatchCreated | `MatchCreatedPayload` | 1 |
 | `matchmaking.matches` | match-making-api → replay-api | MatchCompleted | `MatchCompletedPayload` | 1 |
 | (TBD) | match-making-api → replay-api | RatingsUpdated | `RatingsUpdatedPayload` | 1 |

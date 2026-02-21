@@ -14,6 +14,7 @@ import (
 	pairing_value_objects "github.com/leet-gaming/match-making-api/pkg/domain/pairing/value-objects"
 	"github.com/leet-gaming/match-making-api/pkg/infra/events/schemas"
 	"github.com/leet-gaming/match-making-api/pkg/infra/kafka"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // AddAndFindNextPairExecutor defines the interface for adding and finding pairs
@@ -24,6 +25,7 @@ type AddAndFindNextPairExecutor interface {
 // EventPublisherInterface defines the interface for publishing events
 type EventPublisherInterface interface {
 	PublishMatchCreated(ctx context.Context, event *kafka.MatchEvent) error
+	PublishPlayerQueueConfirmed(ctx context.Context, event *schemas.MatchmakingEvent) error
 }
 
 // MatchmakingEventConsumer consumes events from replay-api and processes them
@@ -482,6 +484,9 @@ func (c *MatchmakingEventConsumer) HandlePlayerQueuedProto(ctx context.Context, 
 			slog.ErrorContext(ctx, "Failed to publish match created event", "error", err, "pair_id", pair.ID)
 			// Don't return error — the match was created, just the notification failed
 		}
+
+		// Publish PlayerQueueConfirmed (position=0, eta=0 — match found immediately)
+		c.publishPlayerQueueConfirmed(ctx, envelope, payload, playerID, 0, 0)
 	} else {
 		// Register player in active queue for periodic position updates (#22)
 		if c.activeQueueStore != nil {
@@ -505,7 +510,67 @@ func (c *MatchmakingEventConsumer) HandlePlayerQueuedProto(ctx context.Context, 
 			"position", position,
 			"player_id", playerID,
 			"event_id", envelope.GetId())
+
+		// Publish PlayerQueueConfirmed with position and best-effort ETA
+		etaSeconds := c.estimateETA(position)
+		c.publishPlayerQueueConfirmed(ctx, envelope, payload, playerID, position, etaSeconds)
 	}
 
 	return nil
+}
+
+// estimateETA returns a best-effort estimated wait in seconds (e.g. ~30s per position).
+func (c *MatchmakingEventConsumer) estimateETA(position int) int32 {
+	if position <= 0 {
+		return 0
+	}
+	// Best-effort: ~30 seconds per queue position; cap at 5 minutes
+	eta := position * 30
+	if eta > 300 {
+		eta = 300
+	}
+	return int32(eta)
+}
+
+// publishPlayerQueueConfirmed builds and publishes a PlayerQueueConfirmed event.
+func (c *MatchmakingEventConsumer) publishPlayerQueueConfirmed(
+	ctx context.Context,
+	envelope *schemas.EventEnvelope,
+	payload *schemas.PlayerQueuedPayload,
+	playerID uuid.UUID,
+	position int,
+	etaSeconds int32,
+) {
+	confirmedEvent := &schemas.MatchmakingEvent{
+		Envelope: &schemas.EventEnvelope{
+			Id:                uuid.New().String(),
+			Type:              schemas.EventTypePlayerQueueConfirmed,
+			Source:             "match-making-api",
+			Specversion:        schemas.CloudEventsSpecVersion,
+			Time:               timestamppb.Now(),
+			Subject:            playerID.String(),
+			ResourceOwnerId:    envelope.GetResourceOwnerId(),
+			CorrelationId:      envelope.GetCorrelationId(),
+			DataschemaVersion:  schemas.SchemaVersionV1,
+		},
+		Data: &schemas.MatchmakingEvent_PlayerQueueConfirmed{
+			PlayerQueueConfirmed: &schemas.PlayerQueueConfirmedPayload{
+				PlayerId:         playerID.String(),
+				GameId:           payload.GetGameId(),
+				Region:           payload.GetRegion(),
+				Position:         int32(position),
+				EtaSeconds:       etaSeconds,
+				TenantId:         payload.GetTenantId(),
+				ClientId:         payload.GetClientId(),
+				ResourceOwnerId:  envelope.GetResourceOwnerId(),
+			},
+		},
+	}
+	if err := c.eventPublisher.PublishPlayerQueueConfirmed(ctx, confirmedEvent); err != nil {
+		slog.ErrorContext(ctx, "Failed to publish PlayerQueueConfirmed",
+			"error", err,
+			"player_id", playerID,
+			"event_id", envelope.GetId())
+		// Non-fatal — replay-api may use polling or WebSocket for status
+	}
 }

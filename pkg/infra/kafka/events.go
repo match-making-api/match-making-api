@@ -2,9 +2,12 @@ package kafka
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/leet-gaming/match-making-api/pkg/infra/events/schemas"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 // Topic constants for matchmaking events
@@ -21,6 +24,11 @@ const (
 	// TopicMatchmakingCommands is the topic for canonical protobuf/CloudEvents commands
 	// from replay-api (e.g. PlayerQueued). Consumed by match-making-api.
 	TopicMatchmakingCommands = "matchmaking.commands"
+
+	// TopicPlayerQueueConfirmed is the topic for PlayerQueueConfirmed events
+	// (match-making-api → replay-api). Emitted after adding player to pool.
+	// replay-api consumes to respond 200 OK with position/ETA to the client.
+	TopicPlayerQueueConfirmed = "matchmaking.queue.confirmed"
 )
 
 // Event types
@@ -207,6 +215,35 @@ type PlayerMatchStat struct {
 	Assists  int       `json:"assists"`
 	Score    int       `json:"score"`
 	MMRChange int      `json:"mmr_change"`
+}
+
+// PublishPlayerQueueConfirmed publishes a PlayerQueueConfirmed event (match-making-api → replay-api).
+// Emitted after adding player to pool. replay-api consumes to respond 200 OK with position/ETA.
+func (p *EventPublisher) PublishPlayerQueueConfirmed(ctx context.Context, event *schemas.MatchmakingEvent) error {
+	value, err := protojson.Marshal(event)
+	if err != nil {
+		return fmt.Errorf("failed to marshal PlayerQueueConfirmed: %w", err)
+	}
+
+	key := ""
+	if env := event.GetEnvelope(); env != nil {
+		key = env.GetSubject()
+	}
+	if key == "" {
+		if payload := event.GetPlayerQueueConfirmed(); payload != nil {
+			key = payload.GetPlayerId()
+		}
+	}
+	if key == "" {
+		key = uuid.New().String()
+	}
+
+	headers := map[string]string{
+		"ce_type":   schemas.EventTypePlayerQueueConfirmed,
+		"ce_source": "match-making-api",
+	}
+
+	return p.client.PublishBytes(ctx, TopicPlayerQueueConfirmed, key, value, headers)
 }
 
 // PublishMatchCreated publishes a match creation event
