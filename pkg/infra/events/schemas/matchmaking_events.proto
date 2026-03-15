@@ -35,7 +35,28 @@ message MatchmakingEvent {
     MatchStartedPayload match_started = 17;
     MatchResultsCalculatedPayload match_results_calculated = 18;
     PrizeDistributedPayload prize_distributed = 19;
+    AnalyticsTrackedPayload analytics_tracked = 20;
   }
+}
+
+// --- AnalyticsTracked (match-making-api → analytics service) ---
+// Emitted after consuming MatchResultsCalculated. Analytics service consumes for dashboards, reporting (#32).
+// Payload includes match outcome, players, resource ownership. Rating deltas/prizes can be joined from RatingsUpdated/PrizeDistributed.
+
+message AnalyticsTrackedPayload {
+  string match_id = 1;
+  repeated string player_ids = 2;
+  string winner_team_id = 3;  // Empty if draw.
+  bool is_draw = 4;
+  int64 completed_at_epoch_ms = 5;
+  int64 tracked_at_epoch_ms = 6;   // When the event was produced (audit).
+  int64 duration_ms = 7;          // 0 if unknown; computed from start if available.
+  string tenant_id = 8;
+  string client_id = 9;
+  string resource_owner_id = 10;   // Tenant/client isolation; analytics consumers must respect.
+  string game_id = 11;             // Optional: for per-game analytics.
+  string lobby_id = 12;            // Optional: tournament/lobby reference.
+  string prize_pool_id = 13;      // Optional: prize pool reference.
 }
 
 // --- MatchStarted (game server / replay-api → match-making-api) ---

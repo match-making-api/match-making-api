@@ -278,5 +278,26 @@ func Inject(c container.Container) error {
 		return err
 	}
 
+	// Register AnalyticsTrackedHandler — processes MatchResultsCalculated, produces AnalyticsTracked (#32)
+	if err := c.Singleton(func(
+		trackedStore pairing_out.AnalyticsTrackedStore,
+		eventPublisher *kafka.EventPublisher,
+	) *usecases.AnalyticsTrackedHandler {
+		return usecases.NewAnalyticsTrackedHandler(trackedStore, eventPublisher)
+	}); err != nil {
+		return err
+	}
+
+	// Register AnalyticsTrackedConsumer — consumes matchmaking.matches.results (analytics flow)
+	if err := c.Singleton(func(
+		client *kafka.Client,
+		handler *usecases.AnalyticsTrackedHandler,
+	) *kafka.AnalyticsTrackedConsumer {
+		groupID := "match-making-api-analytics-tracker"
+		return kafka.NewAnalyticsTrackedConsumer(client, groupID, handler.Handle)
+	}); err != nil {
+		return err
+	}
+
 	return nil
 }

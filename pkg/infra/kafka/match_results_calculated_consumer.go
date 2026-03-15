@@ -130,3 +130,26 @@ func (p *PrizeDistributionConsumer) Start(ctx context.Context) error {
 func (p *PrizeDistributionConsumer) Close() error {
 	return p.inner.Close()
 }
+
+// AnalyticsTrackedConsumer consumes MatchResultsCalculated events from matchmaking.matches.results
+// with group match-making-api-analytics-tracker. Produces AnalyticsTracked for analytics pipeline (#32).
+type AnalyticsTrackedConsumer struct {
+	inner *MatchResultsCalculatedConsumer
+}
+
+// NewAnalyticsTrackedConsumer creates a consumer for analytics (same topic, different group).
+func NewAnalyticsTrackedConsumer(client *Client, groupID string, handler RatingsUpdatedHandler) *AnalyticsTrackedConsumer {
+	return &AnalyticsTrackedConsumer{
+		inner: NewMatchResultsCalculatedConsumer(client, groupID, handler),
+	}
+}
+
+// Start begins consuming messages from matchmaking.matches.results.
+func (a *AnalyticsTrackedConsumer) Start(ctx context.Context) error {
+	return a.inner.Start(ctx)
+}
+
+// Close closes the consumer.
+func (a *AnalyticsTrackedConsumer) Close() error {
+	return a.inner.Close()
+}

@@ -53,6 +53,11 @@ const (
 	// (match-making-api → wallet-api). Emitted after consuming MatchResultsCalculated when match has prize pool.
 	// Wallet API consumes and executes prize transfers.
 	TopicPrizeDistributed = "matchmaking.prizes.distributed"
+
+	// TopicAnalyticsTracked is the topic for AnalyticsTracked events
+	// (match-making-api → analytics service). Emitted after consuming MatchResultsCalculated (#32).
+	// Analytics service consumes for dashboards, reporting.
+	TopicAnalyticsTracked = "matchmaking.analytics.tracked"
 )
 
 // Event types
@@ -367,6 +372,30 @@ func (p *EventPublisher) PublishPrizeDistributedProto(ctx context.Context, event
 	}
 
 	return p.client.PublishBytes(ctx, TopicPrizeDistributed, key, value, headers)
+}
+
+// PublishAnalyticsTrackedProto publishes an AnalyticsTracked event to matchmaking.analytics.tracked.
+// Partition key: match_id. Consumed by analytics service for dashboards and reporting (#32).
+func (p *EventPublisher) PublishAnalyticsTrackedProto(ctx context.Context, event *schemas.MatchmakingEvent) error {
+	value, err := protojson.Marshal(event)
+	if err != nil {
+		return fmt.Errorf("failed to marshal AnalyticsTracked: %w", err)
+	}
+
+	key := ""
+	if payload := event.GetAnalyticsTracked(); payload != nil {
+		key = payload.GetMatchId()
+	}
+	if key == "" {
+		key = uuid.New().String()
+	}
+
+	headers := map[string]string{
+		"ce_type":   schemas.EventTypeAnalyticsTracked,
+		"ce_source": "match-making-api",
+	}
+
+	return p.client.PublishBytes(ctx, TopicAnalyticsTracked, key, value, headers)
 }
 
 // PublishMatchCreated publishes a match creation event (legacy JSON format)

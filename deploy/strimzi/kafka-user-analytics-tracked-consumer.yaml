@@ -1,0 +1,50 @@
+# KafkaUser for the analytics-tracked consumer group.
+# Used by match-making-api to consume MatchResultsCalculated, produce AnalyticsTracked (#32).
+# Analytics service consumes for dashboards, reporting.
+#
+# Auth: SCRAM-SHA-512 (Strimzi manages credentials via Secret)
+# ACLs: Read on matchmaking.matches.results + consumer group, Write on matchmaking.analytics.tracked
+#
+# Prerequisites:
+#   - Strimzi Operator installed
+#   - Kafka cluster "matchmaking" deployed with authentication.type: scram-sha-512
+#
+# Apply: kubectl apply -f kafka-user-analytics-tracked-consumer.yaml
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaUser
+metadata:
+  name: analytics-tracked-consumer
+  labels:
+    strimzi.io/cluster: matchmaking
+spec:
+  authentication:
+    type: scram-sha-512
+  authorization:
+    type: simple
+    acls:
+      # Read from matchmaking.matches.results (MatchResultsCalculated)
+      - resource:
+          type: topic
+          name: matchmaking.matches.results
+          patternType: literal
+        operations:
+          - Read
+          - Describe
+        host: "*"
+      # Write to matchmaking.analytics.tracked (AnalyticsTracked)
+      - resource:
+          type: topic
+          name: matchmaking.analytics.tracked
+          patternType: literal
+        operations:
+          - Write
+          - Describe
+        host: "*"
+      # Consumer group access
+      - resource:
+          type: group
+          name: match-making-api-analytics-tracker
+          patternType: literal
+        operations:
+          - Read
+        host: "*"
