@@ -1,0 +1,49 @@
+# KafkaUser for the ratings-updated consumer group.
+# Used by match-making-api to consume MatchResultsCalculated, compute ratings, produce RatingsUpdated.
+#
+# Auth: SCRAM-SHA-512 (Strimzi manages credentials via Secret)
+# ACLs: Read on matchmaking.matches.results + consumer group, Write on matchmaking.ratings.updated
+#
+# Prerequisites:
+#   - Strimzi Operator installed
+#   - Kafka cluster "matchmaking" deployed with authentication.type: scram-sha-512
+#
+# Apply: kubectl apply -f kafka-user-ratings-updated-consumer.yaml
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaUser
+metadata:
+  name: ratings-updated-consumer
+  labels:
+    strimzi.io/cluster: matchmaking
+spec:
+  authentication:
+    type: scram-sha-512
+  authorization:
+    type: simple
+    acls:
+      # Read from matchmaking.matches.results (MatchResultsCalculated)
+      - resource:
+          type: topic
+          name: matchmaking.matches.results
+          patternType: literal
+        operations:
+          - Read
+          - Describe
+        host: "*"
+      # Write to matchmaking.ratings.updated (RatingsUpdated)
+      - resource:
+          type: topic
+          name: matchmaking.ratings.updated
+          patternType: literal
+        operations:
+          - Write
+          - Describe
+        host: "*"
+      # Consumer group access
+      - resource:
+          type: group
+          name: match-making-api-ratings-updater
+          patternType: literal
+        operations:
+          - Read
+        host: "*"

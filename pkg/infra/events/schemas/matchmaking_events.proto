@@ -152,16 +152,19 @@ message MatchCompletedPayload {
 message MatchResultsCalculatedPayload {
   string match_id = 1;
   repeated string player_ids = 2;
-  string winner_team_id = 3;  // Empty if draw.
+  string winner_team_id = 3;  // Empty if draw. For 1v1, may be winning player_id.
   bool is_draw = 4;
   int64 completed_at_epoch_ms = 5;
   int64 calculated_at_epoch_ms = 6;  // When results were calculated (audit).
   string tenant_id = 7;
   string client_id = 8;
   string resource_owner_id = 9;
+  optional string game_id = 10;  // Optional: for per-game ratings; from match creation when available.
 }
 
-// --- RatingsUpdated (optional, placeholder for epic) ---
+// --- RatingsUpdated (match-making-api → replay-api) ---
+// Emitted after consuming MatchResultsCalculated. Includes MMR deltas per player.
+// Consumed by replay-api for leaderboards and skill-based matchmaking.
 
 message RatingsUpdatedPayload {
   string match_id = 1;
@@ -169,6 +172,15 @@ message RatingsUpdatedPayload {
   int64 updated_at_epoch_ms = 3;
   string tenant_id = 4;
   string client_id = 5;
+  string resource_owner_id = 6;  // For authorization; from MatchResultsCalculated envelope.
+  string game_id = 7;            // Optional: ratings per game; empty if not available.
+  RatingAuditTrail audit_trail = 8;  // Algorithm version, reason, updated_by for compliance.
+}
+
+message RatingAuditTrail {
+  string algorithm_version = 1;  // e.g. "elo-v1"
+  string reason = 2;             // e.g. "match_completion"
+  string updated_by = 3;         // e.g. "match-making-api"
 }
 
 message PlayerRatingDelta {

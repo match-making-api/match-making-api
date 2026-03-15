@@ -25,6 +25,7 @@ ifeq ($(DETECTED_OS),Windows)
 	BINARY_CONSUMER_SERVER_ALLOCATED := consumer-server-allocated.exe
 	BINARY_CONSUMER_MATCH_STARTED := consumer-match-started.exe
 	BINARY_CONSUMER_MATCH_COMPLETED := consumer-match-completed.exe
+	BINARY_CONSUMER_RATINGS_UPDATED := consumer-ratings-updated.exe
 	BINARY_WORKER_QUEUE_STATUS := worker-queue-status.exe
 	BINARY_WORKER_SERVER_ALLOCATION_TIMEOUT := worker-server-allocation-timeout.exe
 else
@@ -33,6 +34,7 @@ else
 	BINARY_CONSUMER_SERVER_ALLOCATED := consumer-server-allocated
 	BINARY_CONSUMER_MATCH_STARTED := consumer-match-started
 	BINARY_CONSUMER_MATCH_COMPLETED := consumer-match-completed
+	BINARY_CONSUMER_RATINGS_UPDATED := consumer-ratings-updated
 	BINARY_WORKER_QUEUE_STATUS := worker-queue-status
 	BINARY_WORKER_SERVER_ALLOCATION_TIMEOUT := worker-server-allocation-timeout
 endif
@@ -77,6 +79,14 @@ else
 	CGO_ENABLED=0 go build -o $(BINARY_CONSUMER_MATCH_COMPLETED) ./cmd/consumers/match-completed/main.go
 endif
 
+build-consumer-ratings-updated:
+	@echo "Building Ratings Updated Consumer for $(DETECTED_OS)"
+ifeq ($(DETECTED_OS),Windows)
+	@go build -o $(BINARY_CONSUMER_RATINGS_UPDATED) ./cmd/consumers/ratings-updated/main.go
+else
+	CGO_ENABLED=0 go build -o $(BINARY_CONSUMER_RATINGS_UPDATED) ./cmd/consumers/ratings-updated/main.go
+endif
+
 build-worker-queue-status:
 	@echo "Building Queue Status Worker for $(DETECTED_OS)"
 ifeq ($(DETECTED_OS),Windows)
@@ -93,7 +103,7 @@ else
 	CGO_ENABLED=0 go build -o $(BINARY_WORKER_SERVER_ALLOCATION_TIMEOUT) ./cmd/workers/server-allocation-timeout/main.go
 endif
 
-build-all: build-rest-api build-consumer-matchmaking build-consumer-server-allocated build-consumer-match-started build-consumer-match-completed build-worker-queue-status build-worker-server-allocation-timeout
+build-all: build-rest-api build-consumer-matchmaking build-consumer-server-allocated build-consumer-match-started build-consumer-match-completed build-consumer-ratings-updated build-worker-queue-status build-worker-server-allocation-timeout
 	@echo "All binaries built successfully"
 
 start-rest-api:

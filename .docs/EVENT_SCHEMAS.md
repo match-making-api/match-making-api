@@ -139,9 +139,15 @@ Emitted after consuming MatchCompleted. Includes statistics for ratings (#30) an
 
 **Topic:** `matchmaking.matches.results`
 
-### RatingsUpdated (optional)
+### RatingsUpdated (match-making-api → replay-api)
 
-Placeholder for the epic. Payload includes `deltas[]` of MMR per player.
+Emitted after consuming MatchResultsCalculated. Includes MMR deltas per player for leaderboards and skill-based matchmaking.
+
+**Payload:** `match_id`, `deltas` (PlayerRatingDelta: player_id, mmr_before, mmr_after, delta), `updated_at_epoch_ms`, `tenant_id`, `client_id`, `resource_owner_id`, `game_id`, `audit_trail` (algorithm_version, reason, updated_by).
+
+**Topic:** `matchmaking.ratings.updated`
+
+**Consumer (replay-api) behavior:** Update leaderboards, persist ratings; validate resource ownership before applying.
 
 ### QueueStatusUpdated (match-making-api → replay-api, via `websocket.broadcasts`)
 
@@ -187,7 +193,7 @@ Emitted when a match is about to begin (e.g. countdown finished, all players rea
 | `matchmaking.match.started` | game server / replay-api → match-making-api | MatchStarted | `MatchStartedPayload` | 1 |
 | `matchmaking.matches.completed` | game server / replay-api → match-making-api | MatchCompleted | `MatchCompletedPayload` | 1 |
 | `matchmaking.matches.results` | match-making-api → replay-api | MatchResultsCalculated | `MatchResultsCalculatedPayload` | 1 |
-| (TBD) | match-making-api → replay-api | RatingsUpdated | `RatingsUpdatedPayload` | 1 |
+| `matchmaking.ratings.updated` | match-making-api → replay-api | RatingsUpdated | `RatingsUpdatedPayload` | 1 |
 
 ### Real-Time Notifications (JSON, via `websocket.broadcasts`)
 

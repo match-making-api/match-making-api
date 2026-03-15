@@ -43,6 +43,11 @@ const (
 	// (game server / replay-api → match-making-api). Emitted when match is about to begin.
 	// match-making-api consumes and broadcasts to all match participants via WebSocket.
 	TopicMatchStarted = "matchmaking.match.started"
+
+	// TopicRatingsUpdated is the topic for RatingsUpdated events
+	// (match-making-api → replay-api). Emitted after consuming MatchResultsCalculated.
+	// replay-api consumes for leaderboards and skill-based matchmaking.
+	TopicRatingsUpdated = "matchmaking.ratings.updated"
 )
 
 // Event types
@@ -309,6 +314,30 @@ func (p *EventPublisher) PublishMatchResultsCalculatedProto(ctx context.Context,
 	}
 
 	return p.client.PublishBytes(ctx, TopicMatchesResults, key, value, headers)
+}
+
+// PublishRatingsUpdatedProto publishes a RatingsUpdated event to matchmaking.ratings.updated.
+// Partition key: match_id. Consumed by replay-api for leaderboards and skill-based matchmaking.
+func (p *EventPublisher) PublishRatingsUpdatedProto(ctx context.Context, event *schemas.MatchmakingEvent) error {
+	value, err := protojson.Marshal(event)
+	if err != nil {
+		return fmt.Errorf("failed to marshal RatingsUpdated: %w", err)
+	}
+
+	key := ""
+	if payload := event.GetRatingsUpdated(); payload != nil {
+		key = payload.GetMatchId()
+	}
+	if key == "" {
+		key = uuid.New().String()
+	}
+
+	headers := map[string]string{
+		"ce_type":   schemas.EventTypeRatingsUpdated,
+		"ce_source": "match-making-api",
+	}
+
+	return p.client.PublishBytes(ctx, TopicRatingsUpdated, key, value, headers)
 }
 
 // PublishMatchCreated publishes a match creation event (legacy JSON format)
