@@ -13,6 +13,7 @@ RUN CGO_ENABLED=0 go build -v -o consumer-match-started ./cmd/consumers/match-st
 RUN CGO_ENABLED=0 go build -v -o consumer-match-completed ./cmd/consumers/match-completed/main.go
 RUN CGO_ENABLED=0 go build -v -o consumer-ratings-updated ./cmd/consumers/ratings-updated/main.go
 RUN CGO_ENABLED=0 go build -v -o consumer-prize-distribution ./cmd/consumers/prize-distribution/main.go
+RUN CGO_ENABLED=0 go build -v -o consumer-analytics-tracked ./cmd/consumers/analytics-tracked/main.go
 RUN CGO_ENABLED=0 go build -v -o worker-queue-status ./cmd/workers/queue-status/main.go
 RUN CGO_ENABLED=0 go build -v -o worker-server-allocation-timeout ./cmd/workers/server-allocation-timeout/main.go
 RUN mkdir -p /app/match_making_files
@@ -82,6 +83,15 @@ COPY --from=build /app/.env ./.env
 ENV GODEBUG=stackguard=99999000000000
 
 CMD ["./app/consumer-prize-distribution"]
+
+# consumer — Analytics Tracked (Kafka consumer for MatchResultsCalculated, produces AnalyticsTracked)
+FROM scratch AS consumer-analytics-tracked
+COPY --from=build /app/consumer-analytics-tracked ./app/
+COPY --from=build /app/.env ./.env
+
+ENV GODEBUG=stackguard=99999000000000
+
+CMD ["./app/consumer-analytics-tracked"]
 
 # worker — Queue Status (periodic ticker for queue position updates)
 FROM scratch AS worker-queue-status

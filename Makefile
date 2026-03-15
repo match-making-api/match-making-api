@@ -27,6 +27,7 @@ ifeq ($(DETECTED_OS),Windows)
 	BINARY_CONSUMER_MATCH_COMPLETED := consumer-match-completed.exe
 	BINARY_CONSUMER_RATINGS_UPDATED := consumer-ratings-updated.exe
 	BINARY_CONSUMER_PRIZE_DISTRIBUTION := consumer-prize-distribution.exe
+	BINARY_CONSUMER_ANALYTICS_TRACKED := consumer-analytics-tracked.exe
 	BINARY_WORKER_QUEUE_STATUS := worker-queue-status.exe
 	BINARY_WORKER_SERVER_ALLOCATION_TIMEOUT := worker-server-allocation-timeout.exe
 else
@@ -37,6 +38,7 @@ else
 	BINARY_CONSUMER_MATCH_COMPLETED := consumer-match-completed
 	BINARY_CONSUMER_RATINGS_UPDATED := consumer-ratings-updated
 	BINARY_CONSUMER_PRIZE_DISTRIBUTION := consumer-prize-distribution
+	BINARY_CONSUMER_ANALYTICS_TRACKED := consumer-analytics-tracked
 	BINARY_WORKER_QUEUE_STATUS := worker-queue-status
 	BINARY_WORKER_SERVER_ALLOCATION_TIMEOUT := worker-server-allocation-timeout
 endif
@@ -97,6 +99,14 @@ else
 	CGO_ENABLED=0 go build -o $(BINARY_CONSUMER_PRIZE_DISTRIBUTION) ./cmd/consumers/prize-distribution/main.go
 endif
 
+build-consumer-analytics-tracked:
+	@echo "Building Analytics Tracked Consumer for $(DETECTED_OS)"
+ifeq ($(DETECTED_OS),Windows)
+	@go build -o $(BINARY_CONSUMER_ANALYTICS_TRACKED) ./cmd/consumers/analytics-tracked/main.go
+else
+	CGO_ENABLED=0 go build -o $(BINARY_CONSUMER_ANALYTICS_TRACKED) ./cmd/consumers/analytics-tracked/main.go
+endif
+
 build-worker-queue-status:
 	@echo "Building Queue Status Worker for $(DETECTED_OS)"
 ifeq ($(DETECTED_OS),Windows)
@@ -113,7 +123,7 @@ else
 	CGO_ENABLED=0 go build -o $(BINARY_WORKER_SERVER_ALLOCATION_TIMEOUT) ./cmd/workers/server-allocation-timeout/main.go
 endif
 
-build-all: build-rest-api build-consumer-matchmaking build-consumer-server-allocated build-consumer-match-started build-consumer-match-completed build-consumer-ratings-updated build-consumer-prize-distribution build-worker-queue-status build-worker-server-allocation-timeout
+build-all: build-rest-api build-consumer-matchmaking build-consumer-server-allocated build-consumer-match-started build-consumer-match-completed build-consumer-ratings-updated build-consumer-prize-distribution build-consumer-analytics-tracked build-worker-queue-status build-worker-server-allocation-timeout
 	@echo "All binaries built successfully"
 
 start-rest-api:
