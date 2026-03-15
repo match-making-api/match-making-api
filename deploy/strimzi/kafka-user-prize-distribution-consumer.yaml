@@ -1,0 +1,50 @@
+# KafkaUser for the prize-distribution consumer group.
+# Used by match-making-api to consume MatchResultsCalculated, resolve prize amounts, produce PrizeDistributed.
+# Wallet API consumes PrizeDistributed and executes prize transfers (#31).
+#
+# Auth: SCRAM-SHA-512 (Strimzi manages credentials via Secret)
+# ACLs: Read on matchmaking.matches.results + consumer group, Write on matchmaking.prizes.distributed
+#
+# Prerequisites:
+#   - Strimzi Operator installed
+#   - Kafka cluster "matchmaking" deployed with authentication.type: scram-sha-512
+#
+# Apply: kubectl apply -f kafka-user-prize-distribution-consumer.yaml
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaUser
+metadata:
+  name: prize-distribution-consumer
+  labels:
+    strimzi.io/cluster: matchmaking
+spec:
+  authentication:
+    type: scram-sha-512
+  authorization:
+    type: simple
+    acls:
+      # Read from matchmaking.matches.results (MatchResultsCalculated)
+      - resource:
+          type: topic
+          name: matchmaking.matches.results
+          patternType: literal
+        operations:
+          - Read
+          - Describe
+        host: "*"
+      # Write to matchmaking.prizes.distributed (PrizeDistributed)
+      - resource:
+          type: topic
+          name: matchmaking.prizes.distributed
+          patternType: literal
+        operations:
+          - Write
+          - Describe
+        host: "*"
+      # Consumer group access
+      - resource:
+          type: group
+          name: match-making-api-prize-distributor
+          patternType: literal
+        operations:
+          - Read
+        host: "*"

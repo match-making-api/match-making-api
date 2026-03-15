@@ -106,3 +106,27 @@ func (mcc *MatchResultsCalculatedConsumer) Start(ctx context.Context) error {
 func (mcc *MatchResultsCalculatedConsumer) Close() error {
 	return mcc.consumer.Close()
 }
+
+// PrizeDistributionConsumer consumes MatchResultsCalculated events from matchmaking.matches.results
+// with group match-making-api-prize-distributor. Delegates to PrizeDistributionHandler for prize distribution.
+// Uses the same topic and validation as MatchResultsCalculatedConsumer but separate consumer group.
+type PrizeDistributionConsumer struct {
+	inner *MatchResultsCalculatedConsumer
+}
+
+// NewPrizeDistributionConsumer creates a consumer for prize distribution (same topic, different group).
+func NewPrizeDistributionConsumer(client *Client, groupID string, handler RatingsUpdatedHandler) *PrizeDistributionConsumer {
+	return &PrizeDistributionConsumer{
+		inner: NewMatchResultsCalculatedConsumer(client, groupID, handler),
+	}
+}
+
+// Start begins consuming messages from matchmaking.matches.results.
+func (p *PrizeDistributionConsumer) Start(ctx context.Context) error {
+	return p.inner.Start(ctx)
+}
+
+// Close closes the consumer.
+func (p *PrizeDistributionConsumer) Close() error {
+	return p.inner.Close()
+}

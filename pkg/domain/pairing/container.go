@@ -249,5 +249,34 @@ func Inject(c container.Container) error {
 		return err
 	}
 
+	// Prize distribution: NoOp resolver (replace with real impl when lobby/prize pool context available)
+	if err := c.Singleton(func() pairing_out.PrizeAmountResolver {
+		return usecases.NewNoOpPrizeAmountResolver()
+	}); err != nil {
+		return err
+	}
+
+	// Register PrizeDistributionHandler — processes MatchResultsCalculated, produces PrizeDistributed
+	if err := c.Singleton(func(
+		prizeResolver pairing_out.PrizeAmountResolver,
+		distributedStore pairing_out.PrizesDistributedStore,
+		eventPublisher *kafka.EventPublisher,
+	) *usecases.PrizeDistributionHandler {
+		return usecases.NewPrizeDistributionHandler(prizeResolver, distributedStore, eventPublisher)
+	}); err != nil {
+		return err
+	}
+
+	// Register PrizeDistributionConsumer — consumes matchmaking.matches.results (prize flow)
+	if err := c.Singleton(func(
+		client *kafka.Client,
+		handler *usecases.PrizeDistributionHandler,
+	) *kafka.PrizeDistributionConsumer {
+		groupID := "match-making-api-prize-distributor"
+		return kafka.NewPrizeDistributionConsumer(client, groupID, handler.Handle)
+	}); err != nil {
+		return err
+	}
+
 	return nil
 }

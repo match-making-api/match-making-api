@@ -34,6 +34,7 @@ message MatchmakingEvent {
     ServerAllocatedPayload server_allocated = 16;
     MatchStartedPayload match_started = 17;
     MatchResultsCalculatedPayload match_results_calculated = 18;
+    PrizeDistributedPayload prize_distributed = 19;
   }
 }
 
@@ -144,6 +145,8 @@ message MatchCompletedPayload {
   int64 completed_at_epoch_ms = 5;
   string tenant_id = 6;
   string client_id = 7;
+  optional string lobby_id = 8;  // Optional: for prize distribution; from game server when available.
+  optional string prize_pool_id = 9;  // Optional: for prize distribution; from lobby when available.
 }
 
 // --- MatchResultsCalculated (match-making-api → replay-api) ---
@@ -160,6 +163,31 @@ message MatchResultsCalculatedPayload {
   string client_id = 8;
   string resource_owner_id = 9;
   optional string game_id = 10;  // Optional: for per-game ratings; from match creation when available.
+  optional string lobby_id = 11;  // Optional: for prize distribution; from match creation when available.
+  optional string prize_pool_id = 12;  // Optional: for prize distribution; from lobby when available.
+}
+
+// --- PrizeDistributed (match-making-api → wallet-api) ---
+// Emitted after consuming MatchResultsCalculated when match has prize pool.
+// Wallet API consumes and executes prize transfers (credits, payouts).
+// Match-making does NOT execute wallet transfers or update balances.
+
+message PrizeDistributedPayload {
+  string match_id = 1;
+  repeated WinnerPrizeDetail winner_details = 2;  // player_id, amount_cents, currency per winner.
+  int64 distributed_at_epoch_ms = 3;  // When the event was produced (audit).
+  string tenant_id = 4;
+  string client_id = 5;
+  string resource_owner_id = 6;  // For authorization; wallet API validates before transfer.
+  string lobby_id = 7;  // Optional: lobby/tournament reference.
+  string prize_pool_id = 8;  // Optional: prize pool reference.
+  string currency = 9;  // e.g. "USD" — applies when amounts are uniform.
+}
+
+message WinnerPrizeDetail {
+  string player_id = 1;
+  int64 amount_cents = 2;  // Prize amount in smallest currency unit (e.g. cents).
+  string currency = 3;  // Override per-winner if needed; else use payload-level currency.
 }
 
 // --- RatingsUpdated (match-making-api → replay-api) ---

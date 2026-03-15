@@ -48,6 +48,11 @@ const (
 	// (match-making-api → replay-api). Emitted after consuming MatchResultsCalculated.
 	// replay-api consumes for leaderboards and skill-based matchmaking.
 	TopicRatingsUpdated = "matchmaking.ratings.updated"
+
+	// TopicPrizeDistributed is the topic for PrizeDistributed events
+	// (match-making-api → wallet-api). Emitted after consuming MatchResultsCalculated when match has prize pool.
+	// Wallet API consumes and executes prize transfers.
+	TopicPrizeDistributed = "matchmaking.prizes.distributed"
 )
 
 // Event types
@@ -338,6 +343,30 @@ func (p *EventPublisher) PublishRatingsUpdatedProto(ctx context.Context, event *
 	}
 
 	return p.client.PublishBytes(ctx, TopicRatingsUpdated, key, value, headers)
+}
+
+// PublishPrizeDistributedProto publishes a PrizeDistributed event to matchmaking.prizes.distributed.
+// Partition key: match_id. Consumed by wallet API for prize transfers.
+func (p *EventPublisher) PublishPrizeDistributedProto(ctx context.Context, event *schemas.MatchmakingEvent) error {
+	value, err := protojson.Marshal(event)
+	if err != nil {
+		return fmt.Errorf("failed to marshal PrizeDistributed: %w", err)
+	}
+
+	key := ""
+	if payload := event.GetPrizeDistributed(); payload != nil {
+		key = payload.GetMatchId()
+	}
+	if key == "" {
+		key = uuid.New().String()
+	}
+
+	headers := map[string]string{
+		"ce_type":   schemas.EventTypePrizeDistributed,
+		"ce_source": "match-making-api",
+	}
+
+	return p.client.PublishBytes(ctx, TopicPrizeDistributed, key, value, headers)
 }
 
 // PublishMatchCreated publishes a match creation event (legacy JSON format)
