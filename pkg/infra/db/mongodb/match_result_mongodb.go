@@ -106,7 +106,7 @@ func (r *matchResultRepository) GetByMatchID(ctx context.Context, matchID uuid.U
 		CalculatedAtMs:  doc.CalculatedAtMs,
 		TenantID:        doc.TenantID,
 		ClientID:        doc.ClientID,
-		ResourceOwnerID doc.ResourceOwnerID,
+		ResourceOwnerID: doc.ResourceOwnerID,
 		SourceEventID:   doc.SourceEventID,
 	}, nil
 }

@@ -19,6 +19,8 @@ func InjectWorker(c container.Container) error {
 		mongodb.InjectGameModeRepository,
 		mongodb.InjectRegionRepository,
 		mongodb.InjectMatchResultRepository,
+		mongodb.InjectPlayerRatingRepository,
+		mongodb.InjectRatingsProcessedStore,
 		InjectKafka,
 		InjectRedis,
 	)

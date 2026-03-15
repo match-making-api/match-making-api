@@ -227,5 +227,27 @@ func Inject(c container.Container) error {
 		return err
 	}
 
+	// Register RatingsUpdatedHandler — processes MatchResultsCalculated, computes ratings, produces RatingsUpdated
+	if err := c.Singleton(func(
+		ratingRepo pairing_out.PlayerRatingRepository,
+		processedStore pairing_out.RatingsProcessedStore,
+		eventPublisher *kafka.EventPublisher,
+	) *usecases.RatingsUpdatedHandler {
+		return usecases.NewRatingsUpdatedHandler(ratingRepo, processedStore, eventPublisher, nil)
+	}); err != nil {
+		return err
+	}
+
+	// Register MatchResultsCalculatedConsumer — consumes matchmaking.matches.results (Protobuf)
+	if err := c.Singleton(func(
+		client *kafka.Client,
+		handler *usecases.RatingsUpdatedHandler,
+	) *kafka.MatchResultsCalculatedConsumer {
+		groupID := "match-making-api-ratings-updater"
+		return kafka.NewMatchResultsCalculatedConsumer(client, groupID, handler.Handle)
+	}); err != nil {
+		return err
+	}
+
 	return nil
 }

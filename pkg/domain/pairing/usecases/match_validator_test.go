@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/leet-gaming/match-making-api/pkg/common"
 	pairing_entities "github.com/leet-gaming/match-making-api/pkg/domain/pairing/entities"
 	"github.com/leet-gaming/match-making-api/pkg/domain/pairing/usecases"
 	parties_entities "github.com/leet-gaming/match-making-api/pkg/domain/parties/entities"
@@ -18,12 +19,10 @@ func TestMatchValidator_Validate(t *testing.T) {
 
 	t.Run("Success - all rules pass", func(t *testing.T) {
 		validator := usecases.NewMatchValidator()
-		pair := &pairing_entities.Pair{
-			ID: uuid.New(),
-			Match: map[uuid.UUID]*parties_entities.Party{
-				uuid.New(): {ID: uuid.New()},
-				uuid.New(): {ID: uuid.New()},
-			},
+		pair := pairing_entities.NewPair(2, common.ResourceOwner{TenantID: uuid.New(), ClientID: uuid.New()})
+		pair.Match = map[uuid.UUID]*parties_entities.Party{
+			uuid.New(): {ID: uuid.New()},
+			uuid.New(): {ID: uuid.New()},
 		}
 
 		params := usecases.MatchValidationParams{
@@ -39,10 +38,8 @@ func TestMatchValidator_Validate(t *testing.T) {
 
 	t.Run("Failure - missing resource_owner_id", func(t *testing.T) {
 		validator := usecases.NewMatchValidator()
-		pair := &pairing_entities.Pair{
-			ID:    uuid.New(),
-			Match: map[uuid.UUID]*parties_entities.Party{uuid.New(): {ID: uuid.New()}},
-		}
+		pair := pairing_entities.NewPair(1, common.ResourceOwner{TenantID: uuid.New(), ClientID: uuid.New()})
+		pair.Match = map[uuid.UUID]*parties_entities.Party{uuid.New(): {ID: uuid.New()}}
 
 		params := usecases.MatchValidationParams{
 			Pair:            pair,
@@ -58,10 +55,8 @@ func TestMatchValidator_Validate(t *testing.T) {
 
 	t.Run("Failure - missing tenant_id", func(t *testing.T) {
 		validator := usecases.NewMatchValidator()
-		pair := &pairing_entities.Pair{
-			ID:    uuid.New(),
-			Match: map[uuid.UUID]*parties_entities.Party{uuid.New(): {ID: uuid.New()}},
-		}
+		pair := pairing_entities.NewPair(1, common.ResourceOwner{TenantID: uuid.New(), ClientID: uuid.New()})
+		pair.Match = map[uuid.UUID]*parties_entities.Party{uuid.New(): {ID: uuid.New()}}
 
 		params := usecases.MatchValidationParams{
 			Pair:            pair,
@@ -77,10 +72,8 @@ func TestMatchValidator_Validate(t *testing.T) {
 
 	t.Run("Failure - missing client_id", func(t *testing.T) {
 		validator := usecases.NewMatchValidator()
-		pair := &pairing_entities.Pair{
-			ID:    uuid.New(),
-			Match: map[uuid.UUID]*parties_entities.Party{uuid.New(): {ID: uuid.New()}},
-		}
+		pair := pairing_entities.NewPair(1, common.ResourceOwner{TenantID: uuid.New(), ClientID: uuid.New()})
+		pair.Match = map[uuid.UUID]*parties_entities.Party{uuid.New(): {ID: uuid.New()}}
 
 		params := usecases.MatchValidationParams{
 			Pair:            pair,
@@ -110,10 +103,8 @@ func TestMatchValidator_Validate(t *testing.T) {
 
 	t.Run("Failure - empty pair", func(t *testing.T) {
 		validator := usecases.NewMatchValidator()
-		pair := &pairing_entities.Pair{
-			ID:    uuid.New(),
-			Match: map[uuid.UUID]*parties_entities.Party{},
-		}
+		pair := pairing_entities.NewPair(0, common.ResourceOwner{TenantID: uuid.New(), ClientID: uuid.New()})
+		pair.Match = map[uuid.UUID]*parties_entities.Party{}
 
 		params := usecases.MatchValidationParams{
 			Pair:            pair,
@@ -139,10 +130,8 @@ func TestMatchValidator_Validate_WithEnvelopeAndPayload(t *testing.T) {
 		TenantId: uuid.New().String(),
 		ClientId: uuid.New().String(),
 	}
-	pair := &pairing_entities.Pair{
-		ID:    uuid.New(),
-		Match: map[uuid.UUID]*parties_entities.Party{uuid.New(): {ID: uuid.New()}},
-	}
+	pair := pairing_entities.NewPair(1, common.ResourceOwner{TenantID: uuid.New(), ClientID: uuid.New()})
+	pair.Match = map[uuid.UUID]*parties_entities.Party{uuid.New(): {ID: uuid.New()}}
 
 	params := usecases.MatchValidationParams{
 		Pair:            pair,

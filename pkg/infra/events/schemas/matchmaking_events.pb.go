@@ -1148,13 +1148,14 @@ type MatchResultsCalculatedPayload struct {
 	state               protoimpl.MessageState `protogen:"open.v1"`
 	MatchId             string                 `protobuf:"bytes,1,opt,name=match_id,json=matchId,proto3" json:"match_id,omitempty"`
 	PlayerIds           []string               `protobuf:"bytes,2,rep,name=player_ids,json=playerIds,proto3" json:"player_ids,omitempty"`
-	WinnerTeamId        string                 `protobuf:"bytes,3,opt,name=winner_team_id,json=winnerTeamId,proto3" json:"winner_team_id,omitempty"` // Empty if draw.
+	WinnerTeamId        string                 `protobuf:"bytes,3,opt,name=winner_team_id,json=winnerTeamId,proto3" json:"winner_team_id,omitempty"` // Empty if draw. For 1v1, may be winning player_id.
 	IsDraw              bool                   `protobuf:"varint,4,opt,name=is_draw,json=isDraw,proto3" json:"is_draw,omitempty"`
 	CompletedAtEpochMs  int64                  `protobuf:"varint,5,opt,name=completed_at_epoch_ms,json=completedAtEpochMs,proto3" json:"completed_at_epoch_ms,omitempty"`
 	CalculatedAtEpochMs int64                  `protobuf:"varint,6,opt,name=calculated_at_epoch_ms,json=calculatedAtEpochMs,proto3" json:"calculated_at_epoch_ms,omitempty"` // When results were calculated (audit).
 	TenantId            string                 `protobuf:"bytes,7,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
 	ClientId            string                 `protobuf:"bytes,8,opt,name=client_id,json=clientId,proto3" json:"client_id,omitempty"`
 	ResourceOwnerId     string                 `protobuf:"bytes,9,opt,name=resource_owner_id,json=resourceOwnerId,proto3" json:"resource_owner_id,omitempty"`
+	GameId              *string                `protobuf:"bytes,10,opt,name=game_id,json=gameId,proto3,oneof" json:"game_id,omitempty"` // Optional: for per-game ratings; from match creation when available.
 	unknownFields       protoimpl.UnknownFields
 	sizeCache           protoimpl.SizeCache
 }
@@ -1252,6 +1253,13 @@ func (x *MatchResultsCalculatedPayload) GetResourceOwnerId() string {
 	return ""
 }
 
+func (x *MatchResultsCalculatedPayload) GetGameId() string {
+	if x != nil && x.GameId != nil {
+		return *x.GameId
+	}
+	return ""
+}
+
 type RatingsUpdatedPayload struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
 	MatchId          string                 `protobuf:"bytes,1,opt,name=match_id,json=matchId,proto3" json:"match_id,omitempty"`
@@ -1259,6 +1267,9 @@ type RatingsUpdatedPayload struct {
 	UpdatedAtEpochMs int64                  `protobuf:"varint,3,opt,name=updated_at_epoch_ms,json=updatedAtEpochMs,proto3" json:"updated_at_epoch_ms,omitempty"`
 	TenantId         string                 `protobuf:"bytes,4,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
 	ClientId         string                 `protobuf:"bytes,5,opt,name=client_id,json=clientId,proto3" json:"client_id,omitempty"`
+	ResourceOwnerId  string                 `protobuf:"bytes,6,opt,name=resource_owner_id,json=resourceOwnerId,proto3" json:"resource_owner_id,omitempty"` // For authorization; from MatchResultsCalculated envelope.
+	GameId           string                 `protobuf:"bytes,7,opt,name=game_id,json=gameId,proto3" json:"game_id,omitempty"`                              // Optional: ratings per game; empty if not available.
+	AuditTrail       *RatingAuditTrail      `protobuf:"bytes,8,opt,name=audit_trail,json=auditTrail,proto3" json:"audit_trail,omitempty"`                  // Algorithm version, reason, updated_by for compliance.
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -1328,6 +1339,87 @@ func (x *RatingsUpdatedPayload) GetClientId() string {
 	return ""
 }
 
+func (x *RatingsUpdatedPayload) GetResourceOwnerId() string {
+	if x != nil {
+		return x.ResourceOwnerId
+	}
+	return ""
+}
+
+func (x *RatingsUpdatedPayload) GetGameId() string {
+	if x != nil {
+		return x.GameId
+	}
+	return ""
+}
+
+func (x *RatingsUpdatedPayload) GetAuditTrail() *RatingAuditTrail {
+	if x != nil {
+		return x.AuditTrail
+	}
+	return nil
+}
+
+type RatingAuditTrail struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	AlgorithmVersion string                 `protobuf:"bytes,1,opt,name=algorithm_version,json=algorithmVersion,proto3" json:"algorithm_version,omitempty"` // e.g. "elo-v1"
+	Reason           string                 `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"`                                             // e.g. "match_completion"
+	UpdatedBy        string                 `protobuf:"bytes,3,opt,name=updated_by,json=updatedBy,proto3" json:"updated_by,omitempty"`                      // e.g. "match-making-api"
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *RatingAuditTrail) Reset() {
+	*x = RatingAuditTrail{}
+	mi := &file_pkg_infra_events_schemas_matchmaking_events_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RatingAuditTrail) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RatingAuditTrail) ProtoMessage() {}
+
+func (x *RatingAuditTrail) ProtoReflect() protoreflect.Message {
+	mi := &file_pkg_infra_events_schemas_matchmaking_events_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RatingAuditTrail.ProtoReflect.Descriptor instead.
+func (*RatingAuditTrail) Descriptor() ([]byte, []int) {
+	return file_pkg_infra_events_schemas_matchmaking_events_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *RatingAuditTrail) GetAlgorithmVersion() string {
+	if x != nil {
+		return x.AlgorithmVersion
+	}
+	return ""
+}
+
+func (x *RatingAuditTrail) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+func (x *RatingAuditTrail) GetUpdatedBy() string {
+	if x != nil {
+		return x.UpdatedBy
+	}
+	return ""
+}
+
 type PlayerRatingDelta struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	PlayerId      string                 `protobuf:"bytes,1,opt,name=player_id,json=playerId,proto3" json:"player_id,omitempty"`
@@ -1340,7 +1432,7 @@ type PlayerRatingDelta struct {
 
 func (x *PlayerRatingDelta) Reset() {
 	*x = PlayerRatingDelta{}
-	mi := &file_pkg_infra_events_schemas_matchmaking_events_proto_msgTypes[14]
+	mi := &file_pkg_infra_events_schemas_matchmaking_events_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1352,7 +1444,7 @@ func (x *PlayerRatingDelta) String() string {
 func (*PlayerRatingDelta) ProtoMessage() {}
 
 func (x *PlayerRatingDelta) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_infra_events_schemas_matchmaking_events_proto_msgTypes[14]
+	mi := &file_pkg_infra_events_schemas_matchmaking_events_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1365,7 +1457,7 @@ func (x *PlayerRatingDelta) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PlayerRatingDelta.ProtoReflect.Descriptor instead.
 func (*PlayerRatingDelta) Descriptor() ([]byte, []int) {
-	return file_pkg_infra_events_schemas_matchmaking_events_proto_rawDescGZIP(), []int{14}
+	return file_pkg_infra_events_schemas_matchmaking_events_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *PlayerRatingDelta) GetPlayerId() string {
@@ -1503,7 +1595,7 @@ const file_pkg_infra_events_schemas_matchmaking_events_proto_rawDesc = "" +
 	"\ais_draw\x18\x04 \x01(\bR\x06isDraw\x121\n" +
 	"\x15completed_at_epoch_ms\x18\x05 \x01(\x03R\x12completedAtEpochMs\x12\x1b\n" +
 	"\ttenant_id\x18\x06 \x01(\tR\btenantId\x12\x1b\n" +
-	"\tclient_id\x18\a \x01(\tR\bclientId\"\xe6\x02\n" +
+	"\tclient_id\x18\a \x01(\tR\bclientId\"\x90\x03\n" +
 	"\x1dMatchResultsCalculatedPayload\x12\x19\n" +
 	"\bmatch_id\x18\x01 \x01(\tR\amatchId\x12\x1d\n" +
 	"\n" +
@@ -1514,13 +1606,26 @@ const file_pkg_infra_events_schemas_matchmaking_events_proto_rawDesc = "" +
 	"\x16calculated_at_epoch_ms\x18\x06 \x01(\x03R\x13calculatedAtEpochMs\x12\x1b\n" +
 	"\ttenant_id\x18\a \x01(\tR\btenantId\x12\x1b\n" +
 	"\tclient_id\x18\b \x01(\tR\bclientId\x12*\n" +
-	"\x11resource_owner_id\x18\t \x01(\tR\x0fresourceOwnerId\"\xdd\x01\n" +
+	"\x11resource_owner_id\x18\t \x01(\tR\x0fresourceOwnerId\x12\x1c\n" +
+	"\agame_id\x18\n" +
+	" \x01(\tH\x00R\x06gameId\x88\x01\x01B\n" +
+	"\n" +
+	"\b_game_id\"\xec\x02\n" +
 	"\x15RatingsUpdatedPayload\x12\x19\n" +
 	"\bmatch_id\x18\x01 \x01(\tR\amatchId\x12@\n" +
 	"\x06deltas\x18\x02 \x03(\v2(.matchmaking.events.v1.PlayerRatingDeltaR\x06deltas\x12-\n" +
 	"\x13updated_at_epoch_ms\x18\x03 \x01(\x03R\x10updatedAtEpochMs\x12\x1b\n" +
 	"\ttenant_id\x18\x04 \x01(\tR\btenantId\x12\x1b\n" +
-	"\tclient_id\x18\x05 \x01(\tR\bclientId\"\x82\x01\n" +
+	"\tclient_id\x18\x05 \x01(\tR\bclientId\x12*\n" +
+	"\x11resource_owner_id\x18\x06 \x01(\tR\x0fresourceOwnerId\x12\x17\n" +
+	"\agame_id\x18\a \x01(\tR\x06gameId\x12H\n" +
+	"\vaudit_trail\x18\b \x01(\v2'.matchmaking.events.v1.RatingAuditTrailR\n" +
+	"auditTrail\"v\n" +
+	"\x10RatingAuditTrail\x12+\n" +
+	"\x11algorithm_version\x18\x01 \x01(\tR\x10algorithmVersion\x12\x16\n" +
+	"\x06reason\x18\x02 \x01(\tR\x06reason\x12\x1d\n" +
+	"\n" +
+	"updated_by\x18\x03 \x01(\tR\tupdatedBy\"\x82\x01\n" +
 	"\x11PlayerRatingDelta\x12\x1b\n" +
 	"\tplayer_id\x18\x01 \x01(\tR\bplayerId\x12\x1d\n" +
 	"\n" +
@@ -1540,7 +1645,7 @@ func file_pkg_infra_events_schemas_matchmaking_events_proto_rawDescGZIP() []byte
 	return file_pkg_infra_events_schemas_matchmaking_events_proto_rawDescData
 }
 
-var file_pkg_infra_events_schemas_matchmaking_events_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
+var file_pkg_infra_events_schemas_matchmaking_events_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
 var file_pkg_infra_events_schemas_matchmaking_events_proto_goTypes = []any{
 	(*EventEnvelope)(nil),                 // 0: matchmaking.events.v1.EventEnvelope
 	(*MatchmakingEvent)(nil),              // 1: matchmaking.events.v1.MatchmakingEvent
@@ -1556,11 +1661,12 @@ var file_pkg_infra_events_schemas_matchmaking_events_proto_goTypes = []any{
 	(*MatchCompletedPayload)(nil),         // 11: matchmaking.events.v1.MatchCompletedPayload
 	(*MatchResultsCalculatedPayload)(nil), // 12: matchmaking.events.v1.MatchResultsCalculatedPayload
 	(*RatingsUpdatedPayload)(nil),         // 13: matchmaking.events.v1.RatingsUpdatedPayload
-	(*PlayerRatingDelta)(nil),             // 14: matchmaking.events.v1.PlayerRatingDelta
-	(*timestamppb.Timestamp)(nil),         // 15: google.protobuf.Timestamp
+	(*RatingAuditTrail)(nil),              // 14: matchmaking.events.v1.RatingAuditTrail
+	(*PlayerRatingDelta)(nil),             // 15: matchmaking.events.v1.PlayerRatingDelta
+	(*timestamppb.Timestamp)(nil),         // 16: google.protobuf.Timestamp
 }
 var file_pkg_infra_events_schemas_matchmaking_events_proto_depIdxs = []int32{
-	15, // 0: matchmaking.events.v1.EventEnvelope.time:type_name -> google.protobuf.Timestamp
+	16, // 0: matchmaking.events.v1.EventEnvelope.time:type_name -> google.protobuf.Timestamp
 	0,  // 1: matchmaking.events.v1.MatchmakingEvent.envelope:type_name -> matchmaking.events.v1.EventEnvelope
 	5,  // 2: matchmaking.events.v1.MatchmakingEvent.player_queued:type_name -> matchmaking.events.v1.PlayerQueuedPayload
 	8,  // 3: matchmaking.events.v1.MatchmakingEvent.match_created:type_name -> matchmaking.events.v1.MatchCreatedPayload
@@ -1574,12 +1680,13 @@ var file_pkg_infra_events_schemas_matchmaking_events_proto_depIdxs = []int32{
 	6,  // 11: matchmaking.events.v1.PlayerQueuedPayload.skill_range:type_name -> matchmaking.events.v1.SkillRange
 	9,  // 12: matchmaking.events.v1.MatchCreatedPayload.players:type_name -> matchmaking.events.v1.MatchPlayer
 	10, // 13: matchmaking.events.v1.MatchCreatedPayload.game_server:type_name -> matchmaking.events.v1.GameServer
-	14, // 14: matchmaking.events.v1.RatingsUpdatedPayload.deltas:type_name -> matchmaking.events.v1.PlayerRatingDelta
-	15, // [15:15] is the sub-list for method output_type
-	15, // [15:15] is the sub-list for method input_type
-	15, // [15:15] is the sub-list for extension type_name
-	15, // [15:15] is the sub-list for extension extendee
-	0,  // [0:15] is the sub-list for field type_name
+	15, // 14: matchmaking.events.v1.RatingsUpdatedPayload.deltas:type_name -> matchmaking.events.v1.PlayerRatingDelta
+	14, // 15: matchmaking.events.v1.RatingsUpdatedPayload.audit_trail:type_name -> matchmaking.events.v1.RatingAuditTrail
+	16, // [16:16] is the sub-list for method output_type
+	16, // [16:16] is the sub-list for method input_type
+	16, // [16:16] is the sub-list for extension type_name
+	16, // [16:16] is the sub-list for extension extendee
+	0,  // [0:16] is the sub-list for field type_name
 }
 
 func init() { file_pkg_infra_events_schemas_matchmaking_events_proto_init() }
@@ -1601,13 +1708,14 @@ func file_pkg_infra_events_schemas_matchmaking_events_proto_init() {
 	file_pkg_infra_events_schemas_matchmaking_events_proto_msgTypes[2].OneofWrappers = []any{}
 	file_pkg_infra_events_schemas_matchmaking_events_proto_msgTypes[3].OneofWrappers = []any{}
 	file_pkg_infra_events_schemas_matchmaking_events_proto_msgTypes[5].OneofWrappers = []any{}
+	file_pkg_infra_events_schemas_matchmaking_events_proto_msgTypes[12].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pkg_infra_events_schemas_matchmaking_events_proto_rawDesc), len(file_pkg_infra_events_schemas_matchmaking_events_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   15,
+			NumMessages:   16,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
