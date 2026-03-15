@@ -35,6 +35,10 @@ const (
 	// is allocated for a match. match-making-api consumes and broadcasts MatchReady.
 	TopicServerAllocated = "matchmaking.server.allocated"
 
+	// TopicMatchCompleted is the topic for MatchCompleted events
+	// (game server / replay-api → match-making-api). match-making-api consumes, calculates results, produces MatchResultsCalculated.
+	TopicMatchCompleted = "matchmaking.matches.completed"
+
 	// TopicMatchStarted is the topic for MatchStarted events
 	// (game server / replay-api → match-making-api). Emitted when match is about to begin.
 	// match-making-api consumes and broadcasts to all match participants via WebSocket.
@@ -281,6 +285,30 @@ func (p *EventPublisher) PublishMatchCreatedProto(ctx context.Context, event *sc
 	}
 
 	return p.client.PublishBytes(ctx, TopicMatchesCreated, key, value, headers)
+}
+
+// PublishMatchResultsCalculatedProto publishes a MatchResultsCalculated event to matchmaking.matches.results.
+// Partition key: match_id for per-match ordering. Consumed by replay-api for ratings (#30) and prizes (#31).
+func (p *EventPublisher) PublishMatchResultsCalculatedProto(ctx context.Context, event *schemas.MatchmakingEvent) error {
+	value, err := protojson.Marshal(event)
+	if err != nil {
+		return fmt.Errorf("failed to marshal MatchResultsCalculated: %w", err)
+	}
+
+	key := ""
+	if payload := event.GetMatchResultsCalculated(); payload != nil {
+		key = payload.GetMatchId()
+	}
+	if key == "" {
+		key = uuid.New().String()
+	}
+
+	headers := map[string]string{
+		"ce_type":   schemas.EventTypeMatchResultsCalculated,
+		"ce_source": "match-making-api",
+	}
+
+	return p.client.PublishBytes(ctx, TopicMatchesResults, key, value, headers)
 }
 
 // PublishMatchCreated publishes a match creation event (legacy JSON format)

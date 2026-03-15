@@ -10,6 +10,7 @@ RUN CGO_ENABLED=0 go build -v -o match-making-api-http-service ./cmd/rest-api/ma
 RUN CGO_ENABLED=0 go build -v -o consumer-matchmaking-commands ./cmd/consumers/matchmaking-commands/main.go
 RUN CGO_ENABLED=0 go build -v -o consumer-server-allocated ./cmd/consumers/server-allocated/main.go
 RUN CGO_ENABLED=0 go build -v -o consumer-match-started ./cmd/consumers/match-started/main.go
+RUN CGO_ENABLED=0 go build -v -o consumer-match-completed ./cmd/consumers/match-completed/main.go
 RUN CGO_ENABLED=0 go build -v -o worker-queue-status ./cmd/workers/queue-status/main.go
 RUN CGO_ENABLED=0 go build -v -o worker-server-allocation-timeout ./cmd/workers/server-allocation-timeout/main.go
 RUN mkdir -p /app/match_making_files
@@ -52,6 +53,15 @@ COPY --from=build /app/.env ./.env
 ENV GODEBUG=stackguard=99999000000000
 
 CMD ["./app/consumer-match-started"]
+
+# consumer — Match Completed (Kafka consumer for MatchCompleted, persists results, produces MatchResultsCalculated)
+FROM scratch AS consumer-match-completed
+COPY --from=build /app/consumer-match-completed ./app/
+COPY --from=build /app/.env ./.env
+
+ENV GODEBUG=stackguard=99999000000000
+
+CMD ["./app/consumer-match-completed"]
 
 # worker — Queue Status (periodic ticker for queue position updates)
 FROM scratch AS worker-queue-status

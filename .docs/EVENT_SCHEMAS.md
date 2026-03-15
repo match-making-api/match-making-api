@@ -119,9 +119,25 @@ Emitted when a match is created. Flow: PotentialMatchFound (AddAndFindNextPair r
 
 **Failure modes:** Validation failure → log, skip MatchCreated (pair remains in DB). Produce failure → log, non-fatal (reconciliation may be needed).
 
-### MatchCompleted (optional)
+### MatchCompleted (game server / replay-api → match-making-api)
 
-Placeholder for producer use (2501-003). Payload includes `match_id`, `player_ids`, `winner_team_id`, `is_draw`, etc.
+Emitted when a match ends. match-making-api consumes from `matchmaking.matches.completed`, validates resource ownership, calculates results, persists, and produces MatchResultsCalculated.
+
+**Payload:** `match_id`, `player_ids`, `winner_team_id`, `is_draw`, `completed_at_epoch_ms`, `tenant_id`, `client_id`.
+
+**Consumer behavior:**
+- Validates `resource_owner_id` in envelope; `match_id`, `tenant_id`, `client_id` in payload
+- Calculates results (pass-through from MatchCompleted)
+- Persists to MongoDB with resource ownership (idempotent by `match_id`)
+- Produces MatchResultsCalculated to `matchmaking.matches.results`
+
+### MatchResultsCalculated (match-making-api → replay-api)
+
+Emitted after consuming MatchCompleted. Includes statistics for ratings (#30) and prizes (#31).
+
+**Payload:** `match_id`, `player_ids`, `winner_team_id`, `is_draw`, `completed_at_epoch_ms`, `calculated_at_epoch_ms`, `tenant_id`, `client_id`, `resource_owner_id`.
+
+**Topic:** `matchmaking.matches.results`
 
 ### RatingsUpdated (optional)
 
@@ -169,7 +185,8 @@ Emitted when a match is about to begin (e.g. countdown finished, all players rea
 | `matchmaking.matches.created` | match-making-api → replay-api | MatchCreated | `MatchCreatedPayload` | 1 |
 | `matchmaking.server.allocated` | game server / replay-api → match-making-api | ServerAllocated | `ServerAllocatedPayload` | 1 |
 | `matchmaking.match.started` | game server / replay-api → match-making-api | MatchStarted | `MatchStartedPayload` | 1 |
-| `matchmaking.matches` | match-making-api → replay-api | MatchCompleted | `MatchCompletedPayload` | 1 |
+| `matchmaking.matches.completed` | game server / replay-api → match-making-api | MatchCompleted | `MatchCompletedPayload` | 1 |
+| `matchmaking.matches.results` | match-making-api → replay-api | MatchResultsCalculated | `MatchResultsCalculatedPayload` | 1 |
 | (TBD) | match-making-api → replay-api | RatingsUpdated | `RatingsUpdatedPayload` | 1 |
 
 ### Real-Time Notifications (JSON, via `websocket.broadcasts`)

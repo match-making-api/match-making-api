@@ -33,6 +33,7 @@ message MatchmakingEvent {
     PlayerQueueConfirmedPayload player_queue_confirmed = 15;
     ServerAllocatedPayload server_allocated = 16;
     MatchStartedPayload match_started = 17;
+    MatchResultsCalculatedPayload match_results_calculated = 18;
   }
 }
 
@@ -132,7 +133,8 @@ message GameServer {
   string resource_owner_id = 3;
 }
 
-// --- MatchCompleted (optional, for producer work 2501-003) ---
+// --- MatchCompleted (game server / replay-api → match-making-api) ---
+// Emitted when a match ends. match-making-api consumes, calculates results, persists, produces MatchResultsCalculated.
 
 message MatchCompletedPayload {
   string match_id = 1;
@@ -142,6 +144,21 @@ message MatchCompletedPayload {
   int64 completed_at_epoch_ms = 5;
   string tenant_id = 6;
   string client_id = 7;
+}
+
+// --- MatchResultsCalculated (match-making-api → replay-api) ---
+// Emitted after consuming MatchCompleted. Includes statistics for ratings (#30) and prizes (#31).
+
+message MatchResultsCalculatedPayload {
+  string match_id = 1;
+  repeated string player_ids = 2;
+  string winner_team_id = 3;  // Empty if draw.
+  bool is_draw = 4;
+  int64 completed_at_epoch_ms = 5;
+  int64 calculated_at_epoch_ms = 6;  // When results were calculated (audit).
+  string tenant_id = 7;
+  string client_id = 8;
+  string resource_owner_id = 9;
 }
 
 // --- RatingsUpdated (optional, placeholder for epic) ---
