@@ -97,21 +97,21 @@ func (uc *CreateManualInvitationUseCase) Execute(ctx context.Context, payload Cr
 
 // validateUser checks if the user exists and is eligible for invitations
 func (uc *CreateManualInvitationUseCase) validateUser(ctx context.Context, userID uuid.UUID) error {
+	slog.DebugContext(ctx, "validating user for invitation", "user_id", userID)
+
 	// Check if peer exists (users are represented as peers in the system)
 	_, err := uc.PeerReader.GetByID(userID)
 	if err != nil {
 		return fmt.Errorf("user %v does not exist or is not eligible: %w", userID, err)
 	}
 
-	// Additional eligibility checks can be added here
-	// For example: check if user is active, not banned, etc.
-
 	return nil
 }
 
 // validateMatchOrEvent validates that the match or event is valid and open for new participants
 func (uc *CreateManualInvitationUseCase) validateMatchOrEvent(ctx context.Context, payload CreateInvitationPayload) error {
-	if payload.Type == pairing_entities.InvitationTypeMatch {
+	switch payload.Type {
+	case pairing_entities.InvitationTypeMatch:
 		if payload.MatchID == nil {
 			return fmt.Errorf("match_id is required for match invitations")
 		}
@@ -123,23 +123,18 @@ func (uc *CreateManualInvitationUseCase) validateMatchOrEvent(ctx context.Contex
 		}
 
 		// Check if match is open for new participants
-		// This is a simplified check - you may need to add more logic based on your business rules
-		// For example: check if match has available slots, hasn't started yet, etc.
 		if pair.ConflictStatus == pairing_entities.ConflictStatusFlagged {
 			return fmt.Errorf("match %v has conflicts and is not open for new participants", *payload.MatchID)
 		}
 
-		// Additional validations can be added here
-		// For example: check if match is full, has started, etc.
-	} else if payload.Type == pairing_entities.InvitationTypeEvent {
+	case pairing_entities.InvitationTypeEvent:
 		if payload.EventID == nil {
 			return fmt.Errorf("event_id is required for event invitations")
 		}
 
-		// Event validation would go here
-		// For now, we'll just check that event_id is provided
 		// TODO: Implement event validation when event system is available
-	} else {
+
+	default:
 		return fmt.Errorf("invalid invitation type: %v", payload.Type)
 	}
 

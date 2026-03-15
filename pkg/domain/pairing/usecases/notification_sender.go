@@ -5,19 +5,12 @@ import (
 	"log/slog"
 
 	pairing_entities "github.com/leet-gaming/match-making-api/pkg/domain/pairing/entities"
+	pairing_out "github.com/leet-gaming/match-making-api/pkg/domain/pairing/ports/out"
 )
 
-// NotificationSender defines the interface for sending notifications through different channels
-type NotificationSender interface {
-	// Send sends a notification through the specified channel
-	Send(ctx context.Context, notification *pairing_entities.Notification) error
-	
-	// GetChannel returns the channel this sender handles
-	GetChannel() pairing_entities.NotificationChannel
-	
-	// IsAvailable checks if the sender is available/configured
-	IsAvailable(ctx context.Context) bool
-}
+// NotificationSender defines the interface for sending notifications through different channels.
+// It is an alias for the port interface pairing_out.NotificationChannelSender.
+type NotificationSender = pairing_out.NotificationChannelSender
 
 // InAppNotificationSender handles in-app notifications
 type InAppNotificationSender struct{}
@@ -97,7 +90,8 @@ func (s *SMSNotificationSender) Send(ctx context.Context, notification *pairing_
 	return nil
 }
 
-// NotificationSenderFactory creates the appropriate sender for a channel
+// NotificationSenderFactory creates the appropriate sender for a channel.
+// Implements pairing_out.NotificationSenderResolver.
 type NotificationSenderFactory struct {
 	senders map[pairing_entities.NotificationChannel]NotificationSender
 }
@@ -111,11 +105,13 @@ func NewNotificationSenderFactory() *NotificationSenderFactory {
 	factory.senders[pairing_entities.NotificationChannelInApp] = NewInAppNotificationSender()
 	factory.senders[pairing_entities.NotificationChannelEmail] = NewEmailNotificationSender()
 	factory.senders[pairing_entities.NotificationChannelSMS] = NewSMSNotificationSender()
+	factory.senders[pairing_entities.NotificationChannelPush] = NewPushNotificationSender(nil) // Stub until FCM configured
+	factory.senders[pairing_entities.NotificationChannelWhatsApp] = NewWhatsAppNotificationSender()
 	
 	return factory
 }
 
-func (f *NotificationSenderFactory) GetSender(channel pairing_entities.NotificationChannel) NotificationSender {
+func (f *NotificationSenderFactory) GetSender(channel pairing_entities.NotificationChannel) pairing_out.NotificationChannelSender {
 	return f.senders[channel]
 }
 

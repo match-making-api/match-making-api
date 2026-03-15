@@ -9,14 +9,18 @@ import (
 
 // Topic constants for matchmaking events
 const (
-	TopicQueueEvents       = "matchmaking.queue.events"
-	TopicLobbyEvents       = "matchmaking.lobby.events"
-	TopicPrizePoolEvents   = "matchmaking.prizepool.events"
-	TopicMatchesCreated    = "matchmaking.matches.created"
-	TopicMatchesResults    = "matchmaking.matches.results"
-	TopicPlayerStatus      = "matchmaking.player-status"
+	TopicQueueEvents        = "matchmaking.queue.events"
+	TopicLobbyEvents        = "matchmaking.lobby.events"
+	TopicPrizePoolEvents    = "matchmaking.prizepool.events"
+	TopicMatchesCreated     = "matchmaking.matches.created"
+	TopicMatchesResults     = "matchmaking.matches.results"
+	TopicPlayerStatus       = "matchmaking.player-status"
 	TopicWebSocketBroadcast = "websocket.broadcasts"
-	TopicDLQ               = "matchmaking.dlq"
+	TopicDLQ                = "matchmaking.dlq"
+	TopicReadyCheck         = "matchmaking.ready-check"      // Ready check lifecycle events
+	TopicNotificationDelivery    = "notifications.delivery"    // Notification delivery commands
+	TopicNotificationDeliveryDLQ = "notifications.delivery.dlq" // Failed notification delivery
+	TopicNotificationStatus      = "notifications.status"      // Delivery status updates
 )
 
 // Event types
@@ -36,6 +40,14 @@ const (
 	EventTypeMatchStarted       = "MATCH_STARTED"
 	EventTypeMatchCompleted     = "MATCH_COMPLETED"
 	EventTypeMatchCancelled     = "MATCH_CANCELLED"
+
+	// Ready check event types
+	EventTypeReadyCheckStarted       = "READY_CHECK_STARTED"
+	EventTypeReadinessConfirmed      = "READINESS_CONFIRMED"
+	EventTypeReadinessDeclined       = "READINESS_DECLINED"
+	EventTypeReadyCheckTimeout       = "READY_CHECK_TIMEOUT"
+	EventTypeAllPlayersReady         = "ALL_PLAYERS_READY"
+	EventTypeGameConnectionDelivered = "GAME_CONNECTION_DELIVERED"
 )
 
 // EventPublisher publishes domain events to Kafka topics
@@ -307,4 +319,56 @@ func (p *EventPublisher) PublishToDLQ(ctx context.Context, originalTopic string,
 	}
 
 	return p.client.Publish(ctx, TopicDLQ, msg)
+}
+
+// ReadyCheckEvent represents a readiness confirmation lifecycle event
+type ReadyCheckEvent struct {
+	EventID            uuid.UUID                                          `json:"event_id"`
+	LobbyID            uuid.UUID                                          `json:"lobby_id"`
+	PlayerID           *uuid.UUID                                         `json:"player_id,omitempty"`
+	EventType          string                                             `json:"event_type"`
+	PlayerIDs          []uuid.UUID                                        `json:"player_ids,omitempty"`
+	Summary            interface{}                                        `json:"summary,omitempty"`
+	GameConnectionInfo interface{}                                        `json:"game_connection_info,omitempty"`
+	Timestamp          int64                                              `json:"timestamp"`
+	Metadata           map[string]string                                  `json:"metadata,omitempty"`
+}
+
+// PublishReadyCheckEvent publishes a ready check lifecycle event
+func (p *EventPublisher) PublishReadyCheckEvent(ctx context.Context, event *ReadyCheckEvent) error {
+	event.EventID = uuid.New()
+	if event.Timestamp == 0 {
+		event.Timestamp = time.Now().UnixMilli()
+	}
+
+	key := event.LobbyID.String()
+	if event.PlayerID != nil {
+		key = event.PlayerID.String()
+	}
+
+	msg := &Message{
+		Key:       key,
+		Value:     event,
+		Timestamp: time.Now(),
+		Headers: map[string]string{
+			"event_type": event.EventType,
+			"lobby_id":   event.LobbyID.String(),
+		},
+	}
+
+	return p.client.Publish(ctx, TopicReadyCheck, msg)
+}
+
+// PublishNotificationDelivery publishes a notification delivery command
+func (p *EventPublisher) PublishNotificationDelivery(ctx context.Context, notificationID uuid.UUID, payload interface{}) error {
+	msg := &Message{
+		Key:       notificationID.String(),
+		Value:     payload,
+		Timestamp: time.Now(),
+		Headers: map[string]string{
+			"event_type": "NOTIFICATION_DELIVERY",
+		},
+	}
+
+	return p.client.Publish(ctx, TopicNotificationDelivery, msg)
 }

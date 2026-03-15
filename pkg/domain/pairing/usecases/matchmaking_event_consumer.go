@@ -21,6 +21,7 @@ type AddAndFindNextPairExecutor interface {
 // EventPublisherInterface defines the interface for publishing events
 type EventPublisherInterface interface {
 	PublishMatchCreated(ctx context.Context, event *kafka.MatchEvent) error
+	PublishReadyCheckEvent(ctx context.Context, event *kafka.ReadyCheckEvent) error
 }
 
 // MatchmakingEventConsumer consumes events from replay-api and processes them

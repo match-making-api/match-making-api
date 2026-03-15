@@ -11,9 +11,11 @@ import (
 type NotificationChannel int
 
 const (
-	NotificationChannelInApp NotificationChannel = iota
-	NotificationChannelEmail
-	NotificationChannelSMS
+	NotificationChannelInApp    NotificationChannel = iota // 0
+	NotificationChannelEmail                               // 1
+	NotificationChannelSMS                                 // 2
+	NotificationChannelPush                                // 3 - Web/Mobile push via FCM
+	NotificationChannelWhatsApp                            // 4 - WhatsApp via Twilio
 )
 
 // NotificationStatus represents the current status of a notification
@@ -30,12 +32,18 @@ const (
 type NotificationType int
 
 const (
-	NotificationTypeMatchInvitation NotificationType = iota
-	NotificationTypeMatchAcceptance
-	NotificationTypeEventReminder
-	NotificationTypeEventCancellation
-	NotificationTypeSystemAnnouncement
-	NotificationTypeCustom
+	NotificationTypeMatchInvitation    NotificationType = iota // 0
+	NotificationTypeMatchAcceptance                           // 1
+	NotificationTypeEventReminder                             // 2
+	NotificationTypeEventCancellation                         // 3
+	NotificationTypeSystemAnnouncement                        // 4
+	NotificationTypeCustom                                    // 5
+	NotificationTypeReadyCheck                                // 6 - Ready check initiated
+	NotificationTypeReadinessConfirmed                        // 7 - Player confirmed readiness
+	NotificationTypeAllPlayersReady                           // 8 - All players confirmed
+	NotificationTypeReadyCheckTimeout                         // 9 - Ready check expired
+	NotificationTypeGameConnectionInfo                        // 10 - Server connection details delivered
+	NotificationTypeReadinessDeclined                         // 11 - Player declined readiness
 )
 
 // Notification represents a notification sent to a user

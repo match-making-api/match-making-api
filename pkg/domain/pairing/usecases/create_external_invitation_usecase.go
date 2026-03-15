@@ -123,7 +123,8 @@ func (uc *CreateExternalInvitationUseCase) Execute(ctx context.Context, payload 
 
 // validateMatchOrEvent validates that the match or event is valid and open for new participants
 func (uc *CreateExternalInvitationUseCase) validateMatchOrEvent(ctx context.Context, payload CreateExternalInvitationPayload) error {
-	if payload.Type == pairing_entities.ExternalInvitationTypeMatch {
+	switch payload.Type {
+	case pairing_entities.ExternalInvitationTypeMatch:
 		if payload.MatchID == nil {
 			return fmt.Errorf("match_id is required for match invitations")
 		}
@@ -139,15 +140,14 @@ func (uc *CreateExternalInvitationUseCase) validateMatchOrEvent(ctx context.Cont
 			return fmt.Errorf("match %v has conflicts and is not open for new participants", *payload.MatchID)
 		}
 
-		// Additional validations can be added here
-	} else if payload.Type == pairing_entities.ExternalInvitationTypeEvent {
+	case pairing_entities.ExternalInvitationTypeEvent:
 		if payload.EventID == nil {
 			return fmt.Errorf("event_id is required for event invitations")
 		}
 
-		// Event validation would go here
 		// TODO: Implement event validation when event system is available
-	} else {
+
+	default:
 		return fmt.Errorf("invalid invitation type: %v", payload.Type)
 	}
 
