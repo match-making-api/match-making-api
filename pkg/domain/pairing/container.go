@@ -206,5 +206,26 @@ func Inject(c container.Container) error {
 		return err
 	}
 
+	// Register MatchCompletedHandler — processes MatchCompleted, persists, produces MatchResultsCalculated
+	if err := c.Singleton(func(
+		repo pairing_out.MatchResultRepository,
+		eventPublisher *kafka.EventPublisher,
+	) *usecases.MatchCompletedHandler {
+		return usecases.NewMatchCompletedHandler(repo, eventPublisher)
+	}); err != nil {
+		return err
+	}
+
+	// Register MatchCompletedConsumer — consumes matchmaking.matches.completed
+	if err := c.Singleton(func(
+		client *kafka.Client,
+		handler *usecases.MatchCompletedHandler,
+	) *kafka.MatchCompletedConsumer {
+		groupID := "match-making-api-match-completed"
+		return kafka.NewMatchCompletedConsumer(client, groupID, handler.Handle)
+	}); err != nil {
+		return err
+	}
+
 	return nil
 }
