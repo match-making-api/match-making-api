@@ -107,6 +107,8 @@ func (h *MatchCompletedHandler) Handle(ctx context.Context, envelope *schemas.Ev
 				TenantId:            saved.TenantID,
 				ClientId:            saved.ClientID,
 				ResourceOwnerId:     saved.ResourceOwnerID,
+				LobbyId:             payload.LobbyId,
+				PrizePoolId:         payload.PrizePoolId,
 			},
 		},
 	}

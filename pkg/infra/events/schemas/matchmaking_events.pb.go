@@ -148,6 +148,7 @@ type MatchmakingEvent struct {
 	//	*MatchmakingEvent_ServerAllocated
 	//	*MatchmakingEvent_MatchStarted
 	//	*MatchmakingEvent_MatchResultsCalculated
+	//	*MatchmakingEvent_PrizeDistributed
 	Data          isMatchmakingEvent_Data `protobuf_oneof:"data"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -278,6 +279,15 @@ func (x *MatchmakingEvent) GetMatchResultsCalculated() *MatchResultsCalculatedPa
 	return nil
 }
 
+func (x *MatchmakingEvent) GetPrizeDistributed() *PrizeDistributedPayload {
+	if x != nil {
+		if x, ok := x.Data.(*MatchmakingEvent_PrizeDistributed); ok {
+			return x.PrizeDistributed
+		}
+	}
+	return nil
+}
+
 type isMatchmakingEvent_Data interface {
 	isMatchmakingEvent_Data()
 }
@@ -318,6 +328,10 @@ type MatchmakingEvent_MatchResultsCalculated struct {
 	MatchResultsCalculated *MatchResultsCalculatedPayload `protobuf:"bytes,18,opt,name=match_results_calculated,json=matchResultsCalculated,proto3,oneof"`
 }
 
+type MatchmakingEvent_PrizeDistributed struct {
+	PrizeDistributed *PrizeDistributedPayload `protobuf:"bytes,19,opt,name=prize_distributed,json=prizeDistributed,proto3,oneof"`
+}
+
 func (*MatchmakingEvent_PlayerQueued) isMatchmakingEvent_Data() {}
 
 func (*MatchmakingEvent_MatchCreated) isMatchmakingEvent_Data() {}
@@ -335,6 +349,8 @@ func (*MatchmakingEvent_ServerAllocated) isMatchmakingEvent_Data() {}
 func (*MatchmakingEvent_MatchStarted) isMatchmakingEvent_Data() {}
 
 func (*MatchmakingEvent_MatchResultsCalculated) isMatchmakingEvent_Data() {}
+
+func (*MatchmakingEvent_PrizeDistributed) isMatchmakingEvent_Data() {}
 
 type MatchStartedPayload struct {
 	state                 protoimpl.MessageState `protogen:"open.v1"`
@@ -1061,6 +1077,8 @@ type MatchCompletedPayload struct {
 	CompletedAtEpochMs int64                  `protobuf:"varint,5,opt,name=completed_at_epoch_ms,json=completedAtEpochMs,proto3" json:"completed_at_epoch_ms,omitempty"`
 	TenantId           string                 `protobuf:"bytes,6,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
 	ClientId           string                 `protobuf:"bytes,7,opt,name=client_id,json=clientId,proto3" json:"client_id,omitempty"`
+	LobbyId            *string                `protobuf:"bytes,8,opt,name=lobby_id,json=lobbyId,proto3,oneof" json:"lobby_id,omitempty"`               // Optional: for prize distribution; from game server when available.
+	PrizePoolId        *string                `protobuf:"bytes,9,opt,name=prize_pool_id,json=prizePoolId,proto3,oneof" json:"prize_pool_id,omitempty"` // Optional: for prize distribution; from lobby when available.
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -1144,6 +1162,20 @@ func (x *MatchCompletedPayload) GetClientId() string {
 	return ""
 }
 
+func (x *MatchCompletedPayload) GetLobbyId() string {
+	if x != nil && x.LobbyId != nil {
+		return *x.LobbyId
+	}
+	return ""
+}
+
+func (x *MatchCompletedPayload) GetPrizePoolId() string {
+	if x != nil && x.PrizePoolId != nil {
+		return *x.PrizePoolId
+	}
+	return ""
+}
+
 type MatchResultsCalculatedPayload struct {
 	state               protoimpl.MessageState `protogen:"open.v1"`
 	MatchId             string                 `protobuf:"bytes,1,opt,name=match_id,json=matchId,proto3" json:"match_id,omitempty"`
@@ -1155,7 +1187,9 @@ type MatchResultsCalculatedPayload struct {
 	TenantId            string                 `protobuf:"bytes,7,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
 	ClientId            string                 `protobuf:"bytes,8,opt,name=client_id,json=clientId,proto3" json:"client_id,omitempty"`
 	ResourceOwnerId     string                 `protobuf:"bytes,9,opt,name=resource_owner_id,json=resourceOwnerId,proto3" json:"resource_owner_id,omitempty"`
-	GameId              *string                `protobuf:"bytes,10,opt,name=game_id,json=gameId,proto3,oneof" json:"game_id,omitempty"` // Optional: for per-game ratings; from match creation when available.
+	GameId              *string                `protobuf:"bytes,10,opt,name=game_id,json=gameId,proto3,oneof" json:"game_id,omitempty"`                  // Optional: for per-game ratings; from match creation when available.
+	LobbyId             *string                `protobuf:"bytes,11,opt,name=lobby_id,json=lobbyId,proto3,oneof" json:"lobby_id,omitempty"`               // Optional: for prize distribution; from match creation when available.
+	PrizePoolId         *string                `protobuf:"bytes,12,opt,name=prize_pool_id,json=prizePoolId,proto3,oneof" json:"prize_pool_id,omitempty"` // Optional: for prize distribution; from lobby when available.
 	unknownFields       protoimpl.UnknownFields
 	sizeCache           protoimpl.SizeCache
 }
@@ -1260,6 +1294,188 @@ func (x *MatchResultsCalculatedPayload) GetGameId() string {
 	return ""
 }
 
+func (x *MatchResultsCalculatedPayload) GetLobbyId() string {
+	if x != nil && x.LobbyId != nil {
+		return *x.LobbyId
+	}
+	return ""
+}
+
+func (x *MatchResultsCalculatedPayload) GetPrizePoolId() string {
+	if x != nil && x.PrizePoolId != nil {
+		return *x.PrizePoolId
+	}
+	return ""
+}
+
+type PrizeDistributedPayload struct {
+	state                protoimpl.MessageState `protogen:"open.v1"`
+	MatchId              string                 `protobuf:"bytes,1,opt,name=match_id,json=matchId,proto3" json:"match_id,omitempty"`
+	WinnerDetails        []*WinnerPrizeDetail   `protobuf:"bytes,2,rep,name=winner_details,json=winnerDetails,proto3" json:"winner_details,omitempty"`                           // player_id, amount_cents, currency per winner.
+	DistributedAtEpochMs int64                  `protobuf:"varint,3,opt,name=distributed_at_epoch_ms,json=distributedAtEpochMs,proto3" json:"distributed_at_epoch_ms,omitempty"` // When the event was produced (audit).
+	TenantId             string                 `protobuf:"bytes,4,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	ClientId             string                 `protobuf:"bytes,5,opt,name=client_id,json=clientId,proto3" json:"client_id,omitempty"`
+	ResourceOwnerId      string                 `protobuf:"bytes,6,opt,name=resource_owner_id,json=resourceOwnerId,proto3" json:"resource_owner_id,omitempty"` // For authorization; wallet API validates before transfer.
+	LobbyId              string                 `protobuf:"bytes,7,opt,name=lobby_id,json=lobbyId,proto3" json:"lobby_id,omitempty"`                           // Optional: lobby/tournament reference.
+	PrizePoolId          string                 `protobuf:"bytes,8,opt,name=prize_pool_id,json=prizePoolId,proto3" json:"prize_pool_id,omitempty"`             // Optional: prize pool reference.
+	Currency             string                 `protobuf:"bytes,9,opt,name=currency,proto3" json:"currency,omitempty"`                                        // e.g. "USD" — applies when amounts are uniform.
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
+}
+
+func (x *PrizeDistributedPayload) Reset() {
+	*x = PrizeDistributedPayload{}
+	mi := &file_pkg_infra_events_schemas_matchmaking_events_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PrizeDistributedPayload) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PrizeDistributedPayload) ProtoMessage() {}
+
+func (x *PrizeDistributedPayload) ProtoReflect() protoreflect.Message {
+	mi := &file_pkg_infra_events_schemas_matchmaking_events_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PrizeDistributedPayload.ProtoReflect.Descriptor instead.
+func (*PrizeDistributedPayload) Descriptor() ([]byte, []int) {
+	return file_pkg_infra_events_schemas_matchmaking_events_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *PrizeDistributedPayload) GetMatchId() string {
+	if x != nil {
+		return x.MatchId
+	}
+	return ""
+}
+
+func (x *PrizeDistributedPayload) GetWinnerDetails() []*WinnerPrizeDetail {
+	if x != nil {
+		return x.WinnerDetails
+	}
+	return nil
+}
+
+func (x *PrizeDistributedPayload) GetDistributedAtEpochMs() int64 {
+	if x != nil {
+		return x.DistributedAtEpochMs
+	}
+	return 0
+}
+
+func (x *PrizeDistributedPayload) GetTenantId() string {
+	if x != nil {
+		return x.TenantId
+	}
+	return ""
+}
+
+func (x *PrizeDistributedPayload) GetClientId() string {
+	if x != nil {
+		return x.ClientId
+	}
+	return ""
+}
+
+func (x *PrizeDistributedPayload) GetResourceOwnerId() string {
+	if x != nil {
+		return x.ResourceOwnerId
+	}
+	return ""
+}
+
+func (x *PrizeDistributedPayload) GetLobbyId() string {
+	if x != nil {
+		return x.LobbyId
+	}
+	return ""
+}
+
+func (x *PrizeDistributedPayload) GetPrizePoolId() string {
+	if x != nil {
+		return x.PrizePoolId
+	}
+	return ""
+}
+
+func (x *PrizeDistributedPayload) GetCurrency() string {
+	if x != nil {
+		return x.Currency
+	}
+	return ""
+}
+
+type WinnerPrizeDetail struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	PlayerId      string                 `protobuf:"bytes,1,opt,name=player_id,json=playerId,proto3" json:"player_id,omitempty"`
+	AmountCents   int64                  `protobuf:"varint,2,opt,name=amount_cents,json=amountCents,proto3" json:"amount_cents,omitempty"` // Prize amount in smallest currency unit (e.g. cents).
+	Currency      string                 `protobuf:"bytes,3,opt,name=currency,proto3" json:"currency,omitempty"`                           // Override per-winner if needed; else use payload-level currency.
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *WinnerPrizeDetail) Reset() {
+	*x = WinnerPrizeDetail{}
+	mi := &file_pkg_infra_events_schemas_matchmaking_events_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WinnerPrizeDetail) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WinnerPrizeDetail) ProtoMessage() {}
+
+func (x *WinnerPrizeDetail) ProtoReflect() protoreflect.Message {
+	mi := &file_pkg_infra_events_schemas_matchmaking_events_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WinnerPrizeDetail.ProtoReflect.Descriptor instead.
+func (*WinnerPrizeDetail) Descriptor() ([]byte, []int) {
+	return file_pkg_infra_events_schemas_matchmaking_events_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *WinnerPrizeDetail) GetPlayerId() string {
+	if x != nil {
+		return x.PlayerId
+	}
+	return ""
+}
+
+func (x *WinnerPrizeDetail) GetAmountCents() int64 {
+	if x != nil {
+		return x.AmountCents
+	}
+	return 0
+}
+
+func (x *WinnerPrizeDetail) GetCurrency() string {
+	if x != nil {
+		return x.Currency
+	}
+	return ""
+}
+
 type RatingsUpdatedPayload struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
 	MatchId          string                 `protobuf:"bytes,1,opt,name=match_id,json=matchId,proto3" json:"match_id,omitempty"`
@@ -1276,7 +1492,7 @@ type RatingsUpdatedPayload struct {
 
 func (x *RatingsUpdatedPayload) Reset() {
 	*x = RatingsUpdatedPayload{}
-	mi := &file_pkg_infra_events_schemas_matchmaking_events_proto_msgTypes[13]
+	mi := &file_pkg_infra_events_schemas_matchmaking_events_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1288,7 +1504,7 @@ func (x *RatingsUpdatedPayload) String() string {
 func (*RatingsUpdatedPayload) ProtoMessage() {}
 
 func (x *RatingsUpdatedPayload) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_infra_events_schemas_matchmaking_events_proto_msgTypes[13]
+	mi := &file_pkg_infra_events_schemas_matchmaking_events_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1301,7 +1517,7 @@ func (x *RatingsUpdatedPayload) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RatingsUpdatedPayload.ProtoReflect.Descriptor instead.
 func (*RatingsUpdatedPayload) Descriptor() ([]byte, []int) {
-	return file_pkg_infra_events_schemas_matchmaking_events_proto_rawDescGZIP(), []int{13}
+	return file_pkg_infra_events_schemas_matchmaking_events_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *RatingsUpdatedPayload) GetMatchId() string {
@@ -1371,7 +1587,7 @@ type RatingAuditTrail struct {
 
 func (x *RatingAuditTrail) Reset() {
 	*x = RatingAuditTrail{}
-	mi := &file_pkg_infra_events_schemas_matchmaking_events_proto_msgTypes[14]
+	mi := &file_pkg_infra_events_schemas_matchmaking_events_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1383,7 +1599,7 @@ func (x *RatingAuditTrail) String() string {
 func (*RatingAuditTrail) ProtoMessage() {}
 
 func (x *RatingAuditTrail) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_infra_events_schemas_matchmaking_events_proto_msgTypes[14]
+	mi := &file_pkg_infra_events_schemas_matchmaking_events_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1396,7 +1612,7 @@ func (x *RatingAuditTrail) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RatingAuditTrail.ProtoReflect.Descriptor instead.
 func (*RatingAuditTrail) Descriptor() ([]byte, []int) {
-	return file_pkg_infra_events_schemas_matchmaking_events_proto_rawDescGZIP(), []int{14}
+	return file_pkg_infra_events_schemas_matchmaking_events_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *RatingAuditTrail) GetAlgorithmVersion() string {
@@ -1432,7 +1648,7 @@ type PlayerRatingDelta struct {
 
 func (x *PlayerRatingDelta) Reset() {
 	*x = PlayerRatingDelta{}
-	mi := &file_pkg_infra_events_schemas_matchmaking_events_proto_msgTypes[15]
+	mi := &file_pkg_infra_events_schemas_matchmaking_events_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1444,7 +1660,7 @@ func (x *PlayerRatingDelta) String() string {
 func (*PlayerRatingDelta) ProtoMessage() {}
 
 func (x *PlayerRatingDelta) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_infra_events_schemas_matchmaking_events_proto_msgTypes[15]
+	mi := &file_pkg_infra_events_schemas_matchmaking_events_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1457,7 +1673,7 @@ func (x *PlayerRatingDelta) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PlayerRatingDelta.ProtoReflect.Descriptor instead.
 func (*PlayerRatingDelta) Descriptor() ([]byte, []int) {
-	return file_pkg_infra_events_schemas_matchmaking_events_proto_rawDescGZIP(), []int{15}
+	return file_pkg_infra_events_schemas_matchmaking_events_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *PlayerRatingDelta) GetPlayerId() string {
@@ -1502,7 +1718,7 @@ const file_pkg_infra_events_schemas_matchmaking_events_proto_rawDesc = "" +
 	"\asubject\x18\x06 \x01(\tR\asubject\x12*\n" +
 	"\x11resource_owner_id\x18\a \x01(\tR\x0fresourceOwnerId\x12%\n" +
 	"\x0ecorrelation_id\x18\b \x01(\tR\rcorrelationId\x12-\n" +
-	"\x12dataschema_version\x18\t \x01(\x05R\x11dataschemaVersion\"\x9e\a\n" +
+	"\x12dataschema_version\x18\t \x01(\x05R\x11dataschemaVersion\"\xfd\a\n" +
 	"\x10MatchmakingEvent\x12@\n" +
 	"\benvelope\x18\x01 \x01(\v2$.matchmaking.events.v1.EventEnvelopeR\benvelope\x12Q\n" +
 	"\rplayer_queued\x18\n" +
@@ -1514,7 +1730,8 @@ const file_pkg_infra_events_schemas_matchmaking_events_proto_rawDesc = "" +
 	"\x16player_queue_confirmed\x18\x0f \x01(\v22.matchmaking.events.v1.PlayerQueueConfirmedPayloadH\x00R\x14playerQueueConfirmed\x12Z\n" +
 	"\x10server_allocated\x18\x10 \x01(\v2-.matchmaking.events.v1.ServerAllocatedPayloadH\x00R\x0fserverAllocated\x12Q\n" +
 	"\rmatch_started\x18\x11 \x01(\v2*.matchmaking.events.v1.MatchStartedPayloadH\x00R\fmatchStarted\x12p\n" +
-	"\x18match_results_calculated\x18\x12 \x01(\v24.matchmaking.events.v1.MatchResultsCalculatedPayloadH\x00R\x16matchResultsCalculatedB\x06\n" +
+	"\x18match_results_calculated\x18\x12 \x01(\v24.matchmaking.events.v1.MatchResultsCalculatedPayloadH\x00R\x16matchResultsCalculated\x12]\n" +
+	"\x11prize_distributed\x18\x13 \x01(\v2..matchmaking.events.v1.PrizeDistributedPayloadH\x00R\x10prizeDistributedB\x06\n" +
 	"\x04data\"\x9e\x02\n" +
 	"\x13MatchStartedPayload\x12\x19\n" +
 	"\bmatch_id\x18\x01 \x01(\tR\amatchId\x12*\n" +
@@ -1586,7 +1803,7 @@ const file_pkg_infra_events_schemas_matchmaking_events_proto_rawDesc = "" +
 	"GameServer\x12\x1b\n" +
 	"\tserver_id\x18\x01 \x01(\tR\bserverId\x12\x16\n" +
 	"\x06region\x18\x02 \x01(\tR\x06region\x12*\n" +
-	"\x11resource_owner_id\x18\x03 \x01(\tR\x0fresourceOwnerId\"\xfd\x01\n" +
+	"\x11resource_owner_id\x18\x03 \x01(\tR\x0fresourceOwnerId\"\xe5\x02\n" +
 	"\x15MatchCompletedPayload\x12\x19\n" +
 	"\bmatch_id\x18\x01 \x01(\tR\amatchId\x12\x1d\n" +
 	"\n" +
@@ -1595,7 +1812,11 @@ const file_pkg_infra_events_schemas_matchmaking_events_proto_rawDesc = "" +
 	"\ais_draw\x18\x04 \x01(\bR\x06isDraw\x121\n" +
 	"\x15completed_at_epoch_ms\x18\x05 \x01(\x03R\x12completedAtEpochMs\x12\x1b\n" +
 	"\ttenant_id\x18\x06 \x01(\tR\btenantId\x12\x1b\n" +
-	"\tclient_id\x18\a \x01(\tR\bclientId\"\x90\x03\n" +
+	"\tclient_id\x18\a \x01(\tR\bclientId\x12\x1e\n" +
+	"\blobby_id\x18\b \x01(\tH\x00R\alobbyId\x88\x01\x01\x12'\n" +
+	"\rprize_pool_id\x18\t \x01(\tH\x01R\vprizePoolId\x88\x01\x01B\v\n" +
+	"\t_lobby_idB\x10\n" +
+	"\x0e_prize_pool_id\"\xf8\x03\n" +
 	"\x1dMatchResultsCalculatedPayload\x12\x19\n" +
 	"\bmatch_id\x18\x01 \x01(\tR\amatchId\x12\x1d\n" +
 	"\n" +
@@ -1608,9 +1829,27 @@ const file_pkg_infra_events_schemas_matchmaking_events_proto_rawDesc = "" +
 	"\tclient_id\x18\b \x01(\tR\bclientId\x12*\n" +
 	"\x11resource_owner_id\x18\t \x01(\tR\x0fresourceOwnerId\x12\x1c\n" +
 	"\agame_id\x18\n" +
-	" \x01(\tH\x00R\x06gameId\x88\x01\x01B\n" +
+	" \x01(\tH\x00R\x06gameId\x88\x01\x01\x12\x1e\n" +
+	"\blobby_id\x18\v \x01(\tH\x01R\alobbyId\x88\x01\x01\x12'\n" +
+	"\rprize_pool_id\x18\f \x01(\tH\x02R\vprizePoolId\x88\x01\x01B\n" +
 	"\n" +
-	"\b_game_id\"\xec\x02\n" +
+	"\b_game_idB\v\n" +
+	"\t_lobby_idB\x10\n" +
+	"\x0e_prize_pool_id\"\xfd\x02\n" +
+	"\x17PrizeDistributedPayload\x12\x19\n" +
+	"\bmatch_id\x18\x01 \x01(\tR\amatchId\x12O\n" +
+	"\x0ewinner_details\x18\x02 \x03(\v2(.matchmaking.events.v1.WinnerPrizeDetailR\rwinnerDetails\x125\n" +
+	"\x17distributed_at_epoch_ms\x18\x03 \x01(\x03R\x14distributedAtEpochMs\x12\x1b\n" +
+	"\ttenant_id\x18\x04 \x01(\tR\btenantId\x12\x1b\n" +
+	"\tclient_id\x18\x05 \x01(\tR\bclientId\x12*\n" +
+	"\x11resource_owner_id\x18\x06 \x01(\tR\x0fresourceOwnerId\x12\x19\n" +
+	"\blobby_id\x18\a \x01(\tR\alobbyId\x12\"\n" +
+	"\rprize_pool_id\x18\b \x01(\tR\vprizePoolId\x12\x1a\n" +
+	"\bcurrency\x18\t \x01(\tR\bcurrency\"o\n" +
+	"\x11WinnerPrizeDetail\x12\x1b\n" +
+	"\tplayer_id\x18\x01 \x01(\tR\bplayerId\x12!\n" +
+	"\famount_cents\x18\x02 \x01(\x03R\vamountCents\x12\x1a\n" +
+	"\bcurrency\x18\x03 \x01(\tR\bcurrency\"\xec\x02\n" +
 	"\x15RatingsUpdatedPayload\x12\x19\n" +
 	"\bmatch_id\x18\x01 \x01(\tR\amatchId\x12@\n" +
 	"\x06deltas\x18\x02 \x03(\v2(.matchmaking.events.v1.PlayerRatingDeltaR\x06deltas\x12-\n" +
@@ -1645,7 +1884,7 @@ func file_pkg_infra_events_schemas_matchmaking_events_proto_rawDescGZIP() []byte
 	return file_pkg_infra_events_schemas_matchmaking_events_proto_rawDescData
 }
 
-var file_pkg_infra_events_schemas_matchmaking_events_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
+var file_pkg_infra_events_schemas_matchmaking_events_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
 var file_pkg_infra_events_schemas_matchmaking_events_proto_goTypes = []any{
 	(*EventEnvelope)(nil),                 // 0: matchmaking.events.v1.EventEnvelope
 	(*MatchmakingEvent)(nil),              // 1: matchmaking.events.v1.MatchmakingEvent
@@ -1660,33 +1899,37 @@ var file_pkg_infra_events_schemas_matchmaking_events_proto_goTypes = []any{
 	(*GameServer)(nil),                    // 10: matchmaking.events.v1.GameServer
 	(*MatchCompletedPayload)(nil),         // 11: matchmaking.events.v1.MatchCompletedPayload
 	(*MatchResultsCalculatedPayload)(nil), // 12: matchmaking.events.v1.MatchResultsCalculatedPayload
-	(*RatingsUpdatedPayload)(nil),         // 13: matchmaking.events.v1.RatingsUpdatedPayload
-	(*RatingAuditTrail)(nil),              // 14: matchmaking.events.v1.RatingAuditTrail
-	(*PlayerRatingDelta)(nil),             // 15: matchmaking.events.v1.PlayerRatingDelta
-	(*timestamppb.Timestamp)(nil),         // 16: google.protobuf.Timestamp
+	(*PrizeDistributedPayload)(nil),       // 13: matchmaking.events.v1.PrizeDistributedPayload
+	(*WinnerPrizeDetail)(nil),             // 14: matchmaking.events.v1.WinnerPrizeDetail
+	(*RatingsUpdatedPayload)(nil),         // 15: matchmaking.events.v1.RatingsUpdatedPayload
+	(*RatingAuditTrail)(nil),              // 16: matchmaking.events.v1.RatingAuditTrail
+	(*PlayerRatingDelta)(nil),             // 17: matchmaking.events.v1.PlayerRatingDelta
+	(*timestamppb.Timestamp)(nil),         // 18: google.protobuf.Timestamp
 }
 var file_pkg_infra_events_schemas_matchmaking_events_proto_depIdxs = []int32{
-	16, // 0: matchmaking.events.v1.EventEnvelope.time:type_name -> google.protobuf.Timestamp
+	18, // 0: matchmaking.events.v1.EventEnvelope.time:type_name -> google.protobuf.Timestamp
 	0,  // 1: matchmaking.events.v1.MatchmakingEvent.envelope:type_name -> matchmaking.events.v1.EventEnvelope
 	5,  // 2: matchmaking.events.v1.MatchmakingEvent.player_queued:type_name -> matchmaking.events.v1.PlayerQueuedPayload
 	8,  // 3: matchmaking.events.v1.MatchmakingEvent.match_created:type_name -> matchmaking.events.v1.MatchCreatedPayload
 	11, // 4: matchmaking.events.v1.MatchmakingEvent.match_completed:type_name -> matchmaking.events.v1.MatchCompletedPayload
-	13, // 5: matchmaking.events.v1.MatchmakingEvent.ratings_updated:type_name -> matchmaking.events.v1.RatingsUpdatedPayload
+	15, // 5: matchmaking.events.v1.MatchmakingEvent.ratings_updated:type_name -> matchmaking.events.v1.RatingsUpdatedPayload
 	7,  // 6: matchmaking.events.v1.MatchmakingEvent.player_left_queue:type_name -> matchmaking.events.v1.PlayerLeftQueuePayload
 	4,  // 7: matchmaking.events.v1.MatchmakingEvent.player_queue_confirmed:type_name -> matchmaking.events.v1.PlayerQueueConfirmedPayload
 	3,  // 8: matchmaking.events.v1.MatchmakingEvent.server_allocated:type_name -> matchmaking.events.v1.ServerAllocatedPayload
 	2,  // 9: matchmaking.events.v1.MatchmakingEvent.match_started:type_name -> matchmaking.events.v1.MatchStartedPayload
 	12, // 10: matchmaking.events.v1.MatchmakingEvent.match_results_calculated:type_name -> matchmaking.events.v1.MatchResultsCalculatedPayload
-	6,  // 11: matchmaking.events.v1.PlayerQueuedPayload.skill_range:type_name -> matchmaking.events.v1.SkillRange
-	9,  // 12: matchmaking.events.v1.MatchCreatedPayload.players:type_name -> matchmaking.events.v1.MatchPlayer
-	10, // 13: matchmaking.events.v1.MatchCreatedPayload.game_server:type_name -> matchmaking.events.v1.GameServer
-	15, // 14: matchmaking.events.v1.RatingsUpdatedPayload.deltas:type_name -> matchmaking.events.v1.PlayerRatingDelta
-	14, // 15: matchmaking.events.v1.RatingsUpdatedPayload.audit_trail:type_name -> matchmaking.events.v1.RatingAuditTrail
-	16, // [16:16] is the sub-list for method output_type
-	16, // [16:16] is the sub-list for method input_type
-	16, // [16:16] is the sub-list for extension type_name
-	16, // [16:16] is the sub-list for extension extendee
-	0,  // [0:16] is the sub-list for field type_name
+	13, // 11: matchmaking.events.v1.MatchmakingEvent.prize_distributed:type_name -> matchmaking.events.v1.PrizeDistributedPayload
+	6,  // 12: matchmaking.events.v1.PlayerQueuedPayload.skill_range:type_name -> matchmaking.events.v1.SkillRange
+	9,  // 13: matchmaking.events.v1.MatchCreatedPayload.players:type_name -> matchmaking.events.v1.MatchPlayer
+	10, // 14: matchmaking.events.v1.MatchCreatedPayload.game_server:type_name -> matchmaking.events.v1.GameServer
+	14, // 15: matchmaking.events.v1.PrizeDistributedPayload.winner_details:type_name -> matchmaking.events.v1.WinnerPrizeDetail
+	17, // 16: matchmaking.events.v1.RatingsUpdatedPayload.deltas:type_name -> matchmaking.events.v1.PlayerRatingDelta
+	16, // 17: matchmaking.events.v1.RatingsUpdatedPayload.audit_trail:type_name -> matchmaking.events.v1.RatingAuditTrail
+	18, // [18:18] is the sub-list for method output_type
+	18, // [18:18] is the sub-list for method input_type
+	18, // [18:18] is the sub-list for extension type_name
+	18, // [18:18] is the sub-list for extension extendee
+	0,  // [0:18] is the sub-list for field type_name
 }
 
 func init() { file_pkg_infra_events_schemas_matchmaking_events_proto_init() }
@@ -1704,10 +1947,12 @@ func file_pkg_infra_events_schemas_matchmaking_events_proto_init() {
 		(*MatchmakingEvent_ServerAllocated)(nil),
 		(*MatchmakingEvent_MatchStarted)(nil),
 		(*MatchmakingEvent_MatchResultsCalculated)(nil),
+		(*MatchmakingEvent_PrizeDistributed)(nil),
 	}
 	file_pkg_infra_events_schemas_matchmaking_events_proto_msgTypes[2].OneofWrappers = []any{}
 	file_pkg_infra_events_schemas_matchmaking_events_proto_msgTypes[3].OneofWrappers = []any{}
 	file_pkg_infra_events_schemas_matchmaking_events_proto_msgTypes[5].OneofWrappers = []any{}
+	file_pkg_infra_events_schemas_matchmaking_events_proto_msgTypes[11].OneofWrappers = []any{}
 	file_pkg_infra_events_schemas_matchmaking_events_proto_msgTypes[12].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -1715,7 +1960,7 @@ func file_pkg_infra_events_schemas_matchmaking_events_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pkg_infra_events_schemas_matchmaking_events_proto_rawDesc), len(file_pkg_infra_events_schemas_matchmaking_events_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   16,
+			NumMessages:   18,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
