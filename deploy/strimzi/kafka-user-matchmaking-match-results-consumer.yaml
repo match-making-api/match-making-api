@@ -1,0 +1,41 @@
+# KafkaUser for the match results consumer.
+# Used by the REST API to consume match result events.
+#
+# Auth: SCRAM-SHA-512 (Strimzi manages credentials via Secret)
+# ACLs: Read on matchmaking.matches.results topic + consumer group
+#
+# Prerequisites:
+#   - Strimzi Operator installed
+#   - Kafka cluster "matchmaking" deployed with authentication.type: scram-sha-512
+#
+# Apply: kubectl apply -f kafka-user-matchmaking-match-results-consumer.yaml
+# Secret: kubectl get secret matchmaking-match-results-consumer -o jsonpath='{.data.password}' | base64 -d
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaUser
+metadata:
+  name: matchmaking-match-results-consumer
+  labels:
+    strimzi.io/cluster: matchmaking
+spec:
+  authentication:
+    type: scram-sha-512
+  authorization:
+    type: simple
+    acls:
+      # Read from match results topic
+      - resource:
+          type: topic
+          name: matchmaking.matches.results
+          patternType: literal
+        operations:
+          - Read
+          - Describe
+        host: "*"
+      # Consumer group access
+      - resource:
+          type: group
+          name: match-making-group
+          patternType: literal
+        operations:
+          - Read
+        host: "*"

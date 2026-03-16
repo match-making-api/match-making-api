@@ -181,12 +181,14 @@ func (r *MongoDBRepository[T]) InitQueryableFields(fieldInfos map[string]FieldIn
 	r.collection = r.mongoClient.Database(r.dbName).Collection(r.collectionName)
 
 	// Ensure text index is created for full-text search
-	// TODO: Re-enable index creation after fixing authentication issue
-	/*
 	textIndexFields := bson.D{}
 	for field, info := range fieldInfos {
 		if info.bool {
-			textIndexFields = append(textIndexFields, bson.E{Key: field, Value: "text"})
+			bsonField := field
+			if info.string != "" {
+				bsonField = info.string
+			}
+			textIndexFields = append(textIndexFields, bson.E{Key: bsonField, Value: "text"})
 		}
 	}
 	if len(textIndexFields) > 0 {
@@ -195,11 +197,10 @@ func (r *MongoDBRepository[T]) InitQueryableFields(fieldInfos map[string]FieldIn
 			Options: nil,
 		})
 		if err != nil {
-			slog.Error("InitQueryableFields: failed to create text index", "err", err)
+			slog.Error("InitQueryableFields: failed to create text index", "collection", r.collectionName, "err", err)
 			// Continue anyway - indexes can be created manually if needed
 		}
 	}
-	*/
 
 	Repositories[common.ResourceType(r.entityName)] = r
 }

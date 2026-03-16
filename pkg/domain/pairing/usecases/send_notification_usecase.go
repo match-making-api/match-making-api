@@ -158,6 +158,9 @@ func (uc *SendNotificationUseCase) checkDoNotDisturb(ctx context.Context, prefer
 
 	// Simple time comparison (assumes same day)
 	if currentTime >= start && currentTime <= end {
+		slog.DebugContext(ctx, "notification blocked by do not disturb",
+			"current_time", currentTime, "dnd_start", start, "dnd_end", end,
+			"user_id", preferences.UserID)
 		return fmt.Errorf("current time %s is within do not disturb period (%s - %s)", currentTime, start, end)
 	}
 

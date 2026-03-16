@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/leet-gaming/match-making-api/cmd/rest-api/routing"
 	"github.com/leet-gaming/match-making-api/pkg/domain"
@@ -29,5 +30,16 @@ func main() {
 
 	slog.InfoContext(ctx, "Starting server on port 4991")
 
-	http.ListenAndServe(":4991", router)
+	server := &http.Server{
+		Addr:           ":4991",
+		Handler:        router,
+		ReadTimeout:    30 * time.Second,
+		WriteTimeout:   30 * time.Second,
+		IdleTimeout:    120 * time.Second,
+		MaxHeaderBytes: 1 << 20, // 1MB max header size
+	}
+
+	if err := server.ListenAndServe(); err != nil {
+		slog.ErrorContext(ctx, "Server error", "err", err)
+	}
 }

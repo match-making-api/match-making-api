@@ -2,21 +2,15 @@ package usecases
 
 import (
 	"context"
+	"log/slog"
 
 	pairing_entities "github.com/leet-gaming/match-making-api/pkg/domain/pairing/entities"
+	pairing_out "github.com/leet-gaming/match-making-api/pkg/domain/pairing/ports/out"
 )
 
-// NotificationSender defines the interface for sending notifications through different channels
-type NotificationSender interface {
-	// Send sends a notification through the specified channel
-	Send(ctx context.Context, notification *pairing_entities.Notification) error
-	
-	// GetChannel returns the channel this sender handles
-	GetChannel() pairing_entities.NotificationChannel
-	
-	// IsAvailable checks if the sender is available/configured
-	IsAvailable(ctx context.Context) bool
-}
+// NotificationSender defines the interface for sending notifications through different channels.
+// It is an alias for the port interface pairing_out.NotificationChannelSender.
+type NotificationSender = pairing_out.NotificationChannelSender
 
 // InAppNotificationSender handles in-app notifications
 type InAppNotificationSender struct{}
@@ -54,15 +48,17 @@ func (s *EmailNotificationSender) GetChannel() pairing_entities.NotificationChan
 }
 
 func (s *EmailNotificationSender) IsAvailable(ctx context.Context) bool {
-	// TODO: Check if email service is configured
-	// For now, return true as placeholder
-	return true
+	// Email sending requires SMTP/SendGrid/SES configuration
+	// Returns false until a real email adapter is implemented
+	return false
 }
 
 func (s *EmailNotificationSender) Send(ctx context.Context, notification *pairing_entities.Notification) error {
-	// TODO: Implement actual email sending logic
-	// This should integrate with an email service (SMTP, SendGrid, SES, etc.)
-	// For now, this is a placeholder
+	// NoOp: logs and marks as sent. Replace with real email adapter when configured.
+	slog.InfoContext(ctx, "email notification skipped (no email adapter configured)",
+		"notification_type", notification.Type,
+		"user_id", notification.UserID,
+	)
 	notification.MarkAsSent()
 	return nil
 }
@@ -79,20 +75,23 @@ func (s *SMSNotificationSender) GetChannel() pairing_entities.NotificationChanne
 }
 
 func (s *SMSNotificationSender) IsAvailable(ctx context.Context) bool {
-	// TODO: Check if SMS service is configured
-	// For now, return false as SMS is optional
+	// SMS sending requires Twilio/AWS SNS configuration
+	// Returns false until a real SMS adapter is implemented
 	return false
 }
 
 func (s *SMSNotificationSender) Send(ctx context.Context, notification *pairing_entities.Notification) error {
-	// TODO: Implement actual SMS sending logic
-	// This should integrate with an SMS service (Twilio, AWS SNS, etc.)
-	// For now, this is a placeholder
+	// NoOp: logs and marks as sent. Replace with real SMS adapter when configured.
+	slog.InfoContext(ctx, "SMS notification skipped (no SMS adapter configured)",
+		"notification_type", notification.Type,
+		"user_id", notification.UserID,
+	)
 	notification.MarkAsSent()
 	return nil
 }
 
-// NotificationSenderFactory creates the appropriate sender for a channel
+// NotificationSenderFactory creates the appropriate sender for a channel.
+// Implements pairing_out.NotificationSenderResolver.
 type NotificationSenderFactory struct {
 	senders map[pairing_entities.NotificationChannel]NotificationSender
 }
@@ -106,11 +105,13 @@ func NewNotificationSenderFactory() *NotificationSenderFactory {
 	factory.senders[pairing_entities.NotificationChannelInApp] = NewInAppNotificationSender()
 	factory.senders[pairing_entities.NotificationChannelEmail] = NewEmailNotificationSender()
 	factory.senders[pairing_entities.NotificationChannelSMS] = NewSMSNotificationSender()
+	factory.senders[pairing_entities.NotificationChannelPush] = NewPushNotificationSender(nil) // Stub until FCM configured
+	factory.senders[pairing_entities.NotificationChannelWhatsApp] = NewWhatsAppNotificationSender()
 	
 	return factory
 }
 
-func (f *NotificationSenderFactory) GetSender(channel pairing_entities.NotificationChannel) NotificationSender {
+func (f *NotificationSenderFactory) GetSender(channel pairing_entities.NotificationChannel) pairing_out.NotificationChannelSender {
 	return f.senders[channel]
 }
 

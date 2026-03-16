@@ -2,13 +2,16 @@ package routing
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 
 	"github.com/golobby/container/v3"
 	"github.com/gorilla/mux"
 	"github.com/leet-gaming/match-making-api/cmd/rest-api/controllers"
 	"github.com/leet-gaming/match-making-api/cmd/rest-api/middlewares"
+	"github.com/leet-gaming/match-making-api/pkg/infra/config"
 	httpSwagger "github.com/swaggo/http-swagger"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 const (
@@ -46,10 +49,16 @@ func NewRouter(ctx context.Context, container container.Container) http.Handler 
 	invitationController := controllers.NewInvitationController(container)
 	externalInvitationController := controllers.NewExternalInvitationController(container)
 	notificationController := controllers.NewNotificationController(container)
+	commitmentController := controllers.NewCommitmentController(container)
+	serverAllocationController := controllers.NewServerAllocationController(container)
 
 	// health
 	r.HandleFunc(Health, healthController.HealthCheck(ctx)).Methods("GET")
 	resourceContextMiddleware.RegisterOperation(Health, "match-making:health:get")
+
+	// server allocation — queue for server (#queue-for-server)
+	r.HandleFunc("/server-allocation/next", serverAllocationController.Next(ctx)).Methods("GET")
+	resourceContextMiddleware.RegisterOperation("/server-allocation/next", "match-making:server-allocation:next")
 
 	// games
 	r.HandleFunc("/games", gameController.List(ctx)).Methods("GET")
@@ -128,6 +137,52 @@ func NewRouter(ctx context.Context, container container.Container) http.Handler 
 	resourceContextMiddleware.RegisterOperation("/notifications/users/{user_id}", "match-making:notifications:get-user")
 	resourceContextMiddleware.RegisterOperation("/notifications/{id}/read", "match-making:notifications:mark-read")
 	resourceContextMiddleware.RegisterOperation("/notifications/{id}/retry", "match-making:notifications:retry")
+
+	// lobbies - resolve MongoDB client and config for lobby controller
+	var mongoClient *mongo.Client
+	var cfg config.Config
+	if err := container.Resolve(&mongoClient); err != nil {
+		slog.Error("Failed to resolve MongoDB client for lobbies", "error", err)
+	}
+	if err := container.Resolve(&cfg); err != nil {
+		slog.Error("Failed to resolve config for lobbies", "error", err)
+	}
+	
+	if mongoClient != nil {
+		lobbyController := controllers.NewLobbyController(mongoClient, cfg.MongoDB.DBName)
+		
+		// Lobby CRUD
+		r.HandleFunc("/api/lobbies", lobbyController.List(ctx)).Methods("GET", "OPTIONS")
+		r.HandleFunc("/api/lobbies", lobbyController.Create(ctx)).Methods("POST", "OPTIONS")
+		r.HandleFunc("/api/lobbies/featured", lobbyController.GetFeatured(ctx)).Methods("GET", "OPTIONS")
+		r.HandleFunc("/api/lobbies/stats", lobbyController.GetStats(ctx)).Methods("GET", "OPTIONS")
+		r.HandleFunc("/api/lobbies/seed", lobbyController.SeedDemoLobbies(ctx)).Methods("POST", "OPTIONS")
+		r.HandleFunc("/api/lobbies/{id}", lobbyController.Get(ctx)).Methods("GET", "OPTIONS")
+		r.HandleFunc("/api/lobbies/{id}", lobbyController.Delete(ctx)).Methods("DELETE", "OPTIONS")
+		r.HandleFunc("/api/lobbies/{id}/join", lobbyController.Join(ctx)).Methods("POST", "OPTIONS")
+		
+		resourceContextMiddleware.RegisterOperation("/api/lobbies", "match-making:lobbies:list")
+		resourceContextMiddleware.RegisterOperation("/api/lobbies", "match-making:lobbies:create")
+		resourceContextMiddleware.RegisterOperation("/api/lobbies/featured", "match-making:lobbies:featured")
+		resourceContextMiddleware.RegisterOperation("/api/lobbies/stats", "match-making:lobbies:stats")
+		resourceContextMiddleware.RegisterOperation("/api/lobbies/seed", "match-making:lobbies:seed")
+		resourceContextMiddleware.RegisterOperation("/api/lobbies/{id}", "match-making:lobbies:get")
+		resourceContextMiddleware.RegisterOperation("/api/lobbies/{id}", "match-making:lobbies:delete")
+		resourceContextMiddleware.RegisterOperation("/api/lobbies/{id}/join", "match-making:lobbies:join")
+		
+		// Readiness confirmation / commitment routes
+		r.HandleFunc("/api/lobbies/{lobby_id}/commitments", commitmentController.GetCommitmentSummary(ctx)).Methods("GET", "OPTIONS")
+		r.HandleFunc("/api/lobbies/{lobby_id}/commitments/confirm", commitmentController.ConfirmReadiness(ctx)).Methods("POST", "OPTIONS")
+		r.HandleFunc("/api/lobbies/{lobby_id}/commitments/decline", commitmentController.DeclineReadiness(ctx)).Methods("POST", "OPTIONS")
+		r.HandleFunc("/api/lobbies/{lobby_id}/connection-info", commitmentController.GetGameConnectionInfo(ctx)).Methods("GET", "OPTIONS")
+
+		resourceContextMiddleware.RegisterOperation("/api/lobbies/{lobby_id}/commitments", "match-making:commitments:summary")
+		resourceContextMiddleware.RegisterOperation("/api/lobbies/{lobby_id}/commitments/confirm", "match-making:commitments:confirm")
+		resourceContextMiddleware.RegisterOperation("/api/lobbies/{lobby_id}/commitments/decline", "match-making:commitments:decline")
+		resourceContextMiddleware.RegisterOperation("/api/lobbies/{lobby_id}/connection-info", "match-making:commitments:connection-info")
+
+		slog.Info("Lobby routes registered")
+	}
 
 	// Swagger UI
 	r.PathPrefix("/swagger/").Handler(httpSwagger.Handler(

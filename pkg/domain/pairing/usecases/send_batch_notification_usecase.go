@@ -20,6 +20,7 @@ type SendBatchNotificationUseCase struct {
 
 // SendBatchNotificationPayload contains the information needed to send batch notifications
 type SendBatchNotificationPayload struct {
+	// Uniform mode: send same notification to all UserIDs
 	UserIDs     []uuid.UUID
 	Channel     pairing_entities.NotificationChannel
 	Type        pairing_entities.NotificationType
@@ -29,10 +30,111 @@ type SendBatchNotificationPayload struct {
 	TemplateID  *uuid.UUID
 	Language    string
 	MaxRetries  int
+
+	// Per-player mode: send individual notifications (takes precedence over uniform fields)
+	Notifications []SendNotificationPayload
 }
 
 // Execute sends notifications to multiple users
 func (uc *SendBatchNotificationUseCase) Execute(ctx context.Context, payload SendBatchNotificationPayload) ([]*pairing_entities.Notification, []error) {
+	// Per-player mode: each notification has its own channel/type/message
+	if len(payload.Notifications) > 0 {
+		return uc.executePerPlayer(ctx, payload)
+	}
+
+	// Uniform mode: same notification to all UserIDs (admin-only)
+	return uc.executeUniform(ctx, payload)
+}
+
+func (uc *SendBatchNotificationUseCase) executePerPlayer(ctx context.Context, payload SendBatchNotificationPayload) ([]*pairing_entities.Notification, []error) {
+	resourceOwner := common.GetResourceOwner(ctx)
+
+	var notifications []*pairing_entities.Notification
+	var errors []error
+
+	for _, notif := range payload.Notifications {
+		// Get user preferences
+		preferences, err := uc.UserNotificationPreferencesReader.GetByUserID(ctx, notif.UserID)
+		if err != nil {
+			preferences = pairing_entities.NewUserNotificationPreferences(resourceOwner, notif.UserID, notif.Language)
+		}
+
+		// Check if channel is enabled for user
+		if !preferences.IsChannelEnabled(notif.Channel) {
+			continue // Silently skip disabled channels
+		}
+
+		// Check if notification type is enabled
+		if !preferences.IsTypeEnabled(notif.Type) {
+			continue
+		}
+
+		language := notif.Language
+		if language == "" {
+			language = preferences.PreferredLanguage
+		}
+		if language == "" {
+			language = "en"
+		}
+
+		maxRetries := notif.MaxRetries
+		if maxRetries == 0 {
+			maxRetries = 3
+		}
+
+		// Get sender
+		sender := uc.SenderFactory.GetSender(notif.Channel)
+		if sender == nil || !sender.IsAvailable(ctx) {
+			// Fallback to in-app
+			sender = uc.SenderFactory.GetSender(pairing_entities.NotificationChannelInApp)
+		}
+
+		notification := pairing_entities.NewNotification(
+			resourceOwner,
+			notif.UserID,
+			notif.Channel,
+			notif.Type,
+			notif.Title,
+			notif.Message,
+			notif.Metadata,
+			language,
+			maxRetries,
+			nil,
+		)
+
+		if notif.TemplateID != nil {
+			notification.TemplateID = notif.TemplateID
+		}
+
+		savedNotification, err := uc.NotificationWriter.Save(ctx, notification)
+		if err != nil {
+			slog.ErrorContext(ctx, "failed to save notification", "error", err, "user_id", notif.UserID)
+			errors = append(errors, fmt.Errorf("failed for user %v: %w", notif.UserID, err))
+			continue
+		}
+
+		if sender != nil {
+			if err := sender.Send(ctx, savedNotification); err != nil {
+				slog.ErrorContext(ctx, "failed to send notification", "error", err, "notification_id", savedNotification.ID)
+				savedNotification.MarkAsFailed(err.Error())
+				uc.NotificationWriter.Save(ctx, savedNotification)
+				errors = append(errors, fmt.Errorf("failed to send for user %v: %w", notif.UserID, err))
+				continue
+			}
+		}
+
+		notifications = append(notifications, savedNotification)
+	}
+
+	slog.InfoContext(ctx, "per-player batch notification sent",
+		"total", len(payload.Notifications),
+		"successful", len(notifications),
+		"failed", len(errors))
+
+	return notifications, errors
+}
+
+func (uc *SendBatchNotificationUseCase) executeUniform(ctx context.Context, payload SendBatchNotificationPayload) ([]*pairing_entities.Notification, []error) {
 	// Verify that the user is an administrator
 	if !common.IsAdmin(ctx) {
 		return nil, []error{fmt.Errorf("only administrators can send batch notifications")}

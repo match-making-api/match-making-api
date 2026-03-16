@@ -1,4 +1,58 @@
-Tenacity Scheme:
+## Architecture
+
+### Services
+
+This repository produces **three** independent binaries:
+
+| Binary | Type | Path | Description |
+|---|---|---|---|
+| `match-making-api` | REST API | `cmd/rest-api/` | HTTP REST API (port 4991) |
+| `consumer-matchmaking-commands` | Consumer | `cmd/consumers/matchmaking-commands/` | Kafka consumer for `PlayerQueued` events |
+| `worker-queue-status` | Worker | `cmd/workers/queue-status/` | Periodic ticker for queue position updates |
+
+The **REST API** handles HTTP requests (games, lobbies, invitations, etc.).
+
+The **Consumer** (`consumer-matchmaking-commands`) consumes `PlayerQueued` events from the `matchmaking.commands` Kafka topic and adds players to the matchmaking pool via Dragonfly.
+
+The **Worker** (`worker-queue-status`) runs a periodic ticker (every 5s) that reads active queue entries from Dragonfly, refreshes positions from pool state, and publishes `QueueStatusUpdated` events to `websocket.broadcasts`.
+
+All three share the same codebase (`pkg/`) but use different DI injection:
+- API: `infra.Inject` + `domain.Inject` (full stack: MongoDB, Kafka, Redis, IAM, billing, etc.)
+- Consumer / Worker: `infra.InjectWorker` + `domain.InjectWorker` (slim: MongoDB, Kafka, Redis, game, pairing, schedules)
+
+### Infrastructure
+
+| Service | Purpose | Default Port |
+|---|---|---|
+| MongoDB | Persistent storage (games, regions, pools) | 37019 |
+| Kafka | Event streaming (commands, events, broadcasts) | 29092 |
+| Dragonfly | Distributed queue state (`ActiveQueueStore`) | 6379 |
+
+### Quick Start
+
+```bash
+# Start all services (API + consumer + worker + infra)
+docker-compose -f docker-compose.dev.yml up -d
+
+# Or build locally
+make build-all
+make start-rest-api               # terminal 1
+make start-consumer-matchmaking   # terminal 2
+make start-worker-queue-status    # terminal 3
+```
+
+### Environment Variables
+
+See `.env.example` for all available settings. Key additions:
+
+```env
+REDIS_ADDR=localhost:6379    # Dragonfly/Redis address
+REDIS_PASSWORD=              # Optional auth
+```
+
+---
+
+Tenancy Scheme:
 ```mermaid
 graph TD
     Tenant[Tenant]

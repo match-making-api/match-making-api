@@ -1,0 +1,49 @@
+# KafkaUser for the match-completed consumer group.
+# Used by match-making-api to consume MatchCompleted events, persist results, and produce MatchResultsCalculated.
+#
+# Auth: SCRAM-SHA-512 (Strimzi manages credentials via Secret)
+# ACLs: Read on matchmaking.matches.completed topic + consumer group, Write on matchmaking.matches.results
+#
+# Prerequisites:
+#   - Strimzi Operator installed
+#   - Kafka cluster "matchmaking" deployed with authentication.type: scram-sha-512
+#
+# Apply: kubectl apply -f kafka-user-match-completed-consumer.yaml
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaUser
+metadata:
+  name: match-completed-consumer
+  labels:
+    strimzi.io/cluster: matchmaking
+spec:
+  authentication:
+    type: scram-sha-512
+  authorization:
+    type: simple
+    acls:
+      # Read from matchmaking.matches.completed topic
+      - resource:
+          type: topic
+          name: matchmaking.matches.completed
+          patternType: literal
+        operations:
+          - Read
+          - Describe
+        host: "*"
+      # Write to matchmaking.matches.results (MatchResultsCalculated)
+      - resource:
+          type: topic
+          name: matchmaking.matches.results
+          patternType: literal
+        operations:
+          - Write
+          - Describe
+        host: "*"
+      # Consumer group access
+      - resource:
+          type: group
+          name: match-making-api-match-completed
+          patternType: literal
+        operations:
+          - Read
+        host: "*"

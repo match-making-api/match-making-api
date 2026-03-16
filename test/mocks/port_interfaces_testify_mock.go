@@ -11,11 +11,13 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 
+	"github.com/leet-gaming/match-making-api/pkg/common"
 	game_entities "github.com/leet-gaming/match-making-api/pkg/domain/game/entities"
 	"github.com/leet-gaming/match-making-api/pkg/domain/game/ports/out"
 	pairing_entities "github.com/leet-gaming/match-making-api/pkg/domain/pairing/entities"
 	pairing_in "github.com/leet-gaming/match-making-api/pkg/domain/pairing/ports/in"
 	pairing_out "github.com/leet-gaming/match-making-api/pkg/domain/pairing/ports/out"
+	"github.com/leet-gaming/match-making-api/pkg/domain/pairing/usecases"
 	pairing_value_objects "github.com/leet-gaming/match-making-api/pkg/domain/pairing/value-objects"
 	parties_entities "github.com/leet-gaming/match-making-api/pkg/domain/parties/entities"
 	parties_out "github.com/leet-gaming/match-making-api/pkg/domain/parties/ports/out"
@@ -35,7 +37,11 @@ func (m *MockPortGameWriter) Create(ctx context.Context, game *game_entities.Gam
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*game_entities.Game), args.Error(1)
+	if g, ok := args.Get(0).(*game_entities.Game); ok {
+		return g, args.Error(1)
+	}
+	// Fallback: return the original game (useful when using mock.Anything or Run())
+	return game, args.Error(1)
 }
 
 func (m *MockPortGameWriter) Update(ctx context.Context, game *game_entities.Game) (*game_entities.Game, error) {
@@ -90,7 +96,11 @@ func (m *MockPortGameModeWriter) Create(ctx context.Context, gameMode *game_enti
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*game_entities.GameMode), args.Error(1)
+	if gm, ok := args.Get(0).(*game_entities.GameMode); ok {
+		return gm, args.Error(1)
+	}
+	// Fallback: return the original gameMode (useful when using mock.Anything or Run())
+	return gameMode, args.Error(1)
 }
 
 func (m *MockPortGameModeWriter) Update(ctx context.Context, gameMode *game_entities.GameMode) (*game_entities.GameMode, error) {
@@ -145,7 +155,11 @@ func (m *MockPortRegionWriter) Create(ctx context.Context, region *game_entities
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*game_entities.Region), args.Error(1)
+	if r, ok := args.Get(0).(*game_entities.Region); ok {
+		return r, args.Error(1)
+	}
+	// Fallback: return the original region (useful when using mock.Anything or Run())
+	return region, args.Error(1)
 }
 
 func (m *MockPortRegionWriter) Update(ctx context.Context, region *game_entities.Region) (*game_entities.Region, error) {
@@ -199,7 +213,11 @@ func (m *MockPortInvitationWriter) Save(ctx context.Context, invitation *pairing
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*pairing_entities.Invitation), args.Error(1)
+	if inv, ok := args.Get(0).(*pairing_entities.Invitation); ok {
+		return inv, args.Error(1)
+	}
+	// Fallback: return the original invitation (useful when using mock.Anything or Run())
+	return invitation, args.Error(1)
 }
 
 // MockPortInvitationReader is a mock implementation of pairing_out.InvitationReader using testify/mock
@@ -303,7 +321,11 @@ func (m *MockPoolWriter) Save(p *pairing_entities.Pool) (*pairing_entities.Pool,
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*pairing_entities.Pool), args.Error(1)
+	if pool, ok := args.Get(0).(*pairing_entities.Pool); ok {
+		return pool, args.Error(1)
+	}
+	// Fallback: return the original pool (useful when using mock.Anything or Run())
+	return p, args.Error(1)
 }
 
 // MockPoolInitiator is a mock implementation of pairing_in.PoolInitiator using testify/mock
@@ -505,5 +527,77 @@ func (m *MockPortUserNotificationPreferencesReader) GetByUserID(ctx context.Cont
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*pairing_entities.UserNotificationPreferences), args.Error(1)
+	if prefs, ok := args.Get(0).(*pairing_entities.UserNotificationPreferences); ok {
+		return prefs, args.Error(1)
+	}
+	// Fallback: return default preferences for the user
+	return pairing_entities.NewUserNotificationPreferences(
+		common.ResourceOwner{UserID: userID},
+		userID,
+		"en",
+	), args.Error(1)
+}
+
+// MockPortPairWriter is a mock implementation of pairing_out.PairWriter using testify/mock
+type MockPortPairWriter struct {
+	mock.Mock
+}
+
+// Ensure MockPortPairWriter implements pairing_out.PairWriter
+var _ pairing_out.PairWriter = (*MockPortPairWriter)(nil)
+
+func (m *MockPortPairWriter) Save(p *pairing_entities.Pair) (*pairing_entities.Pair, error) {
+	args := m.Called(p)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	if pair, ok := args.Get(0).(*pairing_entities.Pair); ok {
+		return pair, args.Error(1)
+	}
+	return p, args.Error(1)
+}
+
+// MockPortPartyReader is a mock implementation of parties_out.PartyReader using testify/mock
+type MockPortPartyReader struct {
+	mock.Mock
+}
+
+// Ensure MockPortPartyReader implements parties_out.PartyReader
+var _ parties_out.PartyReader = (*MockPortPartyReader)(nil)
+
+func (m *MockPortPartyReader) GetByID(id uuid.UUID) (*parties_entities.Party, error) {
+	args := m.Called(id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*parties_entities.Party), args.Error(1)
+}
+
+// MockConflictVerifier is a mock implementation of usecases.ConflictVerifier using testify/mock
+type MockConflictVerifier struct {
+	mock.Mock
+}
+
+// Ensure MockConflictVerifier implements usecases.ConflictVerifier
+var _ usecases.ConflictVerifier = (*MockConflictVerifier)(nil)
+
+func (m *MockConflictVerifier) Execute(ctx context.Context, partyID uuid.UUID) (*usecases.ConflictResult, error) {
+	args := m.Called(ctx, partyID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*usecases.ConflictResult), args.Error(1)
+}
+
+// MockConflictNotifier is a mock implementation of usecases.ConflictNotifier using testify/mock
+type MockConflictNotifier struct {
+	mock.Mock
+}
+
+// Ensure MockConflictNotifier implements usecases.ConflictNotifier
+var _ usecases.ConflictNotifier = (*MockConflictNotifier)(nil)
+
+func (m *MockConflictNotifier) NotifyConflict(ctx context.Context, partyID uuid.UUID, pairID uuid.UUID, reason string) error {
+	args := m.Called(ctx, partyID, pairID, reason)
+	return args.Error(0)
 }

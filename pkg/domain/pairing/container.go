@@ -11,7 +11,9 @@ import (
 	"github.com/leet-gaming/match-making-api/pkg/domain/pairing/usecases"
 	pairing_value_objects "github.com/leet-gaming/match-making-api/pkg/domain/pairing/value-objects"
 	schedules_in_ports "github.com/leet-gaming/match-making-api/pkg/domain/schedules/ports/in"
+	"github.com/leet-gaming/match-making-api/pkg/infra/cache"
 	"github.com/leet-gaming/match-making-api/pkg/infra/kafka"
+	"github.com/redis/go-redis/v9"
 )
 
 // mockPoolReader is a simple in-memory implementation for development
@@ -88,6 +90,30 @@ func Inject(c container.Container) error {
 		return err
 	}
 
+	// Register ActiveQueueStore — backed by Redis/Dragonfly for distributed access (#22)
+	if err := c.Singleton(func(redisClient *redis.Client) pairing_out.ActiveQueueStore {
+		return cache.NewRedisActiveQueueStore(redisClient)
+	}); err != nil {
+		return err
+	}
+
+	// Register ServerAllocationQueueStore — queue for matches waiting for server (#queue-for-server)
+	if err := c.Singleton(func(redisClient *redis.Client) pairing_out.ServerAllocationQueueStore {
+		return cache.NewRedisServerAllocationQueueStore(redisClient)
+	}); err != nil {
+		return err
+	}
+
+	// Register ServerAllocationEnqueuer — enqueues matches and broadcasts WaitingForServer
+	if err := c.Singleton(func(
+		queueStore pairing_out.ServerAllocationQueueStore,
+		eventPublisher *kafka.EventPublisher,
+	) *usecases.ServerAllocationEnqueuerImpl {
+		return usecases.NewServerAllocationEnqueuer(queueStore, eventPublisher)
+	}); err != nil {
+		return err
+	}
+
 	// Register MatchmakingEventConsumer
 	if err := c.Singleton(func(
 		addAndFindNextPair *usecases.AddAndFindNextPairUseCase,
@@ -95,8 +121,180 @@ func Inject(c container.Container) error {
 		regionReader game_out.RegionReader,
 		poolReader pairing_out.PoolReader,
 		poolWriter pairing_out.PoolWriter,
+		aqStore pairing_out.ActiveQueueStore,
+		serverAllocEnqueuer *usecases.ServerAllocationEnqueuerImpl,
 	) *usecases.MatchmakingEventConsumer {
-		return usecases.NewMatchmakingEventConsumer(addAndFindNextPair, eventPublisher, regionReader, poolReader, poolWriter)
+		return usecases.NewMatchmakingEventConsumer(addAndFindNextPair, eventPublisher, regionReader, poolReader, poolWriter, aqStore, serverAllocEnqueuer)
+	}); err != nil {
+		return err
+	}
+
+	// Register PlayerQueuedConsumer — consumes matchmaking command events from matchmaking.commands topic.
+	// Wires HandlePlayerQueuedProto and HandlePlayerLeftQueueProto as domain handlers.
+	if err := c.Singleton(func(
+		client *kafka.Client,
+		eventConsumer *usecases.MatchmakingEventConsumer,
+	) *kafka.PlayerQueuedConsumer {
+		groupID := "match-making-api-commands"
+		return kafka.NewPlayerQueuedConsumer(
+			client,
+			groupID,
+			eventConsumer.HandlePlayerQueuedProto,
+			eventConsumer.HandlePlayerLeftQueueProto,
+		)
+	}); err != nil {
+		return err
+	}
+
+	// Register QueueStatusTicker — periodic broadcaster of queue position updates (#22)
+	if err := c.Singleton(func(
+		aqStore pairing_out.ActiveQueueStore,
+		poolReader pairing_out.PoolReader,
+		regionReader game_out.RegionReader,
+		eventPublisher *kafka.EventPublisher,
+	) *usecases.QueueStatusTicker {
+		cfg := usecases.DefaultQueueStatusTickerConfig()
+		return usecases.NewQueueStatusTicker(aqStore, poolReader, regionReader, eventPublisher, cfg)
+	}); err != nil {
+		return err
+	}
+
+	// Register ServerAllocatedHandler — processes ServerAllocated, broadcasts MatchReady (#26)
+	if err := c.Singleton(func(eventPublisher *kafka.EventPublisher) *usecases.ServerAllocatedHandler {
+		return usecases.NewServerAllocatedHandler(eventPublisher) // EventPublisher implements WebSocketBroadcastPublisher
+	}); err != nil {
+		return err
+	}
+
+	// Register ServerAllocatedConsumer — consumes matchmaking.server.allocated
+	if err := c.Singleton(func(
+		client *kafka.Client,
+		handler *usecases.ServerAllocatedHandler,
+	) *kafka.ServerAllocatedConsumer {
+		groupID := "match-making-api-server-allocated"
+		return kafka.NewServerAllocatedConsumer(client, groupID, handler.Handle)
+	}); err != nil {
+		return err
+	}
+
+	// Register MatchStartedHandler — processes MatchStarted, broadcasts to participants (#27)
+	if err := c.Singleton(func(eventPublisher *kafka.EventPublisher) *usecases.MatchStartedHandler {
+		return usecases.NewMatchStartedHandler(eventPublisher)
+	}); err != nil {
+		return err
+	}
+
+	// Register ServerAllocationTimeoutWorker — abandons matches waiting too long for server (#queue-for-server)
+	if err := c.Singleton(func(
+		queueStore pairing_out.ServerAllocationQueueStore,
+		eventPublisher *kafka.EventPublisher,
+	) *usecases.ServerAllocationTimeoutWorker {
+		cfg := usecases.DefaultServerAllocationTimeoutConfig()
+		return usecases.NewServerAllocationTimeoutWorker(queueStore, eventPublisher, cfg)
+	}); err != nil {
+		return err
+	}
+
+	// Register MatchStartedConsumer — consumes matchmaking.match.started
+	if err := c.Singleton(func(
+		client *kafka.Client,
+		handler *usecases.MatchStartedHandler,
+	) *kafka.MatchStartedConsumer {
+		groupID := "match-making-api-match-started"
+		return kafka.NewMatchStartedConsumer(client, groupID, handler.Handle)
+	}); err != nil {
+		return err
+	}
+
+	// Register MatchCompletedHandler — processes MatchCompleted, persists, produces MatchResultsCalculated
+	if err := c.Singleton(func(
+		repo pairing_out.MatchResultRepository,
+		eventPublisher *kafka.EventPublisher,
+	) *usecases.MatchCompletedHandler {
+		return usecases.NewMatchCompletedHandler(repo, eventPublisher)
+	}); err != nil {
+		return err
+	}
+
+	// Register MatchCompletedConsumer — consumes matchmaking.matches.completed
+	if err := c.Singleton(func(
+		client *kafka.Client,
+		handler *usecases.MatchCompletedHandler,
+	) *kafka.MatchCompletedConsumer {
+		groupID := "match-making-api-match-completed"
+		return kafka.NewMatchCompletedConsumer(client, groupID, handler.Handle)
+	}); err != nil {
+		return err
+	}
+
+	// Register RatingsUpdatedHandler — processes MatchResultsCalculated, computes ratings, produces RatingsUpdated
+	if err := c.Singleton(func(
+		ratingRepo pairing_out.PlayerRatingRepository,
+		processedStore pairing_out.RatingsProcessedStore,
+		eventPublisher *kafka.EventPublisher,
+	) *usecases.RatingsUpdatedHandler {
+		return usecases.NewRatingsUpdatedHandler(ratingRepo, processedStore, eventPublisher, nil)
+	}); err != nil {
+		return err
+	}
+
+	// Register MatchResultsCalculatedConsumer — consumes matchmaking.matches.results (Protobuf)
+	if err := c.Singleton(func(
+		client *kafka.Client,
+		handler *usecases.RatingsUpdatedHandler,
+	) *kafka.MatchResultsCalculatedConsumer {
+		groupID := "match-making-api-ratings-updater"
+		return kafka.NewMatchResultsCalculatedConsumer(client, groupID, handler.Handle)
+	}); err != nil {
+		return err
+	}
+
+	// Prize distribution: NoOp resolver (replace with real impl when lobby/prize pool context available)
+	if err := c.Singleton(func() pairing_out.PrizeAmountResolver {
+		return usecases.NewNoOpPrizeAmountResolver()
+	}); err != nil {
+		return err
+	}
+
+	// Register PrizeDistributionHandler — processes MatchResultsCalculated, produces PrizeDistributed
+	if err := c.Singleton(func(
+		prizeResolver pairing_out.PrizeAmountResolver,
+		distributedStore pairing_out.PrizesDistributedStore,
+		eventPublisher *kafka.EventPublisher,
+	) *usecases.PrizeDistributionHandler {
+		return usecases.NewPrizeDistributionHandler(prizeResolver, distributedStore, eventPublisher)
+	}); err != nil {
+		return err
+	}
+
+	// Register PrizeDistributionConsumer — consumes matchmaking.matches.results (prize flow)
+	if err := c.Singleton(func(
+		client *kafka.Client,
+		handler *usecases.PrizeDistributionHandler,
+	) *kafka.PrizeDistributionConsumer {
+		groupID := "match-making-api-prize-distributor"
+		return kafka.NewPrizeDistributionConsumer(client, groupID, handler.Handle)
+	}); err != nil {
+		return err
+	}
+
+	// Register AnalyticsTrackedHandler — processes MatchResultsCalculated, produces AnalyticsTracked (#32)
+	if err := c.Singleton(func(
+		trackedStore pairing_out.AnalyticsTrackedStore,
+		eventPublisher *kafka.EventPublisher,
+	) *usecases.AnalyticsTrackedHandler {
+		return usecases.NewAnalyticsTrackedHandler(trackedStore, eventPublisher)
+	}); err != nil {
+		return err
+	}
+
+	// Register AnalyticsTrackedConsumer — consumes matchmaking.matches.results (analytics flow)
+	if err := c.Singleton(func(
+		client *kafka.Client,
+		handler *usecases.AnalyticsTrackedHandler,
+	) *kafka.AnalyticsTrackedConsumer {
+		groupID := "match-making-api-analytics-tracker"
+		return kafka.NewAnalyticsTrackedConsumer(client, groupID, handler.Handle)
 	}); err != nil {
 		return err
 	}

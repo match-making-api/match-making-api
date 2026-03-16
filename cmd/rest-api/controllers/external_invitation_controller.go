@@ -3,7 +3,6 @@ package controllers
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"time"
@@ -11,6 +10,7 @@ import (
 	"github.com/golobby/container/v3"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/leet-gaming/match-making-api/pkg/common"
 	pairing_entities "github.com/leet-gaming/match-making-api/pkg/domain/pairing/entities"
 	pairing_out "github.com/leet-gaming/match-making-api/pkg/domain/pairing/ports/out"
 	"github.com/leet-gaming/match-making-api/pkg/domain/pairing/usecases"
@@ -49,13 +49,24 @@ func (eic *ExternalInvitationController) Create(ctx context.Context) http.Handle
 			return
 		}
 
+		// SECURITY: Admin-only endpoint
+		if !common.IsAdmin(r.Context()) {
+			w.WriteHeader(http.StatusForbidden)
+			json.NewEncoder(w).Encode(ErrorResponse{
+				Error:   "forbidden",
+				Message: "administrator access required",
+			})
+			return
+		}
+
+		r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 		var req CreateExternalInvitationRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			slog.ErrorContext(r.Context(), "failed to decode request body", "error", err)
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(ErrorResponse{
 				Error:   "invalid_request",
-				Message: fmt.Sprintf("invalid JSON: %v", err),
+				Message: "invalid request body",
 			})
 			return
 		}
@@ -132,7 +143,7 @@ func (eic *ExternalInvitationController) Create(ctx context.Context) http.Handle
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(ErrorResponse{
 				Error:   "validation_error",
-				Message: err.Error(),
+				Message: "failed to create invitation",
 			})
 			return
 		}
@@ -189,7 +200,7 @@ func (eic *ExternalInvitationController) Get(ctx context.Context) http.HandlerFu
 			w.WriteHeader(http.StatusNotFound)
 			json.NewEncoder(w).Encode(ErrorResponse{
 				Error:   "not_found",
-				Message: fmt.Sprintf("invitation not found: %v", err),
+				Message: "invitation not found",
 			})
 			return
 		}
@@ -235,7 +246,7 @@ func (eic *ExternalInvitationController) GetByToken(ctx context.Context) http.Ha
 			w.WriteHeader(http.StatusNotFound)
 			json.NewEncoder(w).Encode(ErrorResponse{
 				Error:   "not_found",
-				Message: fmt.Sprintf("invitation not found: %v", err),
+				Message: "invitation not found",
 			})
 			return
 		}
@@ -341,7 +352,7 @@ func (eic *ExternalInvitationController) List(ctx context.Context) http.HandlerF
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(ErrorResponse{
 				Error:   "validation_error",
-				Message: err.Error(),
+				Message: "failed to list invitations",
 			})
 			return
 		}
@@ -361,6 +372,16 @@ func (eic *ExternalInvitationController) Resend(ctx context.Context) http.Handle
 			json.NewEncoder(w).Encode(ErrorResponse{
 				Error:   "method_not_allowed",
 				Message: "only POST method is allowed",
+			})
+			return
+		}
+
+		// SECURITY: Admin-only endpoint
+		if !common.IsAdmin(r.Context()) {
+			w.WriteHeader(http.StatusForbidden)
+			json.NewEncoder(w).Encode(ErrorResponse{
+				Error:   "forbidden",
+				Message: "administrator access required",
 			})
 			return
 		}
@@ -418,7 +439,7 @@ func (eic *ExternalInvitationController) Resend(ctx context.Context) http.Handle
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(ErrorResponse{
 				Error:   "validation_error",
-				Message: err.Error(),
+				Message: "failed to resend invitation",
 			})
 			return
 		}
@@ -437,6 +458,16 @@ func (eic *ExternalInvitationController) Delete(ctx context.Context) http.Handle
 			json.NewEncoder(w).Encode(ErrorResponse{
 				Error:   "method_not_allowed",
 				Message: "only DELETE method is allowed",
+			})
+			return
+		}
+
+		// SECURITY: Admin-only endpoint
+		if !common.IsAdmin(r.Context()) {
+			w.WriteHeader(http.StatusForbidden)
+			json.NewEncoder(w).Encode(ErrorResponse{
+				Error:   "forbidden",
+				Message: "administrator access required",
 			})
 			return
 		}
@@ -494,7 +525,7 @@ func (eic *ExternalInvitationController) Delete(ctx context.Context) http.Handle
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(ErrorResponse{
 				Error:   "validation_error",
-				Message: err.Error(),
+				Message: "failed to revoke invitation",
 			})
 			return
 		}

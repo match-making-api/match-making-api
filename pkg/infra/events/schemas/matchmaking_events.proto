@@ -1,0 +1,240 @@
+syntax = "proto3";
+
+package matchmaking.events.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/leet-gaming/match-making-api/pkg/infra/events/schemas;schemas";
+
+// EventEnvelope follows CloudEvents 1.0 spec (https://github.com/cloudevents/spec/blob/v1.0.2/cloudevents/spec.md).
+// Ensures replay-api and match-making-api agree on payload structure.
+message EventEnvelope {
+  string id = 1;           // CloudEvents: id (required) - uniquely identifies the event
+  string type = 2;         // CloudEvents: type (required) - e.g. "PlayerQueued", "MatchCompleted"
+  string source = 3;        // CloudEvents: source (required) - e.g. "replay-api", "match-making-api"
+  string specversion = 4;   // CloudEvents: specversion (required) - e.g. "1.0"
+  google.protobuf.Timestamp time = 5;  // CloudEvents: time (optional) - when the event occurred
+  string subject = 6;      // CloudEvents: subject (optional) - e.g. player_id, match_id
+  // Extension attributes
+  string resource_owner_id = 7;  // RID or owner identifier for multi-tenancy/authorization
+  string correlation_id = 8;    // For distributed tracing
+  int32 dataschema_version = 9; // Payload schema version for evolution; consumers can handle multiple versions
+}
+
+// MatchmakingEvent is the top-level message for Kafka. Combines envelope + typed data (CloudEvents: data).
+message MatchmakingEvent {
+  EventEnvelope envelope = 1;
+  oneof data {
+    PlayerQueuedPayload player_queued = 10;
+    MatchCreatedPayload match_created = 11;
+    MatchCompletedPayload match_completed = 12;
+    RatingsUpdatedPayload ratings_updated = 13;
+    PlayerLeftQueuePayload player_left_queue = 14;
+    PlayerQueueConfirmedPayload player_queue_confirmed = 15;
+    ServerAllocatedPayload server_allocated = 16;
+    MatchStartedPayload match_started = 17;
+    MatchResultsCalculatedPayload match_results_calculated = 18;
+    PrizeDistributedPayload prize_distributed = 19;
+    AnalyticsTrackedPayload analytics_tracked = 20;
+  }
+}
+
+// --- AnalyticsTracked (match-making-api → analytics service) ---
+// Emitted after consuming MatchResultsCalculated. Analytics service consumes for dashboards, reporting (#32).
+// Payload includes match outcome, players, resource ownership. Rating deltas/prizes can be joined from RatingsUpdated/PrizeDistributed.
+
+message AnalyticsTrackedPayload {
+  string match_id = 1;
+  repeated string player_ids = 2;
+  string winner_team_id = 3;  // Empty if draw.
+  bool is_draw = 4;
+  int64 completed_at_epoch_ms = 5;
+  int64 tracked_at_epoch_ms = 6;   // When the event was produced (audit).
+  int64 duration_ms = 7;          // 0 if unknown; computed from start if available.
+  string tenant_id = 8;
+  string client_id = 9;
+  string resource_owner_id = 10;   // Tenant/client isolation; analytics consumers must respect.
+  string game_id = 11;             // Optional: for per-game analytics.
+  string lobby_id = 12;            // Optional: tournament/lobby reference.
+  string prize_pool_id = 13;      // Optional: prize pool reference.
+}
+
+// --- MatchStarted (game server / replay-api → match-making-api) ---
+// Emitted when the match is about to begin (countdown finished, all players ready).
+// match-making-api consumes and broadcasts to all match participants via WebSocket.
+
+message MatchStartedPayload {
+  string match_id = 1;
+  string resource_owner_id = 2;
+  repeated string player_ids = 3;  // Players to receive MatchStarted notification.
+  optional int32 countdown_seconds = 4;  // Countdown duration (if applicable).
+  optional int64 start_timestamp_epoch_ms = 5;  // When match starts/started.
+}
+
+// --- ServerAllocated (game server / replay-api → match-making-api) ---
+// Emitted when a game server is allocated for a match. match-making-api consumes,
+// validates resource ownership, then produces MatchReady broadcast to players.
+
+message ServerAllocatedPayload {
+  string match_id = 1;
+  string server_id = 2;
+  string region = 3;
+  string resource_owner_id = 4;
+  repeated string player_ids = 5;  // Players to receive MatchReady; from MatchCreated.
+  optional string connection_url = 6;   // Optional: URL or token reference for connection.
+  optional string connection_token = 7; // Optional: short-lived token for auth.
+}
+
+// --- PlayerQueueConfirmed (match-making-api → replay-api) ---
+// Emitted after adding player to pool. replay-api consumes to respond 200 OK with position/ETA.
+// Enables async round-trip: join → PlayerQueued → pool add → PlayerQueueConfirmed → 200 OK.
+
+message PlayerQueueConfirmedPayload {
+  string player_id = 1;
+  string game_id = 2;
+  string region = 3;
+  int32 position = 4;           // Queue position (1-based). 0 if match found immediately.
+  int32 eta_seconds = 5;        // Best-effort estimated wait in seconds. 0 if match found.
+  string tenant_id = 6;
+  string client_id = 7;
+  string resource_owner_id = 8; // From envelope; included for convenience.
+}
+
+// --- PlayerQueued (replay-api → match-making-api) ---
+
+message PlayerQueuedPayload {
+  string player_id = 1;
+  string game_id = 2;
+  string region = 3;
+  optional SkillRange skill_range = 4;  // Optional: min/max MMR or similar.
+  optional int32 priority_boost = 5;    // Optional: queue priority.
+  string tenant_id = 6;
+  string client_id = 7;
+  repeated string resource_permissions = 8;  // Optional: e.g. ["read", "write"].
+}
+
+message SkillRange {
+  int32 min_mmr = 1;
+  int32 max_mmr = 2;
+}
+
+// --- PlayerLeftQueue (replay-api → match-making-api) ---
+// Inverse of PlayerQueued: emitted when a player cancels or leaves the queue.
+// Consumer must handle idempotently (no-op if player is not in queue).
+
+message PlayerLeftQueuePayload {
+  string player_id = 1;
+  string game_id = 2;
+  string region = 3;
+  string tenant_id = 4;
+  string client_id = 5;
+  string reason = 6;  // Optional: e.g. "user_cancelled", "timeout", "disconnect"
+}
+
+// --- MatchCreated (match-making-api → replay-api) ---
+
+message MatchCreatedPayload {
+  string match_id = 1;
+  repeated MatchPlayer players = 2;
+  GameServer game_server = 3;
+  string lobby_id = 4;
+  string tenant_id = 5;
+  string client_id = 6;
+  string game_id = 7;  // For server allocation queue (FIFO per game/region).
+}
+
+message MatchPlayer {
+  string player_id = 1;
+  string party_id = 2;  // Empty if solo.
+  repeated string resource_permissions = 3;
+}
+
+message GameServer {
+  string server_id = 1;
+  string region = 2;
+  string resource_owner_id = 3;
+}
+
+// --- MatchCompleted (game server / replay-api → match-making-api) ---
+// Emitted when a match ends. match-making-api consumes, calculates results, persists, produces MatchResultsCalculated.
+
+message MatchCompletedPayload {
+  string match_id = 1;
+  repeated string player_ids = 2;
+  string winner_team_id = 3;  // Empty if draw.
+  bool is_draw = 4;
+  int64 completed_at_epoch_ms = 5;
+  string tenant_id = 6;
+  string client_id = 7;
+  optional string lobby_id = 8;  // Optional: for prize distribution; from game server when available.
+  optional string prize_pool_id = 9;  // Optional: for prize distribution; from lobby when available.
+}
+
+// --- MatchResultsCalculated (match-making-api → replay-api) ---
+// Emitted after consuming MatchCompleted. Includes statistics for ratings (#30) and prizes (#31).
+
+message MatchResultsCalculatedPayload {
+  string match_id = 1;
+  repeated string player_ids = 2;
+  string winner_team_id = 3;  // Empty if draw. For 1v1, may be winning player_id.
+  bool is_draw = 4;
+  int64 completed_at_epoch_ms = 5;
+  int64 calculated_at_epoch_ms = 6;  // When results were calculated (audit).
+  string tenant_id = 7;
+  string client_id = 8;
+  string resource_owner_id = 9;
+  optional string game_id = 10;  // Optional: for per-game ratings; from match creation when available.
+  optional string lobby_id = 11;  // Optional: for prize distribution; from match creation when available.
+  optional string prize_pool_id = 12;  // Optional: for prize distribution; from lobby when available.
+}
+
+// --- PrizeDistributed (match-making-api → wallet-api) ---
+// Emitted after consuming MatchResultsCalculated when match has prize pool.
+// Wallet API consumes and executes prize transfers (credits, payouts).
+// Match-making does NOT execute wallet transfers or update balances.
+
+message PrizeDistributedPayload {
+  string match_id = 1;
+  repeated WinnerPrizeDetail winner_details = 2;  // player_id, amount_cents, currency per winner.
+  int64 distributed_at_epoch_ms = 3;  // When the event was produced (audit).
+  string tenant_id = 4;
+  string client_id = 5;
+  string resource_owner_id = 6;  // For authorization; wallet API validates before transfer.
+  string lobby_id = 7;  // Optional: lobby/tournament reference.
+  string prize_pool_id = 8;  // Optional: prize pool reference.
+  string currency = 9;  // e.g. "USD" — applies when amounts are uniform.
+}
+
+message WinnerPrizeDetail {
+  string player_id = 1;
+  int64 amount_cents = 2;  // Prize amount in smallest currency unit (e.g. cents).
+  string currency = 3;  // Override per-winner if needed; else use payload-level currency.
+}
+
+// --- RatingsUpdated (match-making-api → replay-api) ---
+// Emitted after consuming MatchResultsCalculated. Includes MMR deltas per player.
+// Consumed by replay-api for leaderboards and skill-based matchmaking.
+
+message RatingsUpdatedPayload {
+  string match_id = 1;
+  repeated PlayerRatingDelta deltas = 2;
+  int64 updated_at_epoch_ms = 3;
+  string tenant_id = 4;
+  string client_id = 5;
+  string resource_owner_id = 6;  // For authorization; from MatchResultsCalculated envelope.
+  string game_id = 7;            // Optional: ratings per game; empty if not available.
+  RatingAuditTrail audit_trail = 8;  // Algorithm version, reason, updated_by for compliance.
+}
+
+message RatingAuditTrail {
+  string algorithm_version = 1;  // e.g. "elo-v1"
+  string reason = 2;             // e.g. "match_completion"
+  string updated_by = 3;         // e.g. "match-making-api"
+}
+
+message PlayerRatingDelta {
+  string player_id = 1;
+  int32 mmr_before = 2;
+  int32 mmr_after = 3;
+  int32 delta = 4;
+}

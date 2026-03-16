@@ -3,7 +3,6 @@ package controllers
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"time"
@@ -56,13 +55,23 @@ func (ic *InvitationController) Create(ctx context.Context) http.HandlerFunc {
 			return
 		}
 
+		// SECURITY: Admin-only endpoint
+		if !common.IsAdmin(r.Context()) {
+			w.WriteHeader(http.StatusForbidden)
+			json.NewEncoder(w).Encode(ErrorResponse{
+				Error:   "forbidden",
+				Message: "administrator access required",
+			})
+			return
+		}
+
 		var req CreateInvitationRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20)).Decode(&req); err != nil {
 			slog.ErrorContext(r.Context(), "failed to decode request body", "error", err)
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(ErrorResponse{
 				Error:   "invalid_request",
-				Message: fmt.Sprintf("invalid JSON: %v", err),
+				Message: "invalid request body",
 			})
 			return
 		}
@@ -138,7 +147,7 @@ func (ic *InvitationController) Create(ctx context.Context) http.HandlerFunc {
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(ErrorResponse{
 				Error:   "validation_error",
-				Message: err.Error(),
+				Message: "failed to create invitation",
 			})
 			return
 		}
@@ -191,7 +200,7 @@ func (ic *InvitationController) Get(ctx context.Context) http.HandlerFunc {
 			w.WriteHeader(http.StatusNotFound)
 			json.NewEncoder(w).Encode(ErrorResponse{
 				Error:   "not_found",
-				Message: fmt.Sprintf("invitation not found: %v", err),
+				Message: "invitation not found",
 			})
 			return
 		}
@@ -397,7 +406,7 @@ func (ic *InvitationController) Accept(ctx context.Context) http.HandlerFunc {
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(ErrorResponse{
 				Error:   "validation_error",
-				Message: err.Error(),
+				Message: "failed to accept invitation",
 			})
 			return
 		}
@@ -485,7 +494,7 @@ func (ic *InvitationController) Decline(ctx context.Context) http.HandlerFunc {
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(ErrorResponse{
 				Error:   "validation_error",
-				Message: err.Error(),
+				Message: "failed to decline invitation",
 			})
 			return
 		}
@@ -498,6 +507,16 @@ func (ic *InvitationController) Decline(ctx context.Context) http.HandlerFunc {
 func (ic *InvitationController) Update(ctx context.Context) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
+
+		// SECURITY: Admin-only endpoint
+		if !common.IsAdmin(r.Context()) {
+			w.WriteHeader(http.StatusForbidden)
+			json.NewEncoder(w).Encode(ErrorResponse{
+				Error:   "forbidden",
+				Message: "administrator access required",
+			})
+			return
+		}
 
 		if r.Method != http.MethodPatch {
 			w.WriteHeader(http.StatusMethodNotAllowed)
@@ -530,12 +549,12 @@ func (ic *InvitationController) Update(ctx context.Context) http.HandlerFunc {
 		}
 
 		var req UpdateInvitationRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20)).Decode(&req); err != nil {
 			slog.ErrorContext(r.Context(), "failed to decode request body", "error", err)
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(ErrorResponse{
 				Error:   "invalid_request",
-				Message: fmt.Sprintf("invalid JSON: %v", err),
+				Message: "invalid request body",
 			})
 			return
 		}
@@ -577,7 +596,7 @@ func (ic *InvitationController) Update(ctx context.Context) http.HandlerFunc {
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(ErrorResponse{
 				Error:   "validation_error",
-				Message: err.Error(),
+				Message: "failed to update invitation",
 			})
 			return
 		}
@@ -591,6 +610,16 @@ func (ic *InvitationController) Update(ctx context.Context) http.HandlerFunc {
 func (ic *InvitationController) Delete(ctx context.Context) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
+
+		// SECURITY: Admin-only endpoint
+		if !common.IsAdmin(r.Context()) {
+			w.WriteHeader(http.StatusForbidden)
+			json.NewEncoder(w).Encode(ErrorResponse{
+				Error:   "forbidden",
+				Message: "administrator access required",
+			})
+			return
+		}
 
 		if r.Method != http.MethodDelete {
 			w.WriteHeader(http.StatusMethodNotAllowed)
@@ -654,7 +683,7 @@ func (ic *InvitationController) Delete(ctx context.Context) http.HandlerFunc {
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(ErrorResponse{
 				Error:   "validation_error",
-				Message: err.Error(),
+				Message: "failed to revoke invitation",
 			})
 			return
 		}

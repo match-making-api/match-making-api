@@ -36,16 +36,10 @@ func TestCreateGameUseCase_Execute(t *testing.T) {
 			},
 			setupMocks: func(writer *mocks.MockPortGameWriter, reader *mocks.MockPortGameReader) {
 				reader.On("Search", mock.Anything, mock.Anything).Return([]*game_entities.Game{}, nil)
-				writer.On("Create", mock.Anything, mock.AnythingOfType("*entities.Game")).Return(&game_entities.Game{
-					BaseEntity:        common.BaseEntity{ID: uuid.New()},
-					Name:              "Test Game",
-					Description:       "Test Description",
-					Enabled:           true,
-					MinPlayersPerTeam: 1,
-					MaxPlayersPerTeam: 5,
-					NumberOfTeams:     2,
-					MaxDuration:       30 * time.Minute,
-				}, nil)
+				writer.On("Create", mock.Anything, mock.AnythingOfType("*entities.Game")).Run(func(args mock.Arguments) {
+					g := args.Get(1).(*game_entities.Game)
+					g.ID = uuid.New()
+				}).Return(mock.AnythingOfType("*entities.Game"), nil)
 			},
 			validate: func(t *testing.T, game *game_entities.Game) {
 				assert.NotEqual(t, uuid.Nil, game.BaseEntity.ID)

@@ -33,12 +33,10 @@ func TestCreateGameModeUseCase_Execute(t *testing.T) {
 			},
 			setupMocks: func(writer *mocks.MockPortGameModeWriter, reader *mocks.MockPortGameModeReader) {
 				reader.On("Search", mock.Anything, mock.Anything).Return([]*game_entities.GameMode{}, nil)
-				writer.On("Create", mock.Anything, mock.AnythingOfType("*entities.GameMode")).Return(&game_entities.GameMode{
-					BaseEntity:  common.BaseEntity{ID: google_uuid.New()},
-					GameID:      uuid.Must(uuid.NewV4()),
-					Name:        "Test Game Mode",
-					Description: "Test Description",
-				}, nil)
+				writer.On("Create", mock.Anything, mock.AnythingOfType("*entities.GameMode")).Run(func(args mock.Arguments) {
+					gm := args.Get(1).(*game_entities.GameMode)
+					gm.ID = google_uuid.New()
+				}).Return(mock.AnythingOfType("*entities.GameMode"), nil)
 			},
 			validate: func(t *testing.T, gameMode *game_entities.GameMode) {
 				assert.NotEqual(t, google_uuid.Nil, gameMode.BaseEntity.ID)
@@ -71,13 +69,13 @@ func TestCreateGameModeUseCase_Execute(t *testing.T) {
 		{
 			name: "fail when duplicate game mode name exists for same game",
 			gameMode: &game_entities.GameMode{
-				GameID: uuid.FromStringOrNil("12345678-1234-1234-1234-123456789012"),
+				GameID: uuid.FromStringOrNil("11111111-1111-1111-1111-111111111111"),
 				Name:   "Existing Game Mode",
 			},
 			setupMocks: func(writer *mocks.MockPortGameModeWriter, reader *mocks.MockPortGameModeReader) {
 				existingGameMode := &game_entities.GameMode{
 					BaseEntity: common.BaseEntity{ID: google_uuid.New()},
-					GameID:     uuid.FromStringOrNil("12345678-1234-1234-1234-123456789012"),
+					GameID:     uuid.FromStringOrNil("11111111-1111-1111-1111-111111111111"),
 					Name:       "Existing Game Mode",
 				}
 				reader.On("Search", mock.Anything, mock.Anything).Return([]*game_entities.GameMode{existingGameMode}, nil)
