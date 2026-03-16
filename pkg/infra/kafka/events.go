@@ -2,9 +2,12 @@ package kafka
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/leet-gaming/match-making-api/pkg/infra/events/schemas"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 // Topic constants for matchmaking events
@@ -21,6 +24,44 @@ const (
 	TopicNotificationDelivery    = "notifications.delivery"    // Notification delivery commands
 	TopicNotificationDeliveryDLQ = "notifications.delivery.dlq" // Failed notification delivery
 	TopicNotificationStatus      = "notifications.status"      // Delivery status updates
+
+	// TopicMatchmakingCommands is the topic for canonical protobuf/CloudEvents commands
+	// from replay-api (e.g. PlayerQueued). Consumed by match-making-api.
+	TopicMatchmakingCommands = "matchmaking.commands"
+
+	// TopicPlayerQueueConfirmed is the topic for PlayerQueueConfirmed events
+	// (match-making-api → replay-api). Emitted after adding player to pool.
+	// replay-api consumes to respond 200 OK with position/ETA to the client.
+	TopicPlayerQueueConfirmed = "matchmaking.queue.confirmed"
+
+	// TopicServerAllocated is the topic for ServerAllocated events
+	// (game server / replay-api → match-making-api). Emitted when a game server
+	// is allocated for a match. match-making-api consumes and broadcasts MatchReady.
+	TopicServerAllocated = "matchmaking.server.allocated"
+
+	// TopicMatchCompleted is the topic for MatchCompleted events
+	// (game server / replay-api → match-making-api). match-making-api consumes, calculates results, produces MatchResultsCalculated.
+	TopicMatchCompleted = "matchmaking.matches.completed"
+
+	// TopicMatchStarted is the topic for MatchStarted events
+	// (game server / replay-api → match-making-api). Emitted when match is about to begin.
+	// match-making-api consumes and broadcasts to all match participants via WebSocket.
+	TopicMatchStarted = "matchmaking.match.started"
+
+	// TopicRatingsUpdated is the topic for RatingsUpdated events
+	// (match-making-api → replay-api). Emitted after consuming MatchResultsCalculated.
+	// replay-api consumes for leaderboards and skill-based matchmaking.
+	TopicRatingsUpdated = "matchmaking.ratings.updated"
+
+	// TopicPrizeDistributed is the topic for PrizeDistributed events
+	// (match-making-api → wallet-api). Emitted after consuming MatchResultsCalculated when match has prize pool.
+	// Wallet API consumes and executes prize transfers.
+	TopicPrizeDistributed = "matchmaking.prizes.distributed"
+
+	// TopicAnalyticsTracked is the topic for AnalyticsTracked events
+	// (match-making-api → analytics service). Emitted after consuming MatchResultsCalculated (#32).
+	// Analytics service consumes for dashboards, reporting.
+	TopicAnalyticsTracked = "matchmaking.analytics.tracked"
 )
 
 // Event types
@@ -48,7 +89,24 @@ const (
 	EventTypeReadyCheckTimeout       = "READY_CHECK_TIMEOUT"
 	EventTypeAllPlayersReady         = "ALL_PLAYERS_READY"
 	EventTypeGameConnectionDelivered = "GAME_CONNECTION_DELIVERED"
+	EventTypeQueueStatusUpdated      = "QUEUE_STATUS_UPDATED"
+	EventTypeMatchReady              = "MATCH_READY"               // (#26): lobby is full, match ready to start
+	EventTypeWaitingForServer        = "WAITING_FOR_SERVER"        // Match enqueued for server allocation
+	EventTypeServerAllocationTimeout = "SERVER_ALLOCATION_TIMEOUT" // Match abandoned after timeout
 )
+
+// QueueStatusPayload is the payload for QUEUE_STATUS_UPDATED events.
+// Broadcast via WebSocket to the player to show live queue position changes.
+type QueueStatusPayload struct {
+	PlayerID        uuid.UUID `json:"player_id"`
+	GameID          uuid.UUID `json:"game_id"`
+	Region          string    `json:"region"`
+	Position        int       `json:"position"`
+	EstimatedWaitMs int64     `json:"estimated_wait_ms"`
+	TotalInQueue    int       `json:"total_in_queue"`
+	EventType       string    `json:"event_type"`
+	Timestamp       int64     `json:"timestamp"`
+}
 
 // EventPublisher publishes domain events to Kafka topics
 type EventPublisher struct {
@@ -202,7 +260,157 @@ type PlayerMatchStat struct {
 	MMRChange int      `json:"mmr_change"`
 }
 
-// PublishMatchCreated publishes a match creation event
+// PublishPlayerQueueConfirmed publishes a PlayerQueueConfirmed event (match-making-api → replay-api).
+// Emitted after adding player to pool. replay-api consumes to respond 200 OK with position/ETA.
+func (p *EventPublisher) PublishPlayerQueueConfirmed(ctx context.Context, event *schemas.MatchmakingEvent) error {
+	value, err := protojson.Marshal(event)
+	if err != nil {
+		return fmt.Errorf("failed to marshal PlayerQueueConfirmed: %w", err)
+	}
+
+	key := ""
+	if env := event.GetEnvelope(); env != nil {
+		key = env.GetSubject()
+	}
+	if key == "" {
+		if payload := event.GetPlayerQueueConfirmed(); payload != nil {
+			key = payload.GetPlayerId()
+		}
+	}
+	if key == "" {
+		key = uuid.New().String()
+	}
+
+	headers := map[string]string{
+		"ce_type":   schemas.EventTypePlayerQueueConfirmed,
+		"ce_source": "match-making-api",
+	}
+
+	return p.client.PublishBytes(ctx, TopicPlayerQueueConfirmed, key, value, headers)
+}
+
+// PublishMatchCreatedProto publishes a MatchCreated event with full Protobuf payload (Epic §9).
+// Includes match_id, players[], game_server (with resource ownership), lobby_id, tenant_id, client_id.
+// Partition key: match_id for per-match ordering.
+func (p *EventPublisher) PublishMatchCreatedProto(ctx context.Context, event *schemas.MatchmakingEvent) error {
+	value, err := protojson.Marshal(event)
+	if err != nil {
+		return fmt.Errorf("failed to marshal MatchCreated: %w", err)
+	}
+
+	key := ""
+	if payload := event.GetMatchCreated(); payload != nil {
+		key = payload.GetMatchId()
+	}
+	if key == "" {
+		key = uuid.New().String()
+	}
+
+	headers := map[string]string{
+		"ce_type":   schemas.EventTypeMatchCreated,
+		"ce_source": "match-making-api",
+	}
+
+	return p.client.PublishBytes(ctx, TopicMatchesCreated, key, value, headers)
+}
+
+// PublishMatchResultsCalculatedProto publishes a MatchResultsCalculated event to matchmaking.matches.results.
+// Partition key: match_id for per-match ordering. Consumed by replay-api for ratings (#30) and prizes (#31).
+func (p *EventPublisher) PublishMatchResultsCalculatedProto(ctx context.Context, event *schemas.MatchmakingEvent) error {
+	value, err := protojson.Marshal(event)
+	if err != nil {
+		return fmt.Errorf("failed to marshal MatchResultsCalculated: %w", err)
+	}
+
+	key := ""
+	if payload := event.GetMatchResultsCalculated(); payload != nil {
+		key = payload.GetMatchId()
+	}
+	if key == "" {
+		key = uuid.New().String()
+	}
+
+	headers := map[string]string{
+		"ce_type":   schemas.EventTypeMatchResultsCalculated,
+		"ce_source": "match-making-api",
+	}
+
+	return p.client.PublishBytes(ctx, TopicMatchesResults, key, value, headers)
+}
+
+// PublishRatingsUpdatedProto publishes a RatingsUpdated event to matchmaking.ratings.updated.
+// Partition key: match_id. Consumed by replay-api for leaderboards and skill-based matchmaking.
+func (p *EventPublisher) PublishRatingsUpdatedProto(ctx context.Context, event *schemas.MatchmakingEvent) error {
+	value, err := protojson.Marshal(event)
+	if err != nil {
+		return fmt.Errorf("failed to marshal RatingsUpdated: %w", err)
+	}
+
+	key := ""
+	if payload := event.GetRatingsUpdated(); payload != nil {
+		key = payload.GetMatchId()
+	}
+	if key == "" {
+		key = uuid.New().String()
+	}
+
+	headers := map[string]string{
+		"ce_type":   schemas.EventTypeRatingsUpdated,
+		"ce_source": "match-making-api",
+	}
+
+	return p.client.PublishBytes(ctx, TopicRatingsUpdated, key, value, headers)
+}
+
+// PublishPrizeDistributedProto publishes a PrizeDistributed event to matchmaking.prizes.distributed.
+// Partition key: match_id. Consumed by wallet API for prize transfers.
+func (p *EventPublisher) PublishPrizeDistributedProto(ctx context.Context, event *schemas.MatchmakingEvent) error {
+	value, err := protojson.Marshal(event)
+	if err != nil {
+		return fmt.Errorf("failed to marshal PrizeDistributed: %w", err)
+	}
+
+	key := ""
+	if payload := event.GetPrizeDistributed(); payload != nil {
+		key = payload.GetMatchId()
+	}
+	if key == "" {
+		key = uuid.New().String()
+	}
+
+	headers := map[string]string{
+		"ce_type":   schemas.EventTypePrizeDistributed,
+		"ce_source": "match-making-api",
+	}
+
+	return p.client.PublishBytes(ctx, TopicPrizeDistributed, key, value, headers)
+}
+
+// PublishAnalyticsTrackedProto publishes an AnalyticsTracked event to matchmaking.analytics.tracked.
+// Partition key: match_id. Consumed by analytics service for dashboards and reporting (#32).
+func (p *EventPublisher) PublishAnalyticsTrackedProto(ctx context.Context, event *schemas.MatchmakingEvent) error {
+	value, err := protojson.Marshal(event)
+	if err != nil {
+		return fmt.Errorf("failed to marshal AnalyticsTracked: %w", err)
+	}
+
+	key := ""
+	if payload := event.GetAnalyticsTracked(); payload != nil {
+		key = payload.GetMatchId()
+	}
+	if key == "" {
+		key = uuid.New().String()
+	}
+
+	headers := map[string]string{
+		"ce_type":   schemas.EventTypeAnalyticsTracked,
+		"ce_source": "match-making-api",
+	}
+
+	return p.client.PublishBytes(ctx, TopicAnalyticsTracked, key, value, headers)
+}
+
+// PublishMatchCreated publishes a match creation event (legacy JSON format)
 func (p *EventPublisher) PublishMatchCreated(ctx context.Context, event *MatchEvent) error {
 	event.EventID = uuid.New()
 	event.EventType = EventTypeMatchCreated

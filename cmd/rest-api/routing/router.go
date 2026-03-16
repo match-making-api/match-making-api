@@ -50,10 +50,15 @@ func NewRouter(ctx context.Context, container container.Container) http.Handler 
 	externalInvitationController := controllers.NewExternalInvitationController(container)
 	notificationController := controllers.NewNotificationController(container)
 	commitmentController := controllers.NewCommitmentController(container)
+	serverAllocationController := controllers.NewServerAllocationController(container)
 
 	// health
 	r.HandleFunc(Health, healthController.HealthCheck(ctx)).Methods("GET")
 	resourceContextMiddleware.RegisterOperation(Health, "match-making:health:get")
+
+	// server allocation — queue for server (#queue-for-server)
+	r.HandleFunc("/server-allocation/next", serverAllocationController.Next(ctx)).Methods("GET")
+	resourceContextMiddleware.RegisterOperation("/server-allocation/next", "match-making:server-allocation:next")
 
 	// games
 	r.HandleFunc("/games", gameController.List(ctx)).Methods("GET")

@@ -3,34 +3,143 @@
 .PHONY: test-kafka
 .PHONY: coverage
 
-# Detect the operating system
+# Detect the operating system (use go env - reliable when Go is installed)
+DETECTED_GOOS := $(shell go env GOOS)
+ifeq ($(DETECTED_GOOS),windows)
+	DETECTED_OS := Windows
+else
 ifeq ($(OS),Windows_NT)
 	DETECTED_OS := Windows
 else
 	DETECTED_OS := $(shell uname -s)
 endif
+endif
+ifeq ($(DETECTED_OS),)
+	DETECTED_OS := Windows
+endif
 
-# Define the output binary name based on the OS
+# Define the output binary names based on the OS
 ifeq ($(DETECTED_OS),Windows)
-	BINARY_NAME := match-making-api-http-service.exe
+	BINARY_REST_API := match-making-api-http-service.exe
+	BINARY_CONSUMER_MATCHMAKING := consumer-matchmaking-commands.exe
+	BINARY_CONSUMER_SERVER_ALLOCATED := consumer-server-allocated.exe
+	BINARY_CONSUMER_MATCH_STARTED := consumer-match-started.exe
+	BINARY_CONSUMER_MATCH_COMPLETED := consumer-match-completed.exe
+	BINARY_CONSUMER_RATINGS_UPDATED := consumer-ratings-updated.exe
+	BINARY_CONSUMER_PRIZE_DISTRIBUTION := consumer-prize-distribution.exe
+	BINARY_CONSUMER_ANALYTICS_TRACKED := consumer-analytics-tracked.exe
+	BINARY_WORKER_QUEUE_STATUS := worker-queue-status.exe
+	BINARY_WORKER_SERVER_ALLOCATION_TIMEOUT := worker-server-allocation-timeout.exe
 else
-	BINARY_NAME := match-making-api-http-service
+	BINARY_REST_API := match-making-api-http-service
+	BINARY_CONSUMER_MATCHMAKING := consumer-matchmaking-commands
+	BINARY_CONSUMER_SERVER_ALLOCATED := consumer-server-allocated
+	BINARY_CONSUMER_MATCH_STARTED := consumer-match-started
+	BINARY_CONSUMER_MATCH_COMPLETED := consumer-match-completed
+	BINARY_CONSUMER_RATINGS_UPDATED := consumer-ratings-updated
+	BINARY_CONSUMER_PRIZE_DISTRIBUTION := consumer-prize-distribution
+	BINARY_CONSUMER_ANALYTICS_TRACKED := consumer-analytics-tracked
+	BINARY_WORKER_QUEUE_STATUS := worker-queue-status
+	BINARY_WORKER_SERVER_ALLOCATION_TIMEOUT := worker-server-allocation-timeout
 endif
 
 build-rest-api:
-	@echo "Building API for $(DETECTED_OS)"
+	@echo "Building REST API for $(DETECTED_OS)"
 ifeq ($(DETECTED_OS),Windows)
-	@echo "Building for Windows"
-	@go build -o $(BINARY_NAME) ./cmd/rest-api/main.go
+	@go build -o $(BINARY_REST_API) ./cmd/rest-api/main.go
 else
-	@echo "Building for Unix-like system"
-	CGO_ENABLED=0 go build -o $(BINARY_NAME) ./cmd/rest-api/main.go
+	CGO_ENABLED=0 go build -o $(BINARY_REST_API) ./cmd/rest-api/main.go
 endif
 
+build-consumer-matchmaking:
+	@echo "Building Matchmaking Commands Consumer for $(DETECTED_OS)"
+ifeq ($(DETECTED_OS),Windows)
+	@go build -o $(BINARY_CONSUMER_MATCHMAKING) ./cmd/consumers/matchmaking-commands/main.go
+else
+	CGO_ENABLED=0 go build -o $(BINARY_CONSUMER_MATCHMAKING) ./cmd/consumers/matchmaking-commands/main.go
+endif
+
+build-consumer-server-allocated:
+	@echo "Building Server Allocated Consumer for $(DETECTED_OS)"
+ifeq ($(DETECTED_OS),Windows)
+	@go build -o $(BINARY_CONSUMER_SERVER_ALLOCATED) ./cmd/consumers/server-allocated/main.go
+else
+	CGO_ENABLED=0 go build -o $(BINARY_CONSUMER_SERVER_ALLOCATED) ./cmd/consumers/server-allocated/main.go
+endif
+
+build-consumer-match-started:
+	@echo "Building Match Started Consumer for $(DETECTED_OS)"
+ifeq ($(DETECTED_OS),Windows)
+	@go build -o $(BINARY_CONSUMER_MATCH_STARTED) ./cmd/consumers/match-started/main.go
+else
+	CGO_ENABLED=0 go build -o $(BINARY_CONSUMER_MATCH_STARTED) ./cmd/consumers/match-started/main.go
+endif
+
+build-consumer-match-completed:
+	@echo "Building Match Completed Consumer for $(DETECTED_OS)"
+ifeq ($(DETECTED_OS),Windows)
+	@go build -o $(BINARY_CONSUMER_MATCH_COMPLETED) ./cmd/consumers/match-completed/main.go
+else
+	CGO_ENABLED=0 go build -o $(BINARY_CONSUMER_MATCH_COMPLETED) ./cmd/consumers/match-completed/main.go
+endif
+
+build-consumer-ratings-updated:
+	@echo "Building Ratings Updated Consumer for $(DETECTED_OS)"
+ifeq ($(DETECTED_OS),Windows)
+	@go build -o $(BINARY_CONSUMER_RATINGS_UPDATED) ./cmd/consumers/ratings-updated/main.go
+else
+	CGO_ENABLED=0 go build -o $(BINARY_CONSUMER_RATINGS_UPDATED) ./cmd/consumers/ratings-updated/main.go
+endif
+
+build-consumer-prize-distribution:
+	@echo "Building Prize Distribution Consumer for $(DETECTED_OS)"
+ifeq ($(DETECTED_OS),Windows)
+	@go build -o $(BINARY_CONSUMER_PRIZE_DISTRIBUTION) ./cmd/consumers/prize-distribution/main.go
+else
+	CGO_ENABLED=0 go build -o $(BINARY_CONSUMER_PRIZE_DISTRIBUTION) ./cmd/consumers/prize-distribution/main.go
+endif
+
+build-consumer-analytics-tracked:
+	@echo "Building Analytics Tracked Consumer for $(DETECTED_OS)"
+ifeq ($(DETECTED_OS),Windows)
+	@go build -o $(BINARY_CONSUMER_ANALYTICS_TRACKED) ./cmd/consumers/analytics-tracked/main.go
+else
+	CGO_ENABLED=0 go build -o $(BINARY_CONSUMER_ANALYTICS_TRACKED) ./cmd/consumers/analytics-tracked/main.go
+endif
+
+build-worker-queue-status:
+	@echo "Building Queue Status Worker for $(DETECTED_OS)"
+ifeq ($(DETECTED_OS),Windows)
+	@go build -o $(BINARY_WORKER_QUEUE_STATUS) ./cmd/workers/queue-status/main.go
+else
+	CGO_ENABLED=0 go build -o $(BINARY_WORKER_QUEUE_STATUS) ./cmd/workers/queue-status/main.go
+endif
+
+build-worker-server-allocation-timeout:
+	@echo "Building Server Allocation Timeout Worker for $(DETECTED_OS)"
+ifeq ($(DETECTED_OS),Windows)
+	@go build -o $(BINARY_WORKER_SERVER_ALLOCATION_TIMEOUT) ./cmd/workers/server-allocation-timeout/main.go
+else
+	CGO_ENABLED=0 go build -o $(BINARY_WORKER_SERVER_ALLOCATION_TIMEOUT) ./cmd/workers/server-allocation-timeout/main.go
+endif
+
+build-all: build-rest-api build-consumer-matchmaking build-consumer-server-allocated build-consumer-match-started build-consumer-match-completed build-consumer-ratings-updated build-consumer-prize-distribution build-consumer-analytics-tracked build-worker-queue-status build-worker-server-allocation-timeout
+	@echo "All binaries built successfully"
+
 start-rest-api:
-	@echo "Running API"
+	@echo "Running REST API"
 	@export DEV_ENV="true"
-	@./$(BINARY_NAME)
+	@./$(BINARY_REST_API)
+
+start-consumer-matchmaking:
+	@echo "Running Matchmaking Commands Consumer"
+	@export DEV_ENV="true"
+	@./$(BINARY_CONSUMER_MATCHMAKING)
+
+start-worker-queue-status:
+	@echo "Running Queue Status Worker"
+	@export DEV_ENV="true"
+	@./$(BINARY_WORKER_QUEUE_STATUS)
 
 test-docker:
 	@echo "Running tests"
@@ -108,13 +217,6 @@ install-tools: ## Install required Go tools (if not already installed)
 	@if ! hash $(GO_LICENSES) 2>/dev/null; then \
 		$(GO) install github.com/google/go-licenses@latest; \
 	fi
-	@$(GO) install google.golang.org/protobuf/cmd/protoc-gen-go@latest
-
-.PHONY: proto-gen
-proto-gen: ## Generate Go code from event schemas (Protobuf)
-	@echo "Generating Go code from matchmaking event schemas..."
-	@protoc -I . --go_out=. --go_opt=module=github.com/leet-gaming/match-making-api pkg/infra/events/schemas/matchmaking_events.proto
-	@echo "Event schemas generated successfully!"
 
 # --- Additional Targets (Customize as needed) ---
 

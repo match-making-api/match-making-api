@@ -4,10 +4,17 @@ package schemas
 // Use these when setting EventEnvelope.Type to ensure consistency
 // between replay-api and match-making-api.
 const (
-	EventTypePlayerQueued    = "PlayerQueued"
-	EventTypeMatchCreated    = "MatchCreated"
-	EventTypeMatchCompleted  = "MatchCompleted"
-	EventTypeRatingsUpdated  = "RatingsUpdated"
+	EventTypePlayerQueued         = "PlayerQueued"
+	EventTypePlayerLeftQueue      = "PlayerLeftQueue"
+	EventTypePlayerQueueConfirmed = "PlayerQueueConfirmed"
+	EventTypeMatchCreated         = "MatchCreated"
+	EventTypeMatchCompleted       = "MatchCompleted"
+	EventTypeRatingsUpdated       = "RatingsUpdated"
+	EventTypeServerAllocated        = "ServerAllocated"
+	EventTypeMatchStarted           = "MatchStarted"
+	EventTypeMatchResultsCalculated = "MatchResultsCalculated"
+	EventTypePrizeDistributed       = "PrizeDistributed"
+	EventTypeAnalyticsTracked       = "AnalyticsTracked"
 )
 
 // CloudEventsSpecVersion is the CloudEvents specification version (e.g. "1.0").

@@ -177,7 +177,7 @@ func (ndc *NotificationDeliveryConsumer) retryDelivery(ctx context.Context, even
 		Timestamp: time.Now(),
 		Headers: map[string]string{
 			"retry_count": fmt.Sprintf("%d", event.RetryCount),
-			"event_type":  string(event.Type),
+			"event_type":  fmt.Sprintf("%d", event.Type),
 		},
 	}
 
@@ -201,7 +201,7 @@ func (ndc *NotificationDeliveryConsumer) sendToDLQ(ctx context.Context, event *N
 		Timestamp: time.Now(),
 		Headers: map[string]string{
 			"reason":     reason,
-			"event_type": string(event.Type),
+			"event_type": fmt.Sprintf("%d", event.Type),
 		},
 	}
 

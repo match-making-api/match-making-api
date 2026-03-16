@@ -4,20 +4,150 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      target: runtime
     ports:
       - "4991:4991"
     volumes:
       - .blob:/app/match_making_files
     depends_on:
       - mongodb
+      - kafka
+      - dragonfly
     env_file:
       - .env
     environment:
       - DEV_ENV="docker"
       - MONGO_URI=mongodb://mongodb:37019/match-making
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - REDIS_ADDR=dragonfly:6379
     networks:
       - svc
+
+  consumer-matchmaking-commands:
+    container_name: "consumer-matchmaking-commands"
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: consumer-matchmaking-commands
+    depends_on:
+      - mongodb
+      - kafka
+      - dragonfly
+    env_file:
+      - .env
+    environment:
+      - DEV_ENV="docker"
+      - MONGO_URI=mongodb://mongodb:37019/match-making
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - REDIS_ADDR=dragonfly:6379
+    networks:
+      - svc
+    restart: unless-stopped
+
+  consumer-server-allocated:
+    container_name: "consumer-server-allocated"
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: consumer-server-allocated
+    depends_on:
+      - mongodb
+      - kafka
+      - dragonfly
+    env_file:
+      - .env
+    environment:
+      - DEV_ENV="docker"
+      - MONGO_URI=mongodb://mongodb:37019/match-making
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - REDIS_ADDR=dragonfly:6379
+    networks:
+      - svc
+    restart: unless-stopped
+
+  consumer-match-started:
+    container_name: "consumer-match-started"
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: consumer-match-started
+    depends_on:
+      - mongodb
+      - kafka
+      - dragonfly
+    env_file:
+      - .env
+    environment:
+      - DEV_ENV="docker"
+      - MONGO_URI=mongodb://mongodb:37019/match-making
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - REDIS_ADDR=dragonfly:6379
+    networks:
+      - svc
+    restart: unless-stopped
+
+  consumer-match-completed:
+    container_name: "consumer-match-completed"
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: consumer-match-completed
+    depends_on:
+      - mongodb
+      - kafka
+      - dragonfly
+    env_file:
+      - .env
+    environment:
+      - DEV_ENV="docker"
+      - MONGO_URI=mongodb://mongodb:37019/match-making
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - REDIS_ADDR=dragonfly:6379
+    networks:
+      - svc
+    restart: unless-stopped
+
+  consumer-ratings-updated:
+    container_name: "consumer-ratings-updated"
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: consumer-ratings-updated
+    depends_on:
+      - mongodb
+      - kafka
+      - dragonfly
+    env_file:
+      - .env
+    environment:
+      - DEV_ENV="docker"
+      - MONGO_URI=mongodb://mongodb:37019/match-making
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - REDIS_ADDR=dragonfly:6379
+    networks:
+      - svc
+    restart: unless-stopped
+
+  worker-queue-status:
+    container_name: "worker-queue-status"
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: worker-queue-status
+    depends_on:
+      - mongodb
+      - kafka
+      - dragonfly
+    env_file:
+      - .env
+    environment:
+      - DEV_ENV="docker"
+      - MONGO_URI=mongodb://mongodb:37019/match-making
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - REDIS_ADDR=dragonfly:6379
+    networks:
+      - svc
+    restart: unless-stopped
 
   mongodb:
     container_name: "mongodb"
@@ -28,6 +158,16 @@ services:
       - .mongodb:/data/db
     networks:
       - default
+      - svc
+
+  dragonfly:
+    container_name: "dragonfly"
+    image: docker.dragonflydb.io/dragonflydb/dragonfly:latest
+    ports:
+      - "6379:6379"
+    volumes:
+      - .dragonfly:/data
+    networks:
       - svc
 
   zookeeper:
@@ -58,24 +198,6 @@ services:
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
     networks:
       - svc
-
-  # Create matchmaking topics on first run (Story 2501-001)
-  topic-init:
-    image: confluentinc/cp-kafka:latest
-    container_name: matchmaking-topic-init
-    depends_on:
-      - kafka
-    command: >
-      sh -c "
-        sleep 10 &&
-        kafka-topics --bootstrap-server kafka:9092 --create --topic matchmaking.commands --partitions 12 --replication-factor 1 --config retention.ms=604800000 --if-not-exists &&
-        kafka-topics --bootstrap-server kafka:9092 --create --topic matchmaking.events --partitions 12 --replication-factor 1 --config retention.ms=2592000000 --if-not-exists &&
-        kafka-topics --bootstrap-server kafka:9092 --create --topic matchmaking.matches --partitions 12 --replication-factor 1 --config retention.ms=7776000000 --if-not-exists &&
-        echo 'Matchmaking topics created'
-      "
-    networks:
-      - svc
-    restart: "no"
 
 networks:
   svc:

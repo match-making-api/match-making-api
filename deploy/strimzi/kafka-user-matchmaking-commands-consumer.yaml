@@ -1,0 +1,41 @@
+# KafkaUser for the matchmaking-commands consumer group.
+# Used by the matchmaking-worker to consume PlayerQueued events.
+#
+# Auth: SCRAM-SHA-512 (Strimzi manages credentials via Secret)
+# ACLs: Read on matchmaking.commands topic + consumer group
+#
+# Prerequisites:
+#   - Strimzi Operator installed
+#   - Kafka cluster "matchmaking" deployed with authentication.type: scram-sha-512
+#
+# Apply: kubectl apply -f kafka-user-matchmaking-commands-consumer.yaml
+# Secret: kubectl get secret matchmaking-commands-consumer -o jsonpath='{.data.password}' | base64 -d
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaUser
+metadata:
+  name: matchmaking-commands-consumer
+  labels:
+    strimzi.io/cluster: matchmaking
+spec:
+  authentication:
+    type: scram-sha-512
+  authorization:
+    type: simple
+    acls:
+      # Read from matchmaking.commands topic
+      - resource:
+          type: topic
+          name: matchmaking.commands
+          patternType: literal
+        operations:
+          - Read
+          - Describe
+        host: "*"
+      # Consumer group access
+      - resource:
+          type: group
+          name: match-making-api-commands
+          patternType: literal
+        operations:
+          - Read
+        host: "*"
