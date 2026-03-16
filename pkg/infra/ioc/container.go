@@ -75,8 +75,8 @@ func (b *ContainerBuilder) WithEnvFile() *ContainerBuilder {
 	if os.Getenv("DEV_ENV") == "true" || os.Getenv("DEV_ENV") == "" {
 		err := godotenv.Load()
 		if err != nil {
-			slog.Error("Failed to load .env file")
-			panic(err)
+			// In containerized environments, env vars are injected via configmap/secrets — .env is optional
+			slog.Warn("No .env file found, using environment variables directly", "error", err.Error())
 		}
 	}
 

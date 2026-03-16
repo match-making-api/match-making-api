@@ -127,6 +127,10 @@ func (pm *PartyScheduleMatcher) Execute(pids []uuid.UUID, qty int, matched []uui
 
 // matchParties attempts to build a complete match starting with the current party
 func (pm *PartyScheduleMatcher) matchParties(ctx context.Context, pids []uuid.UUID, currentIndex, qty int, matched []uuid.UUID, current uuid.UUID, matchingParties []uuid.UUID) ([]uuid.UUID, error) {
+	slog.DebugContext(ctx, "attempting to match parties",
+		"current", current, "matched_count", len(matched), "required", qty,
+		"available", len(pids), "candidates", len(matchingParties))
+
 	// Add current party to matched list
 	newMatched := append(matched, current)
 	
@@ -449,19 +453,19 @@ func validateSchedule(schedule schedule_entities.Schedule) error {
 func validateDateOption(option schedule_entities.DateOption, optionKey int) error {
 	// Check if option has any timeframes
 	if len(option.TimeFrames) == 0 {
-		return fmt.Errorf("date option has no timeframes defined")
+		return fmt.Errorf("date option %d has no timeframes defined", optionKey)
 	}
 	
 	// Validate each timeframe
 	for i, timeframe := range option.TimeFrames {
 		if err := validateTimeFrame(timeframe, i); err != nil {
-			return fmt.Errorf("timeframe %d: %w", i, err)
+			return fmt.Errorf("date option %d, timeframe %d: %w", optionKey, i, err)
 		}
 	}
 	
 	// Check if at least one of Months, Weekdays, or Days is specified
 	if len(option.Months) == 0 && len(option.Weekdays) == 0 && len(option.Days) == 0 {
-		return fmt.Errorf("date option must specify at least one of: Months, Weekdays, or Days")
+		return fmt.Errorf("date option %d must specify at least one of: Months, Weekdays, or Days", optionKey)
 	}
 	
 	return nil
@@ -471,13 +475,13 @@ func validateDateOption(option schedule_entities.DateOption, optionKey int) erro
 func validateTimeFrame(timeframe schedule_entities.TimeFrame, index int) error {
 	// Check if start time is before end time
 	if !timeframe.Start.Before(timeframe.End) {
-		return fmt.Errorf("timeframe start time (%v) must be before end time (%v)", timeframe.Start, timeframe.End)
+		return fmt.Errorf("timeframe start time (%v) must be before end time (%v) (index: %d)", timeframe.Start, timeframe.End, index)
 	}
 	
 	// Check if timeframe has valid duration (at least 1 minute)
 	duration := timeframe.End.Sub(timeframe.Start)
 	if duration < time.Minute {
-		return fmt.Errorf("timeframe duration must be at least 1 minute, got %v", duration)
+		return fmt.Errorf("timeframe duration must be at least 1 minute, got %v (index: %d)", duration, index)
 	}
 	
 	return nil

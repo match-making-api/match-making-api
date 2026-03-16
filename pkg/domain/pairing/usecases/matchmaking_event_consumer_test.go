@@ -42,6 +42,11 @@ func (m *MockEventPublisher) PublishMatchCreated(ctx context.Context, event *kaf
 	return args.Error(0)
 }
 
+func (m *MockEventPublisher) PublishReadyCheckEvent(ctx context.Context, event *kafka.ReadyCheckEvent) error {
+	args := m.Called(ctx, event)
+	return args.Error(0)
+}
+
 func (m *MockEventPublisher) PublishMatchCreatedProto(ctx context.Context, event *schemas.MatchmakingEvent) error {
 	args := m.Called(ctx, event)
 	return args.Error(0)

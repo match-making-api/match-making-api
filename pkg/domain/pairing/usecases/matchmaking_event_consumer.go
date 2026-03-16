@@ -25,6 +25,7 @@ type AddAndFindNextPairExecutor interface {
 // EventPublisherInterface defines the interface for publishing events
 type EventPublisherInterface interface {
 	PublishMatchCreated(ctx context.Context, event *kafka.MatchEvent) error
+	PublishReadyCheckEvent(ctx context.Context, event *kafka.ReadyCheckEvent) error
 	PublishMatchCreatedProto(ctx context.Context, event *schemas.MatchmakingEvent) error
 	PublishPlayerQueueConfirmed(ctx context.Context, event *schemas.MatchmakingEvent) error
 }

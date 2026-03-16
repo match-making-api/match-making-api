@@ -172,6 +172,7 @@ func (uc *VerifyClientMatchConflictsUseCase) getPairSchedule(ctx context.Context
 	}
 
 	if len(schedules) == 0 {
+		slog.DebugContext(ctx, "no schedules found for pair parties", "pair_id", pair.ID)
 		return nil
 	}
 

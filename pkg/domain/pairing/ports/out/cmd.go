@@ -78,3 +78,54 @@ type UserNotificationPreferencesWriter interface {
 type UserNotificationPreferencesReader interface {
 	GetByUserID(ctx context.Context, userID uuid.UUID) (*pairing_entities.UserNotificationPreferences, error)
 }
+
+// CommitmentWriter handles persistence of readiness commitments
+type CommitmentWriter interface {
+	Save(ctx context.Context, commitment *pairing_entities.Commitment) (*pairing_entities.Commitment, error)
+	SaveBatch(ctx context.Context, commitments []*pairing_entities.Commitment) ([]*pairing_entities.Commitment, error)
+	Update(ctx context.Context, commitment *pairing_entities.Commitment) (*pairing_entities.Commitment, error)
+}
+
+// CommitmentReader handles retrieval of readiness commitments
+type CommitmentReader interface {
+	GetByID(ctx context.Context, id uuid.UUID) (*pairing_entities.Commitment, error)
+	FindByLobbyID(ctx context.Context, lobbyID uuid.UUID) ([]*pairing_entities.Commitment, error)
+	FindByPlayerAndLobby(ctx context.Context, playerID uuid.UUID, lobbyID uuid.UUID) (*pairing_entities.Commitment, error)
+	FindPendingExpired(ctx context.Context) ([]*pairing_entities.Commitment, error)
+}
+
+// PushTokenWriter handles persistence of push notification tokens
+type PushTokenWriter interface {
+	Save(ctx context.Context, token *pairing_entities.PushToken) (*pairing_entities.PushToken, error)
+	Deactivate(ctx context.Context, tokenID uuid.UUID) error
+}
+
+// PushTokenReader handles retrieval of push notification tokens
+type PushTokenReader interface {
+	FindByUserID(ctx context.Context, userID uuid.UUID) ([]*pairing_entities.PushToken, error)
+	FindActiveByUserID(ctx context.Context, userID uuid.UUID) ([]*pairing_entities.PushToken, error)
+}
+
+// GameConnectionInfoWriter handles persistence of game connection info
+type GameConnectionInfoWriter interface {
+	Save(ctx context.Context, info *pairing_entities.GameConnectionInfo) (*pairing_entities.GameConnectionInfo, error)
+}
+
+// GameConnectionInfoReader handles retrieval of game connection info
+type GameConnectionInfoReader interface {
+	FindByLobbyID(ctx context.Context, lobbyID uuid.UUID) (*pairing_entities.GameConnectionInfo, error)
+	FindByMatchID(ctx context.Context, matchID uuid.UUID) (*pairing_entities.GameConnectionInfo, error)
+}
+
+// NotificationChannelSender sends a notification via a specific delivery channel.
+type NotificationChannelSender interface {
+	Send(ctx context.Context, notification *pairing_entities.Notification) error
+	GetChannel() pairing_entities.NotificationChannel
+	IsAvailable(ctx context.Context) bool
+}
+
+// NotificationSenderResolver resolves the appropriate sender for a notification channel.
+// Implemented by NotificationSenderFactory in usecases.
+type NotificationSenderResolver interface {
+	GetSender(channel pairing_entities.NotificationChannel) NotificationChannelSender
+}

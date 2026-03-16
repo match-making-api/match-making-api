@@ -1,10 +1,8 @@
 # build
-FROM golang:1.25.4 AS build
+FROM golang:1.25-alpine AS build
+RUN apk add --no-cache ca-certificates tzdata
 WORKDIR /app
 COPY . .
-
-# Copy .env file explicitly (it's in .gitignore)
-COPY .env .env
 
 RUN CGO_ENABLED=0 go build -v -o match-making-api-http-service ./cmd/rest-api/main.go
 RUN CGO_ENABLED=0 go build -v -o consumer-matchmaking-commands ./cmd/consumers/matchmaking-commands/main.go
@@ -19,12 +17,19 @@ RUN CGO_ENABLED=0 go build -v -o worker-server-allocation-timeout ./cmd/workers/
 RUN mkdir -p /app/match_making_files
 RUN mkdir -p /app/coverage
 
+# Create passwd file for scratch image non-root user
+RUN echo "appuser:x:10001:10001::/nonexistent:/usr/sbin/nologin" > /tmp/passwd
+
 # runtime — REST API (default)
 FROM scratch AS runtime
+COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+COPY --from=build /usr/share/zoneinfo /usr/share/zoneinfo
+COPY --from=build /tmp/passwd /etc/passwd
 COPY --from=build /app/match-making-api-http-service ./app/
 COPY --from=build /app/coverage ./app/coverage
-COPY --from=build /app/.env ./.env
 
+# SECURITY: Run as non-root user
+USER 10001
 ENV GODEBUG=stackguard=99999000000000
 
 EXPOSE 4991

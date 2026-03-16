@@ -49,6 +49,7 @@ func NewRouter(ctx context.Context, container container.Container) http.Handler 
 	invitationController := controllers.NewInvitationController(container)
 	externalInvitationController := controllers.NewExternalInvitationController(container)
 	notificationController := controllers.NewNotificationController(container)
+	commitmentController := controllers.NewCommitmentController(container)
 	serverAllocationController := controllers.NewServerAllocationController(container)
 
 	// health
@@ -169,6 +170,17 @@ func NewRouter(ctx context.Context, container container.Container) http.Handler 
 		resourceContextMiddleware.RegisterOperation("/api/lobbies/{id}", "match-making:lobbies:delete")
 		resourceContextMiddleware.RegisterOperation("/api/lobbies/{id}/join", "match-making:lobbies:join")
 		
+		// Readiness confirmation / commitment routes
+		r.HandleFunc("/api/lobbies/{lobby_id}/commitments", commitmentController.GetCommitmentSummary(ctx)).Methods("GET", "OPTIONS")
+		r.HandleFunc("/api/lobbies/{lobby_id}/commitments/confirm", commitmentController.ConfirmReadiness(ctx)).Methods("POST", "OPTIONS")
+		r.HandleFunc("/api/lobbies/{lobby_id}/commitments/decline", commitmentController.DeclineReadiness(ctx)).Methods("POST", "OPTIONS")
+		r.HandleFunc("/api/lobbies/{lobby_id}/connection-info", commitmentController.GetGameConnectionInfo(ctx)).Methods("GET", "OPTIONS")
+
+		resourceContextMiddleware.RegisterOperation("/api/lobbies/{lobby_id}/commitments", "match-making:commitments:summary")
+		resourceContextMiddleware.RegisterOperation("/api/lobbies/{lobby_id}/commitments/confirm", "match-making:commitments:confirm")
+		resourceContextMiddleware.RegisterOperation("/api/lobbies/{lobby_id}/commitments/decline", "match-making:commitments:decline")
+		resourceContextMiddleware.RegisterOperation("/api/lobbies/{lobby_id}/connection-info", "match-making:commitments:connection-info")
+
 		slog.Info("Lobby routes registered")
 	}
 

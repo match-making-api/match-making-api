@@ -26,7 +26,7 @@ func NewUserNotificationPreferences(
 	return &UserNotificationPreferences{
 		BaseEntity:          common.NewEntity(resourceOwner),
 		UserID:              userID,
-		EnabledChannels:     []NotificationChannel{NotificationChannelInApp, NotificationChannelEmail},
+		EnabledChannels:     []NotificationChannel{NotificationChannelInApp, NotificationChannelEmail, NotificationChannelPush},
 		DisabledChannels:    []NotificationChannel{},
 		PreferredLanguage:   preferredLanguage,
 		TypePreferences:     make(map[NotificationType]bool),
