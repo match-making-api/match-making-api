@@ -20,21 +20,6 @@ RUN mkdir -p /app/coverage
 # Create passwd file for scratch image non-root user
 RUN echo "appuser:x:10001:10001::/nonexistent:/usr/sbin/nologin" > /tmp/passwd
 
-# runtime — REST API (default)
-FROM scratch AS runtime
-COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
-COPY --from=build /usr/share/zoneinfo /usr/share/zoneinfo
-COPY --from=build /tmp/passwd /etc/passwd
-COPY --from=build /app/match-making-api-http-service ./app/
-COPY --from=build /app/coverage ./app/coverage
-
-# SECURITY: Run as non-root user
-USER 10001
-ENV GODEBUG=stackguard=99999000000000
-
-EXPOSE 4991
-CMD ["./app/match-making-api-http-service"]
-
 # consumer — Matchmaking Commands (Kafka consumer for PlayerQueued events)
 FROM scratch AS consumer-matchmaking-commands
 COPY --from=build /app/consumer-matchmaking-commands ./app/
@@ -115,3 +100,18 @@ COPY --from=build /app/.env ./.env
 ENV GODEBUG=stackguard=99999000000000
 
 CMD ["./app/worker-server-allocation-timeout"]
+
+# runtime — REST API (default, must be last stage for `docker build` without --target)
+FROM scratch AS runtime
+COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+COPY --from=build /usr/share/zoneinfo /usr/share/zoneinfo
+COPY --from=build /tmp/passwd /etc/passwd
+COPY --from=build /app/match-making-api-http-service ./app/
+COPY --from=build /app/coverage ./app/coverage
+
+# SECURITY: Run as non-root user
+USER 10001
+ENV GODEBUG=stackguard=99999000000000
+
+EXPOSE 4991
+CMD ["./app/match-making-api-http-service"]
