@@ -13,29 +13,32 @@ import (
 
 // ConsumerConfig holds consumer-specific configuration
 type ConsumerConfig struct {
-	GroupID          string
-	Topics           []string
-	MinBytes         int
-	MaxBytes         int
-	MaxWait          time.Duration
-	CommitInterval   time.Duration
-	StartOffset      int64
+	GroupID           string
+	Topics            []string
+	MinBytes          int
+	MaxBytes          int
+	MaxWait           time.Duration
+	CommitInterval    time.Duration
+	StartOffset       int64
 	HeartbeatInterval time.Duration
-	SessionTimeout   time.Duration
+	SessionTimeout    time.Duration
+	RetryPolicy       RetryPolicy
+	DLQPublisher      *DLQPublisher
 }
 
 // DefaultConsumerConfig returns sensible defaults
 func DefaultConsumerConfig(groupID string, topics []string) *ConsumerConfig {
 	return &ConsumerConfig{
-		GroupID:          groupID,
-		Topics:           topics,
-		MinBytes:         1e3,    // 1KB
-		MaxBytes:         10e6,   // 10MB
-		MaxWait:          time.Second,
-		CommitInterval:   time.Second,
-		StartOffset:      kafka.LastOffset,
+		GroupID:           groupID,
+		Topics:            topics,
+		MinBytes:          1e3, // 1KB
+		MaxBytes:          10e6,
+		MaxWait:           time.Second,
+		CommitInterval:    time.Second,
+		StartOffset:       kafka.LastOffset,
 		HeartbeatInterval: 3 * time.Second,
-		SessionTimeout:   30 * time.Second,
+		SessionTimeout:    30 * time.Second,
+		RetryPolicy:       DefaultRetryPolicy(),
 	}
 }
 
@@ -52,6 +55,10 @@ type MessageHandler func(ctx context.Context, msg *kafka.Message) error
 
 // NewConsumer creates a new Kafka consumer
 func NewConsumer(client *Client, config *ConsumerConfig) *Consumer {
+	if config.DLQPublisher == nil && client != nil {
+		config.DLQPublisher = NewDLQPublisher(client)
+	}
+
 	reader := kafka.NewReader(kafka.ReaderConfig{
 		Brokers:           client.Brokers(),
 		GroupID:           config.GroupID,
@@ -100,13 +107,12 @@ func (c *Consumer) Start(ctx context.Context) error {
 				continue
 			}
 
-			if err := c.processMessage(ctx, &msg); err != nil {
-				slog.Error("Error processing message",
+			if err := c.processWithRetry(ctx, &msg); err != nil {
+				slog.Error("Error processing message (not committed)",
 					"topic", msg.Topic,
 					"partition", msg.Partition,
 					"offset", msg.Offset,
 					"error", err)
-				// Don't commit failed messages - they'll be reprocessed
 				continue
 			}
 
@@ -115,6 +121,38 @@ func (c *Consumer) Start(ctx context.Context) error {
 			}
 		}
 	}
+}
+
+func (c *Consumer) processWithRetry(ctx context.Context, msg *kafka.Message) error {
+	var lastErr error
+	for attempt := 0; c.config.RetryPolicy.ShouldRetry(attempt); attempt++ {
+		if attempt > 0 {
+			time.Sleep(c.config.RetryPolicy.Backoff * time.Duration(attempt))
+		}
+		if err := c.processMessage(ctx, msg); err != nil {
+			lastErr = err
+			slog.Warn("Retrying message processing",
+				"topic", msg.Topic,
+				"offset", msg.Offset,
+				"attempt", attempt+1,
+				"error", err)
+			continue
+		}
+		return nil
+	}
+
+	if lastErr == nil {
+		return nil
+	}
+
+	if c.config.DLQPublisher == nil {
+		return lastErr
+	}
+
+	if err := c.config.DLQPublisher.Publish(ctx, msg, c.config.RetryPolicy.MaxRetries, lastErr); err != nil {
+		return fmt.Errorf("dlq publish failed: %w (original: %v)", err, lastErr)
+	}
+	return nil
 }
 
 func (c *Consumer) processMessage(ctx context.Context, msg *kafka.Message) error {
