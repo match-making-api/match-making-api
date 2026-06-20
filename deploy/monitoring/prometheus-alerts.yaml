@@ -1,0 +1,44 @@
+# Prometheus alert rules for matchmaking Kafka observability (2505-001).
+# Tune thresholds via Alertmanager or replace values in your overlay.
+groups:
+  - name: matchmaking-kafka
+    rules:
+      - alert: MatchmakingConsumerLagHigh
+        expr: kafka_consumergroup_lag{consumergroup=~"matchmaking-.*"} > 1000
+        for: 5m
+        labels:
+          severity: critical
+          team: matchmaking
+        annotations:
+          summary: "Consumer lag exceeds 1000 messages"
+          description: "Group {{ $labels.consumergroup }} on topic {{ $labels.topic }} has lag {{ $value }}. See runbook: consumer-lag-spike."
+
+      - alert: MatchmakingConsumerGroupDown
+        expr: absent(kafka_consumergroup_members{consumergroup=~"matchmaking-.*"}) or kafka_consumergroup_members{consumergroup=~"matchmaking-.*"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          team: matchmaking
+        annotations:
+          summary: "Matchmaking consumer group has no active members"
+          description: "Group {{ $labels.consumergroup }} appears down."
+
+      - alert: MatchmakingProducerErrorRateHigh
+        expr: rate(matchmaking_kafka_producer_errors_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          team: matchmaking
+        annotations:
+          summary: "Elevated Kafka producer error rate"
+          description: "Topic {{ $labels.topic }} producer errors are spiking."
+
+      - alert: MatchmakingConsumerErrorRateHigh
+        expr: rate(matchmaking_kafka_consumer_errors_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          team: matchmaking
+        annotations:
+          summary: "Elevated Kafka consumer error rate"
+          description: "Topic {{ $labels.topic }} group {{ $labels.group_id }} errors are spiking."

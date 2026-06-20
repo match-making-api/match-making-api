@@ -1,0 +1,78 @@
+{
+  "title": "Matchmaking Kafka",
+  "uid": "matchmaking-kafka-2505",
+  "tags": ["matchmaking", "kafka", "2505-001"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "panels": [
+    {
+      "id": 1,
+      "title": "Consumer Lag (messages)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "kafka_consumergroup_lag{consumergroup=~\"matchmaking-.*\"}",
+          "legendFormat": "{{consumergroup}} / {{topic}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 500 },
+              { "color": "red", "value": 1000 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 2,
+      "title": "Message Throughput (rate/s)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum(rate(matchmaking_kafka_messages_produced_total[1m])) by (topic)",
+          "legendFormat": "produce {{topic}}"
+        },
+        {
+          "expr": "sum(rate(matchmaking_kafka_messages_consumed_total[1m])) by (topic)",
+          "legendFormat": "consume {{topic}}"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Consumer / Producer Errors",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "targets": [
+        {
+          "expr": "sum(rate(matchmaking_kafka_consumer_errors_total[5m])) by (topic, error_type)",
+          "legendFormat": "consumer {{topic}} {{error_type}}"
+        },
+        {
+          "expr": "sum(rate(matchmaking_kafka_producer_errors_total[5m])) by (topic)",
+          "legendFormat": "producer {{topic}}"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Processing Latency p95",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(matchmaking_kafka_message_processing_seconds_bucket[5m])) by (le, topic))",
+          "legendFormat": "p95 {{topic}}"
+        }
+      ]
+    }
+  ]
+}

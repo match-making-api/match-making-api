@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/leet-gaming/match-making-api/pkg/infra/observability/metrics"
 	"github.com/segmentio/kafka-go"
 )
 
@@ -96,11 +97,14 @@ func (c *Consumer) Start(ctx context.Context) error {
 				if ctx.Err() != nil {
 					return nil // Context cancelled
 				}
+				metrics.ConsumerErrors.WithLabelValues("unknown", c.config.GroupID, "fetch").Inc()
 				slog.Error("Error fetching message", "error", err)
 				continue
 			}
 
+			start := time.Now()
 			if err := c.processMessage(ctx, &msg); err != nil {
+				metrics.ConsumerErrors.WithLabelValues(msg.Topic, c.config.GroupID, "process").Inc()
 				slog.Error("Error processing message",
 					"topic", msg.Topic,
 					"partition", msg.Partition,
@@ -109,8 +113,11 @@ func (c *Consumer) Start(ctx context.Context) error {
 				// Don't commit failed messages - they'll be reprocessed
 				continue
 			}
+			metrics.MessagesConsumed.WithLabelValues(msg.Topic, c.config.GroupID).Inc()
+			metrics.ObserveProcessing(msg.Topic, c.config.GroupID, start)
 
 			if err := c.reader.CommitMessages(ctx, msg); err != nil {
+				metrics.ConsumerErrors.WithLabelValues(msg.Topic, c.config.GroupID, "commit").Inc()
 				slog.Error("Error committing message", "error", err)
 			}
 		}
