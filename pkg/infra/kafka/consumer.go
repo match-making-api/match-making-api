@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/leet-gaming/match-making-api/pkg/infra/observability/tracing"
+	"github.com/leet-gaming/match-making-api/pkg/infra/observability/metrics"
 	"github.com/segmentio/kafka-go"
 )
 
@@ -103,11 +105,14 @@ func (c *Consumer) Start(ctx context.Context) error {
 				if ctx.Err() != nil {
 					return nil // Context cancelled
 				}
+				metrics.ConsumerErrors.WithLabelValues("unknown", c.config.GroupID, "fetch").Inc()
 				slog.Error("Error fetching message", "error", err)
 				continue
 			}
 
+			start := time.Now()
 			if err := c.processWithRetry(ctx, &msg); err != nil {
+				metrics.ConsumerErrors.WithLabelValues(msg.Topic, c.config.GroupID, "process").Inc()
 				slog.Error("Error processing message (not committed)",
 					"topic", msg.Topic,
 					"partition", msg.Partition,
@@ -115,8 +120,11 @@ func (c *Consumer) Start(ctx context.Context) error {
 					"error", err)
 				continue
 			}
+			metrics.MessagesConsumed.WithLabelValues(msg.Topic, c.config.GroupID).Inc()
+			metrics.ObserveProcessing(msg.Topic, c.config.GroupID, start)
 
 			if err := c.reader.CommitMessages(ctx, msg); err != nil {
+				metrics.ConsumerErrors.WithLabelValues(msg.Topic, c.config.GroupID, "commit").Inc()
 				slog.Error("Error committing message", "error", err)
 			}
 		}
@@ -156,6 +164,11 @@ func (c *Consumer) processWithRetry(ctx context.Context, msg *kafka.Message) err
 }
 
 func (c *Consumer) processMessage(ctx context.Context, msg *kafka.Message) error {
+	ctx, correlationID := tracing.ExtractContext(ctx, msg.Headers)
+	correlationID = tracing.EnsureCorrelationID(correlationID)
+	ctx, span := tracing.StartKafkaConsumeSpan(ctx, msg.Topic, c.config.GroupID, correlationID)
+	defer span.End()
+
 	handler, exists := c.handlers[msg.Topic]
 	if !exists {
 		slog.Warn("No handler for topic", "topic", msg.Topic)

@@ -34,7 +34,7 @@ All three share the same codebase (`pkg/`) but use different DI injection:
 # Start all services (API + consumer + worker + infra)
 docker-compose -f docker-compose.dev.yml up -d
 
-# Or build locally
+# Or build locally (binaries output to bin/)
 make build-all
 make start-rest-api               # terminal 1
 make start-consumer-matchmaking   # terminal 2
