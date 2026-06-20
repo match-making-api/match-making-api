@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/leet-gaming/match-making-api/pkg/infra/observability/tracing"
 	"github.com/segmentio/kafka-go"
 )
 
@@ -118,6 +119,11 @@ func (c *Consumer) Start(ctx context.Context) error {
 }
 
 func (c *Consumer) processMessage(ctx context.Context, msg *kafka.Message) error {
+	ctx, correlationID := tracing.ExtractContext(ctx, msg.Headers)
+	correlationID = tracing.EnsureCorrelationID(correlationID)
+	ctx, span := tracing.StartKafkaConsumeSpan(ctx, msg.Topic, c.config.GroupID, correlationID)
+	defer span.End()
+
 	handler, exists := c.handlers[msg.Topic]
 	if !exists {
 		slog.Warn("No handler for topic", "topic", msg.Topic)

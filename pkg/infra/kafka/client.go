@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/leet-gaming/match-making-api/pkg/infra/observability/tracing"
 	"github.com/segmentio/kafka-go"
 	"github.com/segmentio/kafka-go/sasl"
 	"github.com/segmentio/kafka-go/sasl/scram"
@@ -221,10 +222,19 @@ type Message struct {
 // PublishBytes sends a message with raw bytes to the specified topic.
 // Used for protobuf/protojson serialized payloads.
 func (c *Client) PublishBytes(ctx context.Context, topic string, key string, value []byte, headers map[string]string) error {
+	correlationID := ""
+	if headers != nil {
+		correlationID = headers["x-correlation-id"]
+	}
+	correlationID = tracing.EnsureCorrelationID(correlationID)
+	ctx, span := tracing.StartKafkaProduceSpan(ctx, topic, correlationID)
+	defer span.End()
+
 	kafkaHeaders := make([]kafka.Header, 0, len(headers)+1)
 	for k, v := range headers {
 		kafkaHeaders = append(kafkaHeaders, kafka.Header{Key: k, Value: []byte(v)})
 	}
+	kafkaHeaders = tracing.InjectContextToKafkaHeaders(ctx, kafkaHeaders, correlationID)
 	kafkaHeaders = append(kafkaHeaders, kafka.Header{Key: "region", Value: []byte(c.config.Region)})
 
 	kafkaMsg := kafka.Message{
