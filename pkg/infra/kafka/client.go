@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/leet-gaming/match-making-api/pkg/infra/observability/tracing"
+	"github.com/leet-gaming/match-making-api/pkg/infra/observability/metrics"
 	"github.com/segmentio/kafka-go"
 	"github.com/segmentio/kafka-go/sasl"
 	"github.com/segmentio/kafka-go/sasl/scram"
@@ -246,12 +247,14 @@ func (c *Client) PublishBytes(ctx context.Context, topic string, key string, val
 
 	writer := c.GetWriter(topic)
 	if err := writer.WriteMessages(ctx, kafkaMsg); err != nil {
+		metrics.ProducerErrors.WithLabelValues(topic).Inc()
 		slog.Error("Failed to publish message",
 			"topic", topic,
 			"key", key,
 			"error", err)
 		return fmt.Errorf("failed to write message: %w", err)
 	}
+	metrics.MessagesProduced.WithLabelValues(topic).Inc()
 
 	slog.Debug("Published message",
 		"topic", topic,
@@ -283,12 +286,14 @@ func (c *Client) Publish(ctx context.Context, topic string, msg *Message) error 
 
 	writer := c.GetWriter(topic)
 	if err := writer.WriteMessages(ctx, kafkaMsg); err != nil {
+		metrics.ProducerErrors.WithLabelValues(topic).Inc()
 		slog.Error("Failed to publish message",
 			"topic", topic,
 			"key", msg.Key,
 			"error", err)
 		return fmt.Errorf("failed to write message: %w", err)
 	}
+	metrics.MessagesProduced.WithLabelValues(topic).Inc()
 
 	slog.Debug("Published message",
 		"topic", topic,
@@ -323,12 +328,14 @@ func (c *Client) PublishBatch(ctx context.Context, topic string, msgs []*Message
 
 	writer := c.GetWriter(topic)
 	if err := writer.WriteMessages(ctx, kafkaMsgs...); err != nil {
+		metrics.ProducerErrors.WithLabelValues(topic).Inc()
 		slog.Error("Failed to publish batch",
 			"topic", topic,
 			"count", len(msgs),
 			"error", err)
 		return fmt.Errorf("failed to write batch: %w", err)
 	}
+	metrics.MessagesProduced.WithLabelValues(topic).Add(float64(len(msgs)))
 
 	slog.Debug("Published batch",
 		"topic", topic,

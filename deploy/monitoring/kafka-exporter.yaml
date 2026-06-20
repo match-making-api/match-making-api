@@ -1,0 +1,51 @@
+# Kafka Exporter for consumer lag and throughput metrics (2505-001).
+# Requires Prometheus Operator or manual scrape config pointing at :9308/metrics.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka-exporter-matchmaking
+  labels:
+    app: kafka-exporter
+    component: observability
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kafka-exporter
+  template:
+    metadata:
+      labels:
+        app: kafka-exporter
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9308"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+        - name: kafka-exporter
+          image: danielqsj/kafka-exporter:v1.7.0
+          ports:
+            - containerPort: 9308
+              name: metrics
+          env:
+            - name: KAFKA_BROKERS
+              value: "kafka-bootstrap:9092"
+          args:
+            - "--kafka.server=$(KAFKA_BROKERS)"
+            - "--web.listen-address=:9308"
+            - "--topic.filter=^matchmaking\\..*"
+            - "--group.filter=^matchmaking-.*"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka-exporter-matchmaking
+  labels:
+    app: kafka-exporter
+spec:
+  selector:
+    app: kafka-exporter
+  ports:
+    - name: metrics
+      port: 9308
+      targetPort: 9308

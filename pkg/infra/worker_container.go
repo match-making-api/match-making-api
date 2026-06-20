@@ -8,6 +8,7 @@ import (
 	"github.com/leet-gaming/match-making-api/pkg/infra/db/mongodb"
 	"github.com/leet-gaming/match-making-api/pkg/infra/ioc"
 	"github.com/leet-gaming/match-making-api/pkg/infra/observability/tracing"
+	"github.com/leet-gaming/match-making-api/pkg/infra/observability/metrics"
 )
 
 // InjectWorker sets up only the infrastructure needed by background workers
@@ -22,6 +23,7 @@ func InjectWorker(c container.Container) error {
 		// Shutdown runs on process exit via defer in main if needed; no-op hook here.
 		_ = shutdown
 	}
+	metrics.StartServerIfEnabled()
 
 	return common.InjectAll(c,
 		ioc.InjectIoc,
