@@ -18,32 +18,50 @@ ifeq ($(DETECTED_OS),)
 	DETECTED_OS := Windows
 endif
 
+# Local build output directory (ignored by git)
+BIN_DIR := bin
+
 # Define the output binary names based on the OS
 ifeq ($(DETECTED_OS),Windows)
-	BINARY_REST_API := match-making-api-http-service.exe
-	BINARY_CONSUMER_MATCHMAKING := consumer-matchmaking-commands.exe
-	BINARY_CONSUMER_SERVER_ALLOCATED := consumer-server-allocated.exe
-	BINARY_CONSUMER_MATCH_STARTED := consumer-match-started.exe
-	BINARY_CONSUMER_MATCH_COMPLETED := consumer-match-completed.exe
-	BINARY_CONSUMER_RATINGS_UPDATED := consumer-ratings-updated.exe
-	BINARY_CONSUMER_PRIZE_DISTRIBUTION := consumer-prize-distribution.exe
-	BINARY_CONSUMER_ANALYTICS_TRACKED := consumer-analytics-tracked.exe
-	BINARY_WORKER_QUEUE_STATUS := worker-queue-status.exe
-	BINARY_WORKER_SERVER_ALLOCATION_TIMEOUT := worker-server-allocation-timeout.exe
+	BINARY_REST_API := $(BIN_DIR)/match-making-api-http-service.exe
+	BINARY_CONSUMER_MATCHMAKING := $(BIN_DIR)/consumer-matchmaking-commands.exe
+	BINARY_CONSUMER_SERVER_ALLOCATED := $(BIN_DIR)/consumer-server-allocated.exe
+	BINARY_CONSUMER_MATCH_STARTED := $(BIN_DIR)/consumer-match-started.exe
+	BINARY_CONSUMER_MATCH_COMPLETED := $(BIN_DIR)/consumer-match-completed.exe
+	BINARY_CONSUMER_RATINGS_UPDATED := $(BIN_DIR)/consumer-ratings-updated.exe
+	BINARY_CONSUMER_PRIZE_DISTRIBUTION := $(BIN_DIR)/consumer-prize-distribution.exe
+	BINARY_CONSUMER_ANALYTICS_TRACKED := $(BIN_DIR)/consumer-analytics-tracked.exe
+	BINARY_WORKER_QUEUE_STATUS := $(BIN_DIR)/worker-queue-status.exe
+	BINARY_WORKER_SERVER_ALLOCATION_TIMEOUT := $(BIN_DIR)/worker-server-allocation-timeout.exe
 else
-	BINARY_REST_API := match-making-api-http-service
-	BINARY_CONSUMER_MATCHMAKING := consumer-matchmaking-commands
-	BINARY_CONSUMER_SERVER_ALLOCATED := consumer-server-allocated
-	BINARY_CONSUMER_MATCH_STARTED := consumer-match-started
-	BINARY_CONSUMER_MATCH_COMPLETED := consumer-match-completed
-	BINARY_CONSUMER_RATINGS_UPDATED := consumer-ratings-updated
-	BINARY_CONSUMER_PRIZE_DISTRIBUTION := consumer-prize-distribution
-	BINARY_CONSUMER_ANALYTICS_TRACKED := consumer-analytics-tracked
-	BINARY_WORKER_QUEUE_STATUS := worker-queue-status
-	BINARY_WORKER_SERVER_ALLOCATION_TIMEOUT := worker-server-allocation-timeout
+	BINARY_REST_API := $(BIN_DIR)/match-making-api-http-service
+	BINARY_CONSUMER_MATCHMAKING := $(BIN_DIR)/consumer-matchmaking-commands
+	BINARY_CONSUMER_SERVER_ALLOCATED := $(BIN_DIR)/consumer-server-allocated
+	BINARY_CONSUMER_MATCH_STARTED := $(BIN_DIR)/consumer-match-started
+	BINARY_CONSUMER_MATCH_COMPLETED := $(BIN_DIR)/consumer-match-completed
+	BINARY_CONSUMER_RATINGS_UPDATED := $(BIN_DIR)/consumer-ratings-updated
+	BINARY_CONSUMER_PRIZE_DISTRIBUTION := $(BIN_DIR)/consumer-prize-distribution
+	BINARY_CONSUMER_ANALYTICS_TRACKED := $(BIN_DIR)/consumer-analytics-tracked
+	BINARY_WORKER_QUEUE_STATUS := $(BIN_DIR)/worker-queue-status
+	BINARY_WORKER_SERVER_ALLOCATION_TIMEOUT := $(BIN_DIR)/worker-server-allocation-timeout
 endif
 
-build-rest-api:
+.PHONY: prepare-bin clean-bin
+prepare-bin:
+ifeq ($(DETECTED_OS),Windows)
+	@if not exist $(BIN_DIR) mkdir $(BIN_DIR)
+else
+	@mkdir -p $(BIN_DIR)
+endif
+
+clean-bin:
+ifeq ($(DETECTED_OS),Windows)
+	@if exist $(BIN_DIR) rmdir /s /q $(BIN_DIR)
+else
+	@rm -rf $(BIN_DIR)
+endif
+
+build-rest-api: prepare-bin
 	@echo "Building REST API for $(DETECTED_OS)"
 ifeq ($(DETECTED_OS),Windows)
 	@go build -o $(BINARY_REST_API) ./cmd/rest-api/main.go
@@ -51,7 +69,7 @@ else
 	CGO_ENABLED=0 go build -o $(BINARY_REST_API) ./cmd/rest-api/main.go
 endif
 
-build-consumer-matchmaking:
+build-consumer-matchmaking: prepare-bin
 	@echo "Building Matchmaking Commands Consumer for $(DETECTED_OS)"
 ifeq ($(DETECTED_OS),Windows)
 	@go build -o $(BINARY_CONSUMER_MATCHMAKING) ./cmd/consumers/matchmaking-commands/main.go
@@ -59,7 +77,7 @@ else
 	CGO_ENABLED=0 go build -o $(BINARY_CONSUMER_MATCHMAKING) ./cmd/consumers/matchmaking-commands/main.go
 endif
 
-build-consumer-server-allocated:
+build-consumer-server-allocated: prepare-bin
 	@echo "Building Server Allocated Consumer for $(DETECTED_OS)"
 ifeq ($(DETECTED_OS),Windows)
 	@go build -o $(BINARY_CONSUMER_SERVER_ALLOCATED) ./cmd/consumers/server-allocated/main.go
@@ -67,7 +85,7 @@ else
 	CGO_ENABLED=0 go build -o $(BINARY_CONSUMER_SERVER_ALLOCATED) ./cmd/consumers/server-allocated/main.go
 endif
 
-build-consumer-match-started:
+build-consumer-match-started: prepare-bin
 	@echo "Building Match Started Consumer for $(DETECTED_OS)"
 ifeq ($(DETECTED_OS),Windows)
 	@go build -o $(BINARY_CONSUMER_MATCH_STARTED) ./cmd/consumers/match-started/main.go
@@ -75,7 +93,7 @@ else
 	CGO_ENABLED=0 go build -o $(BINARY_CONSUMER_MATCH_STARTED) ./cmd/consumers/match-started/main.go
 endif
 
-build-consumer-match-completed:
+build-consumer-match-completed: prepare-bin
 	@echo "Building Match Completed Consumer for $(DETECTED_OS)"
 ifeq ($(DETECTED_OS),Windows)
 	@go build -o $(BINARY_CONSUMER_MATCH_COMPLETED) ./cmd/consumers/match-completed/main.go
@@ -83,7 +101,7 @@ else
 	CGO_ENABLED=0 go build -o $(BINARY_CONSUMER_MATCH_COMPLETED) ./cmd/consumers/match-completed/main.go
 endif
 
-build-consumer-ratings-updated:
+build-consumer-ratings-updated: prepare-bin
 	@echo "Building Ratings Updated Consumer for $(DETECTED_OS)"
 ifeq ($(DETECTED_OS),Windows)
 	@go build -o $(BINARY_CONSUMER_RATINGS_UPDATED) ./cmd/consumers/ratings-updated/main.go
@@ -91,7 +109,7 @@ else
 	CGO_ENABLED=0 go build -o $(BINARY_CONSUMER_RATINGS_UPDATED) ./cmd/consumers/ratings-updated/main.go
 endif
 
-build-consumer-prize-distribution:
+build-consumer-prize-distribution: prepare-bin
 	@echo "Building Prize Distribution Consumer for $(DETECTED_OS)"
 ifeq ($(DETECTED_OS),Windows)
 	@go build -o $(BINARY_CONSUMER_PRIZE_DISTRIBUTION) ./cmd/consumers/prize-distribution/main.go
@@ -99,7 +117,7 @@ else
 	CGO_ENABLED=0 go build -o $(BINARY_CONSUMER_PRIZE_DISTRIBUTION) ./cmd/consumers/prize-distribution/main.go
 endif
 
-build-consumer-analytics-tracked:
+build-consumer-analytics-tracked: prepare-bin
 	@echo "Building Analytics Tracked Consumer for $(DETECTED_OS)"
 ifeq ($(DETECTED_OS),Windows)
 	@go build -o $(BINARY_CONSUMER_ANALYTICS_TRACKED) ./cmd/consumers/analytics-tracked/main.go
@@ -107,7 +125,7 @@ else
 	CGO_ENABLED=0 go build -o $(BINARY_CONSUMER_ANALYTICS_TRACKED) ./cmd/consumers/analytics-tracked/main.go
 endif
 
-build-worker-queue-status:
+build-worker-queue-status: prepare-bin
 	@echo "Building Queue Status Worker for $(DETECTED_OS)"
 ifeq ($(DETECTED_OS),Windows)
 	@go build -o $(BINARY_WORKER_QUEUE_STATUS) ./cmd/workers/queue-status/main.go
@@ -115,7 +133,7 @@ else
 	CGO_ENABLED=0 go build -o $(BINARY_WORKER_QUEUE_STATUS) ./cmd/workers/queue-status/main.go
 endif
 
-build-worker-server-allocation-timeout:
+build-worker-server-allocation-timeout: prepare-bin
 	@echo "Building Server Allocation Timeout Worker for $(DETECTED_OS)"
 ifeq ($(DETECTED_OS),Windows)
 	@go build -o $(BINARY_WORKER_SERVER_ALLOCATION_TIMEOUT) ./cmd/workers/server-allocation-timeout/main.go
