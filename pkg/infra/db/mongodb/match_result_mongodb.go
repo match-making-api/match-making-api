@@ -2,6 +2,7 @@ package mongodb
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/leet-gaming/match-making-api/pkg/domain/pairing/entities"
@@ -23,7 +24,11 @@ type matchResultRepository struct {
 
 // NewMatchResultRepository creates a MongoDB repository for match results.
 func NewMatchResultRepository(client *mongo.Client, dbName string) pairing_out.MatchResultRepository {
-	return &matchResultRepository{client: client, dbName: dbName}
+	repo := &matchResultRepository{client: client, dbName: dbName}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	EnsureResourceOwnershipIndexes(ctx, repo.collection(), true)
+	return repo
 }
 
 func (r *matchResultRepository) collection() *mongo.Collection {

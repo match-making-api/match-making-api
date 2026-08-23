@@ -58,6 +58,7 @@ func (r *CommitmentRepository) ensureIndexes(ctx context.Context) {
 	if err != nil {
 		slog.Error("Failed to create commitment indexes", "error", err)
 	}
+	EnsureResourceOwnershipIndexes(ctx, r.collection, false)
 }
 
 // Save persists a commitment (upsert)
