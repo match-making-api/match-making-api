@@ -107,6 +107,9 @@ func (r *LobbyRepository) ensureIndexes() {
 	} else {
 		slog.Info("Lobby indexes ensured")
 	}
+
+	// Refs 2508-002 — nested resource_owner + flat dual-write keys
+	EnsureResourceOwnershipIndexes(ctx, r.collection, true)
 }
 
 // Create inserts a new lobby
