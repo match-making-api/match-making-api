@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/leet-gaming/match-making-api/pkg/common"
 )
 
 // LobbyStatus represents the current state of a lobby
@@ -76,9 +77,11 @@ type QueueStats struct {
 type Lobby struct {
 	// Identity
 	ID        uuid.UUID `json:"id" bson:"_id"`
-	TenantID  uuid.UUID `json:"tenant_id" bson:"tenant_id"`
-	ClientID  uuid.UUID `json:"client_id" bson:"client_id"`
-	CreatorID uuid.UUID `json:"creator_id" bson:"creator_id"`
+	TenantID  uuid.UUID `json:"tenant_id" bson:"tenant_id"`   // dual-write with ResourceOwner (migration)
+	ClientID  uuid.UUID `json:"client_id" bson:"client_id"`   // dual-write with ResourceOwner (migration)
+	CreatorID uuid.UUID `json:"creator_id" bson:"creator_id"` // maps to ResourceOwner.UserID when owner is creator
+	// ResourceOwner is the canonical nested ownership (tenant/client/group/user).
+	ResourceOwner common.ResourceOwner `json:"resource_owner" bson:"resource_owner"`
 
 	// Game Configuration
 	GameID   string   `json:"game_id" bson:"game_id"`     // cs2, valorant, etc.
@@ -129,6 +132,35 @@ type Lobby struct {
 
 	// Metadata for extensibility
 	Metadata map[string]interface{} `json:"metadata,omitempty" bson:"metadata,omitempty"`
+}
+
+// EnsureResourceOwner fills nested resource_owner from flat fields (or the reverse)
+// so Mongo documents always dual-write during migration (Refs 2508-001).
+func (l *Lobby) EnsureResourceOwner() {
+	if l.ResourceOwner.TenantID == uuid.Nil {
+		l.ResourceOwner.TenantID = l.TenantID
+	}
+	if l.ResourceOwner.ClientID == uuid.Nil {
+		l.ResourceOwner.ClientID = l.ClientID
+	}
+	if l.ResourceOwner.UserID == uuid.Nil {
+		l.ResourceOwner.UserID = l.CreatorID
+	}
+	if l.TenantID == uuid.Nil {
+		l.TenantID = l.ResourceOwner.TenantID
+	}
+	if l.ClientID == uuid.Nil {
+		l.ClientID = l.ResourceOwner.ClientID
+	}
+	if l.CreatorID == uuid.Nil {
+		l.CreatorID = l.ResourceOwner.UserID
+	}
+}
+
+// ValidateOwnership rejects lobbies missing tenant/client on the canonical owner.
+func (l *Lobby) ValidateOwnership() error {
+	l.EnsureResourceOwner()
+	return l.ResourceOwner.ValidateTenantClient()
 }
 
 // GetCurrentPlayerCount returns the number of players in the lobby

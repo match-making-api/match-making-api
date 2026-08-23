@@ -67,7 +67,7 @@ func (r *playerRatingRepository) GetByPlayer(ctx context.Context, playerID, game
 		return nil, err
 	}
 
-	return &entities.PlayerRating{
+	rating := &entities.PlayerRating{
 		PlayerID:        doc.PlayerID,
 		GameID:          doc.GameID,
 		TenantID:        doc.TenantID,
@@ -75,11 +75,16 @@ func (r *playerRatingRepository) GetByPlayer(ctx context.Context, playerID, game
 		ResourceOwnerID: doc.ResourceOwnerID,
 		MMR:             doc.MMR,
 		UpdatedAt:       doc.UpdatedAt,
-	}, nil
+	}
+	rating.EnsureResourceOwner()
+	return rating, nil
 }
 
 // Save upserts the player's rating.
 func (r *playerRatingRepository) Save(ctx context.Context, rating *entities.PlayerRating) error {
+	if err := rating.ValidateOwnership(); err != nil {
+		return err
+	}
 	coll := r.ratingsColl()
 	key := ratingDocKey(rating.PlayerID, rating.GameID, rating.TenantID, rating.ClientID)
 	rating.UpdatedAt = time.Now().UTC()
@@ -87,14 +92,20 @@ func (r *playerRatingRepository) Save(ctx context.Context, rating *entities.Play
 	filter := bson.M{"_id": key}
 	update := bson.M{
 		"$set": bson.M{
-			"_id":                   key,
-			"player_id":             rating.PlayerID,
-			"game_id":               rating.GameID,
-			"tenant_id":             rating.TenantID,
-			"client_id":             rating.ClientID,
-			"resource_owner_id":     rating.ResourceOwnerID,
-			"mmr":                   rating.MMR,
-			"updated_at":            rating.UpdatedAt,
+			"_id":               key,
+			"player_id":         rating.PlayerID,
+			"game_id":           rating.GameID,
+			"tenant_id":         rating.TenantID,
+			"client_id":         rating.ClientID,
+			"resource_owner_id": rating.ResourceOwnerID,
+			"resource_owner": bson.M{
+				"tenant_id": rating.ResourceOwner.TenantID,
+				"client_id": rating.ResourceOwner.ClientID,
+				"group_id":  rating.ResourceOwner.GroupID,
+				"user_id":   rating.ResourceOwner.UserID,
+			},
+			"mmr":        rating.MMR,
+			"updated_at": rating.UpdatedAt,
 		},
 	}
 

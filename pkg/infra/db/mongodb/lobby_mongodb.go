@@ -111,6 +111,9 @@ func (r *LobbyRepository) ensureIndexes() {
 
 // Create inserts a new lobby
 func (r *LobbyRepository) Create(ctx context.Context, lobby *entities.Lobby) error {
+	if err := lobby.ValidateOwnership(); err != nil {
+		return fmt.Errorf("failed to create lobby: %w", err)
+	}
 	lobby.CreatedAt = time.Now()
 	lobby.UpdatedAt = time.Now()
 	
@@ -131,11 +134,15 @@ func (r *LobbyRepository) GetByID(ctx context.Context, id uuid.UUID) (*entities.
 		}
 		return nil, fmt.Errorf("failed to get lobby: %w", err)
 	}
+	lobby.EnsureResourceOwner()
 	return &lobby, nil
 }
 
 // Update updates an existing lobby
 func (r *LobbyRepository) Update(ctx context.Context, lobby *entities.Lobby) error {
+	if err := lobby.ValidateOwnership(); err != nil {
+		return fmt.Errorf("failed to update lobby: %w", err)
+	}
 	lobby.UpdatedAt = time.Now()
 	
 	_, err := r.collection.ReplaceOne(ctx, bson.M{"_id": lobby.ID}, lobby)
