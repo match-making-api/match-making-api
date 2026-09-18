@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	game_out "github.com/leet-gaming/match-making-api/pkg/domain/game/ports/out"
 	pairing_entities "github.com/leet-gaming/match-making-api/pkg/domain/pairing/entities"
+	"github.com/leet-gaming/match-making-api/pkg/domain/pairing/mapping"
 	pairing_out "github.com/leet-gaming/match-making-api/pkg/domain/pairing/ports/out"
 	pairing_value_objects "github.com/leet-gaming/match-making-api/pkg/domain/pairing/value-objects"
 	"github.com/leet-gaming/match-making-api/pkg/infra/events/schemas"
@@ -446,8 +447,16 @@ func (c *MatchmakingEventConsumer) HandlePlayerQueuedProto(ctx context.Context, 
 		criteria.PriorityBoost = *pb > 0
 	}
 
+	// Session → Party mapping (Refs 2508-003). Proto party_id not yet on PlayerQueuedPayload;
+	// ResolvePartyID defaults to solo (party_id = player_id) until producers send it.
+	joinMap := mapping.MapQueueJoin(
+		playerID, gameID,
+		payload.GetRegion(), payload.GetTenantId(), payload.GetClientId(),
+		envelope.GetResourceOwnerId(), "",
+	)
+
 	findPairPayload := FindPairPayload{
-		PartyID:  playerID,
+		PartyID:  joinMap.PartyID,
 		Criteria: criteria,
 	}
 
@@ -526,6 +535,7 @@ func (c *MatchmakingEventConsumer) HandlePlayerQueuedProto(ctx context.Context, 
 		if c.activeQueueStore != nil {
 			if err := c.activeQueueStore.Register(ctx, &pairing_entities.ActiveQueueEntry{
 				PlayerID:        playerID,
+				PartyID:         joinMap.PartyID,
 				GameID:          gameID,
 				RegionSlug:      payload.GetRegion(),
 				TenantID:        payload.GetTenantId(),
