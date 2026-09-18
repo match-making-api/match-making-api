@@ -36,9 +36,11 @@ func NewRouter(ctx context.Context, container container.Container) http.Handler 
 	// middleware
 	resourceContextMiddleware := middlewares.NewResourceContextMiddleware(&container)
 	corsMiddleware := middlewares.NewCORSMiddleware()
+	jwtAuthMiddleware := middlewares.NewJWTAuthMiddleware()
 
 	r.Use(corsMiddleware.Handler)
 	r.Use(mux.CORSMethodMiddleware(r))
+	r.Use(jwtAuthMiddleware.Handler) // Bearer JWT → context (Refs 2508-004); RID remains fallback
 	r.Use(resourceContextMiddleware.Handler)
 
 	// controllers

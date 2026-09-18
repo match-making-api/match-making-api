@@ -49,6 +49,13 @@ func (m *ResourceContextMiddleware) Handler(next http.Handler) http.Handler {
 		operationID := m.OperationMap[path]
 
 		slog.InfoContext(r.Context(), "resource context middleware", "path", r.URL.Path, "method", r.Method, "rid", r.Header.Get(controllers.ResourceOwnerIDHeaderKey))
+
+		// JWT middleware may already have authenticated the request (Refs 2508-004).
+		if authed, _ := ctx.Value(common.AuthenticatedKey).(bool); authed {
+			next.ServeHTTP(w, r.WithContext(ctx))
+			return
+		}
+
 		ctx = context.WithValue(ctx, common.TenantIDKey, common.TeamPROTenantID)
 		ctx = context.WithValue(ctx, common.ClientIDKey, common.TeamPROAppClientID)
 		ctx = context.WithValue(ctx, common.GroupIDKey, uuid.New())
