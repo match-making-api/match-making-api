@@ -66,6 +66,7 @@ func (usecase *UpdateGameModeUseCase) Execute(ctx context.Context, id uuid.UUID,
 	existingGameMode.Name = gameMode.Name
 	existingGameMode.Description = gameMode.Description
 	existingGameMode.GameID = gameMode.GameID
+	existingGameMode.Lobby = gameMode.Lobby
 	existingGameMode.UpdatedAt = time.Now()
 
 	// Update the game mode
