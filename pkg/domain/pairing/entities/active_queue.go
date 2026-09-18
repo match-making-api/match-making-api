@@ -12,6 +12,7 @@ import (
 // It stores metadata needed for periodic position updates and WebSocket delivery.
 type ActiveQueueEntry struct {
 	PlayerID        uuid.UUID `json:"player_id"`
+	PartyID         uuid.UUID `json:"party_id"` // Pool membership key (solo: equals player_id)
 	GameID          uuid.UUID `json:"game_id"`
 	RegionSlug      string    `json:"region"`
 	TenantID        string    `json:"tenant_id"`
