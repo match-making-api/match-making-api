@@ -2,6 +2,7 @@ package kafka
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -62,6 +63,11 @@ const (
 	// (match-making-api → analytics service). Emitted after consuming MatchResultsCalculated (#32).
 	// Analytics service consumes for dashboards, reporting.
 	TopicAnalyticsTracked = "matchmaking.analytics.tracked"
+
+	// TopicChargeableRequested is the topic for ChargeableOperationRequested events
+	// (match-making-api → wallet-api). Emitted when a paid queue/tournament/lobby fee applies.
+	// Wallet API consumes and executes billing; match-making never deducts balances.
+	TopicChargeableRequested = "matchmaking.billing.chargeable"
 )
 
 // Event types
@@ -408,6 +414,32 @@ func (p *EventPublisher) PublishAnalyticsTrackedProto(ctx context.Context, event
 	}
 
 	return p.client.PublishBytes(ctx, TopicAnalyticsTracked, key, value, headers)
+}
+
+// PublishChargeableOperationRequested publishes a ChargeableOperationRequested event
+// to matchmaking.billing.chargeable. Partition key: player_id. Consumed by wallet API.
+// Match-making publishes only — no wallet deduction here.
+func (p *EventPublisher) PublishChargeableOperationRequested(ctx context.Context, event *schemas.ChargeableOperationEvent) error {
+	if event == nil || event.ChargeableOperationRequested == nil {
+		return fmt.Errorf("chargeable operation event or payload is nil")
+	}
+
+	value, err := json.Marshal(event)
+	if err != nil {
+		return fmt.Errorf("failed to marshal ChargeableOperationRequested: %w", err)
+	}
+
+	key := event.ChargeableOperationRequested.PlayerID
+	if key == "" {
+		key = uuid.New().String()
+	}
+
+	headers := map[string]string{
+		"ce_type":   schemas.EventTypeChargeableOperationRequested,
+		"ce_source": "match-making-api",
+	}
+
+	return p.client.PublishBytes(ctx, TopicChargeableRequested, key, value, headers)
 }
 
 // PublishMatchCreated publishes a match creation event (legacy JSON format)

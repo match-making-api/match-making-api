@@ -460,6 +460,10 @@ func (c *MatchmakingEventConsumer) HandlePlayerQueuedProto(ctx context.Context, 
 		return err
 	}
 
+	// Paid queue option → ChargeableOperationRequested for wallet-api (Refs 2506-002).
+	// Free joins (no priority_boost) do not publish. Match-making never executes billing.
+	c.publishChargeableIfPriorityBoost(ctx, envelope, payload, playerID)
+
 	if pair != nil {
 		slog.InfoContext(ctx, "Match found from PlayerQueued event!",
 			"pair_id", pair.ID,

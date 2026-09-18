@@ -15,6 +15,7 @@ const (
 	EventTypeMatchResultsCalculated = "MatchResultsCalculated"
 	EventTypePrizeDistributed       = "PrizeDistributed"
 	EventTypeAnalyticsTracked       = "AnalyticsTracked"
+	EventTypeChargeableOperationRequested = "ChargeableOperationRequested"
 )
 
 // CloudEventsSpecVersion is the CloudEvents specification version (e.g. "1.0").
