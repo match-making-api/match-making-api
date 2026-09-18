@@ -43,6 +43,7 @@ func (r *GameConnectionInfoRepository) ensureIndexes(ctx context.Context) {
 	if err != nil {
 		slog.Error("Failed to create game_connection_info indexes", "error", err)
 	}
+	EnsureResourceOwnershipIndexes(ctx, r.collection, false)
 }
 
 // Save persists game connection info (upsert)

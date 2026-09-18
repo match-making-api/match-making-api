@@ -43,6 +43,7 @@ func (r *PushTokenRepository) ensureIndexes(ctx context.Context) {
 	if err != nil {
 		slog.Error("Failed to create push_token indexes", "error", err)
 	}
+	EnsureResourceOwnershipIndexes(ctx, r.collection, false)
 }
 
 // Save persists a push token (upsert)

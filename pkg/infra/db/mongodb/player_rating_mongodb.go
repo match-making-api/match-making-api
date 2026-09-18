@@ -26,7 +26,11 @@ type playerRatingRepository struct {
 
 // NewPlayerRatingRepository creates a MongoDB repository for player ratings.
 func NewPlayerRatingRepository(client *mongo.Client, dbName string) pairing_out.PlayerRatingRepository {
-	return &playerRatingRepository{client: client, dbName: dbName}
+	repo := &playerRatingRepository{client: client, dbName: dbName}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	EnsureResourceOwnershipIndexes(ctx, repo.ratingsColl(), true)
+	return repo
 }
 
 func (r *playerRatingRepository) ratingsColl() *mongo.Collection {

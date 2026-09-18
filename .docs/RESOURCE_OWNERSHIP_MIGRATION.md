@@ -56,7 +56,7 @@ db.match_results.updateMany({}, { $unset: { resource_owner: "" } })
 
 ## Indexes (2508-002)
 
-Compound indexes on `resource_owner.tenant_id` / `client_id` are **out of scope** here — story 2508-002.
+Compound indexes on `resource_owner.*` (and flat dual-write keys): see [.docs/RESOURCE_OWNERSHIP_INDEXES.md](RESOURCE_OWNERSHIP_INDEXES.md).
 
 ## Not migrated (intentionally)
 
