@@ -238,3 +238,24 @@ message PlayerRatingDelta {
   int32 mmr_after = 3;
   int32 delta = 4;
 }
+
+// --- ChargeableOperationRequested (match-making-api → wallet-api) ---
+// Emitted when a paid option applies (queue priority boost, tournament entry, lobby fee).
+// Wallet API consumes and executes billing. Match-making does NOT deduct balances.
+// Note: until codegen includes this in MatchmakingEvent oneof, producers publish
+// CloudEvents JSON (see chargeable_operation.go) to matchmaking.billing.chargeable.
+
+message ChargeableOperationRequestedPayload {
+  string operation_type = 1;       // e.g. "queue_priority_boost"
+  int64 amount_cents = 2;
+  string currency = 3;             // e.g. "USD"
+  string player_id = 4;
+  string resource_owner_id = 5;
+  string tenant_id = 6;
+  string client_id = 7;
+  string game_id = 8;
+  string region = 9;
+  string correlation_id = 10;
+  string idempotency_key = 11;
+  int64 requested_at_epoch_ms = 12;
+}
