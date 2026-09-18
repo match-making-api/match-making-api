@@ -32,6 +32,9 @@ func (r *matchResultRepository) collection() *mongo.Collection {
 
 // Save persists a match result. Idempotent: uses match_id as _id; if exists, returns existing.
 func (r *matchResultRepository) Save(ctx context.Context, result *entities.MatchResult) (*entities.MatchResult, error) {
+	if err := result.ValidateOwnership(); err != nil {
+		return nil, err
+	}
 	coll := r.collection()
 	matchIDStr := result.MatchID.String()
 
@@ -39,17 +42,23 @@ func (r *matchResultRepository) Save(ctx context.Context, result *entities.Match
 	filter := bson.M{"_id": matchIDStr}
 	update := bson.M{
 		"$setOnInsert": bson.M{
-			"_id":                   matchIDStr,
-			"player_ids":            result.PlayerIDs,
-			"winner_team_id":        result.WinnerTeamID,
-			"is_draw":               result.IsDraw,
-			"completed_at_epoch_ms": result.CompletedAtMs,
+			"_id":                    matchIDStr,
+			"player_ids":             result.PlayerIDs,
+			"winner_team_id":         result.WinnerTeamID,
+			"is_draw":                result.IsDraw,
+			"completed_at_epoch_ms":  result.CompletedAtMs,
 			"calculated_at_epoch_ms": result.CalculatedAtMs,
-			"tenant_id":             result.TenantID,
-			"client_id":             result.ClientID,
-			"resource_owner_id":     result.ResourceOwnerID,
-			"source_event_id":       result.SourceEventID,
-			"calculated_at":         result.CalculatedAt,
+			"tenant_id":              result.TenantID,
+			"client_id":              result.ClientID,
+			"resource_owner_id":      result.ResourceOwnerID,
+			"resource_owner": bson.M{
+				"tenant_id": result.ResourceOwner.TenantID,
+				"client_id": result.ResourceOwner.ClientID,
+				"group_id":  result.ResourceOwner.GroupID,
+				"user_id":   result.ResourceOwner.UserID,
+			},
+			"source_event_id": result.SourceEventID,
+			"calculated_at":   result.CalculatedAt,
 		},
 	}
 
@@ -97,7 +106,7 @@ func (r *matchResultRepository) GetByMatchID(ctx context.Context, matchID uuid.U
 		return nil, err
 	}
 
-	return &entities.MatchResult{
+	out := &entities.MatchResult{
 		MatchID:         matchID,
 		PlayerIDs:       doc.PlayerIDs,
 		WinnerTeamID:    doc.WinnerTeamID,
@@ -108,5 +117,7 @@ func (r *matchResultRepository) GetByMatchID(ctx context.Context, matchID uuid.U
 		ClientID:        doc.ClientID,
 		ResourceOwnerID: doc.ResourceOwnerID,
 		SourceEventID:   doc.SourceEventID,
-	}, nil
+	}
+	out.EnsureResourceOwner()
+	return out, nil
 }
