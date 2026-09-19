@@ -88,5 +88,12 @@ func validateGameMode(gameMode *game_entities.GameMode) error {
 		return errors.New("game_id is required and must be a valid UUID")
 	}
 
+	if gameMode.Lobby.PartySize < 0 || gameMode.Lobby.MaxPlayers < 0 || gameMode.Lobby.TeamCount < 0 {
+		return errors.New("lobby party_size, max_players, and team_count must be non-negative")
+	}
+	if gameMode.Lobby.MaxPlayers > 0 && gameMode.Lobby.PartySize > gameMode.Lobby.MaxPlayers {
+		return errors.New("lobby party_size cannot exceed max_players")
+	}
+
 	return nil
 }

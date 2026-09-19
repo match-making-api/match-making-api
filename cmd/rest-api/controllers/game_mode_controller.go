@@ -12,6 +12,7 @@ import (
 	"github.com/leet-gaming/match-making-api/pkg/common"
 	game_entities "github.com/leet-gaming/match-making-api/pkg/domain/game/entities"
 	game_in "github.com/leet-gaming/match-making-api/pkg/domain/game/ports/in"
+	game_usecases "github.com/leet-gaming/match-making-api/pkg/domain/game/usecases"
 )
 
 type GameModeController struct {
@@ -321,5 +322,58 @@ func (gmc *GameModeController) List(ctx context.Context) http.HandlerFunc {
 
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(gameModes)
+	}
+}
+
+// GetConfiguration resolves game rules + lobby params for a game mode (Refs 2508-005).
+func (gmc *GameModeController) GetConfiguration(ctx context.Context) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+
+		vars := mux.Vars(r)
+		gameModeIDStr, ok := vars["id"]
+		if !ok {
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(ErrorResponse{
+				Error:   "bad_request",
+				Message: "game mode ID is required",
+			})
+			return
+		}
+
+		gameModeID, err := uuid.Parse(gameModeIDStr)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(ErrorResponse{
+				Error:   "invalid_id",
+				Message: "invalid game mode ID format",
+			})
+			return
+		}
+
+		var resolve game_usecases.ResolveGameConfigurationQuery
+		if err := gmc.Container.Resolve(&resolve); err != nil {
+			slog.ErrorContext(r.Context(), "failed to resolve ResolveGameConfigurationQuery", "error", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(ErrorResponse{
+				Error:   "internal_error",
+				Message: "failed to process request",
+			})
+			return
+		}
+
+		cfg, err := resolve.Execute(r.Context(), gameModeID)
+		if err != nil {
+			slog.ErrorContext(r.Context(), "failed to resolve game configuration", "error", err, "game_mode_id", gameModeID)
+			w.WriteHeader(http.StatusNotFound)
+			json.NewEncoder(w).Encode(ErrorResponse{
+				Error:   "not_found",
+				Message: "game configuration not found",
+			})
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(cfg)
 	}
 }

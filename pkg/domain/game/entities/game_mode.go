@@ -13,6 +13,8 @@ type GameMode struct {
 	GameID      uuid.UUID `json:"game_id" bson:"game_id"`         // ID of the game the game mode belongs to
 	Name        string    `json:"name" bson:"name"`               // Name of the game mode
 	Description string    `json:"description" bson:"description"` // Description of the game mode
+	// Lobby holds mode-specific lobby creation parameters (Refs 2508-005).
+	Lobby LobbyParams `json:"lobby" bson:"lobby"`
 }
 
 func NewSearchGameModeByGameID(ctx context.Context, gameID string) common.Search {

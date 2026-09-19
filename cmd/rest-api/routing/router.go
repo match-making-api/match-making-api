@@ -78,11 +78,13 @@ func NewRouter(ctx context.Context, container container.Container) http.Handler 
 	r.HandleFunc("/game-modes", gameModeController.List(ctx)).Methods("GET")
 	r.HandleFunc("/game-modes", gameModeController.Create(ctx)).Methods("POST")
 	r.HandleFunc("/game-modes/{id}", gameModeController.Get(ctx)).Methods("GET")
+	r.HandleFunc("/game-modes/{id}/configuration", gameModeController.GetConfiguration(ctx)).Methods("GET")
 	r.HandleFunc("/game-modes/{id}", gameModeController.Update(ctx)).Methods("PUT", "PATCH")
 	r.HandleFunc("/game-modes/{id}", gameModeController.Delete(ctx)).Methods("DELETE")
 	resourceContextMiddleware.RegisterOperation("/game-modes", "match-making:game-modes:list")
 	resourceContextMiddleware.RegisterOperation("/game-modes", "match-making:game-modes:create")
 	resourceContextMiddleware.RegisterOperation("/game-modes/{id}", "match-making:game-modes:get")
+	resourceContextMiddleware.RegisterOperation("/game-modes/{id}/configuration", "match-making:game-modes:configuration")
 	resourceContextMiddleware.RegisterOperation("/game-modes/{id}", "match-making:game-modes:update")
 	resourceContextMiddleware.RegisterOperation("/game-modes/{id}", "match-making:game-modes:delete")
 

@@ -28,6 +28,7 @@ func Inject(c container.Container) error {
 		usecases.InjectGetGameModeByID,
 		usecases.InjectGetGameModes,
 		usecases.InjectSearchGameModes,
+		usecases.InjectResolveGameConfiguration,
 		// Region usecases
 		usecases.InjectCreateRegion,
 		usecases.InjectUpdateRegion,
