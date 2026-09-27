@@ -14,17 +14,102 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/leet-gaming/match-making-api/pkg/common"
 	"github.com/leet-gaming/match-making-api/pkg/domain/lobbies/entities"
+	lobbyuc "github.com/leet-gaming/match-making-api/pkg/domain/lobbies/usecase"
 	"github.com/leet-gaming/match-making-api/pkg/infra/db/mongodb"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type LobbyController struct {
-	repo *mongodb.LobbyRepository
+	repo   *mongodb.LobbyRepository
+	events lobbyuc.TournamentEventPublisher
 }
 
 func NewLobbyController(mongoClient *mongo.Client, dbName string) *LobbyController {
 	return &LobbyController{
 		repo: mongodb.NewLobbyRepository(mongoClient, dbName),
+	}
+}
+
+// SetTournamentEvents wires Kafka publishing for tournament lobby creation (Refs 2507-001).
+func (c *LobbyController) SetTournamentEvents(events lobbyuc.TournamentEventPublisher) {
+	c.events = events
+}
+
+// CreateTournamentLobbyRequest is the body for POST /api/lobbies/tournament.
+type CreateTournamentLobbyRequest struct {
+	TournamentID     string `json:"tournament_id"`
+	Name             string `json:"name"`
+	GameID           string `json:"game_id"`
+	Region           string `json:"region"`
+	MaxPlayers       int    `json:"max_players"`
+	DistributionRule string `json:"distribution_rule"`
+	AmountCents      int64  `json:"amount_cents"`
+	Currency         string `json:"currency,omitempty"`
+	CreationFeeCents int64  `json:"creation_fee_cents,omitempty"`
+}
+
+// CreateTournament creates a tournament lobby with a prize pool.
+// @Summary Create tournament lobby with prize pool
+// @Tags lobbies
+// @Accept json
+// @Produce json
+// @Param request body CreateTournamentLobbyRequest true "Tournament lobby"
+// @Success 201 {object} LobbyResponse
+// @Router /api/lobbies/tournament [post]
+func (c *LobbyController) CreateTournament(ctx context.Context) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		var req CreateTournamentLobbyRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(ErrorResponse{Error: "invalid_request", Message: "failed to parse request body"})
+			return
+		}
+		tournamentID, err := uuid.Parse(req.TournamentID)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(ErrorResponse{Error: "invalid_id", Message: "tournament_id must be a UUID"})
+			return
+		}
+		owner := common.GetResourceOwner(r.Context())
+		if user, ok := r.Context().Value(common.UserIDKey).(uuid.UUID); ok {
+			owner.UserID = user
+		}
+		if owner.UserID == uuid.Nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			json.NewEncoder(w).Encode(ErrorResponse{Error: "unauthorized", Message: "authentication required"})
+			return
+		}
+		if c.events == nil {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			json.NewEncoder(w).Encode(ErrorResponse{Error: "unavailable", Message: "event publisher is not configured"})
+			return
+		}
+		uc := &lobbyuc.CreateTournamentLobbyUseCase{Lobbies: c.repo, Events: c.events}
+		lobby, err := uc.Execute(r.Context(), lobbyuc.CreateTournamentLobbyCommand{
+			TournamentID:     tournamentID,
+			Name:             req.Name,
+			GameID:           req.GameID,
+			Region:           req.Region,
+			MaxPlayers:       req.MaxPlayers,
+			DistributionRule: req.DistributionRule,
+			AmountCents:      req.AmountCents,
+			Currency:         req.Currency,
+			CreationFeeCents: req.CreationFeeCents,
+			Owner:            owner,
+		})
+		if err != nil {
+			status := http.StatusBadRequest
+			if err == common.ErrMissingResourceOwnership {
+				status = http.StatusForbidden
+			}
+			slog.ErrorContext(r.Context(), "failed to create tournament lobby", "error", err)
+			w.WriteHeader(status)
+			json.NewEncoder(w).Encode(ErrorResponse{Error: "create_failed", Message: err.Error()})
+			return
+		}
+		w.WriteHeader(http.StatusCreated)
+		json.NewEncoder(w).Encode(LobbyResponse{Lobby: lobby})
 	}
 }
 

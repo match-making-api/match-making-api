@@ -10,6 +10,7 @@ import (
 	"github.com/leet-gaming/match-making-api/cmd/rest-api/controllers"
 	"github.com/leet-gaming/match-making-api/cmd/rest-api/middlewares"
 	"github.com/leet-gaming/match-making-api/pkg/infra/config"
+	"github.com/leet-gaming/match-making-api/pkg/infra/kafka"
 	httpSwagger "github.com/swaggo/http-swagger"
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -154,10 +155,17 @@ func NewRouter(ctx context.Context, container container.Container) http.Handler 
 	
 	if mongoClient != nil {
 		lobbyController := controllers.NewLobbyController(mongoClient, cfg.MongoDB.DBName)
-		
+		var eventPublisher *kafka.EventPublisher
+		if err := container.Resolve(&eventPublisher); err != nil {
+			slog.Warn("Kafka publisher not available for tournament lobby events", "error", err)
+		} else {
+			lobbyController.SetTournamentEvents(eventPublisher)
+		}
+
 		// Lobby CRUD
 		r.HandleFunc("/api/lobbies", lobbyController.List(ctx)).Methods("GET", "OPTIONS")
 		r.HandleFunc("/api/lobbies", lobbyController.Create(ctx)).Methods("POST", "OPTIONS")
+		r.HandleFunc("/api/lobbies/tournament", lobbyController.CreateTournament(ctx)).Methods("POST", "OPTIONS")
 		r.HandleFunc("/api/lobbies/featured", lobbyController.GetFeatured(ctx)).Methods("GET", "OPTIONS")
 		r.HandleFunc("/api/lobbies/stats", lobbyController.GetStats(ctx)).Methods("GET", "OPTIONS")
 		r.HandleFunc("/api/lobbies/seed", lobbyController.SeedDemoLobbies(ctx)).Methods("POST", "OPTIONS")
@@ -167,6 +175,7 @@ func NewRouter(ctx context.Context, container container.Container) http.Handler 
 		
 		resourceContextMiddleware.RegisterOperation("/api/lobbies", "match-making:lobbies:list")
 		resourceContextMiddleware.RegisterOperation("/api/lobbies", "match-making:lobbies:create")
+		resourceContextMiddleware.RegisterOperation("/api/lobbies/tournament", "match-making:lobbies:create-tournament")
 		resourceContextMiddleware.RegisterOperation("/api/lobbies/featured", "match-making:lobbies:featured")
 		resourceContextMiddleware.RegisterOperation("/api/lobbies/stats", "match-making:lobbies:stats")
 		resourceContextMiddleware.RegisterOperation("/api/lobbies/seed", "match-making:lobbies:seed")

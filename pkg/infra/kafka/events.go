@@ -83,6 +83,7 @@ const (
 	EventTypeLobbyReady         = "LOBBY_READY"
 	EventTypeLobbyCancelled     = "LOBBY_CANCELLED"
 	EventTypePrizePoolUpdated   = "PRIZE_POOL_UPDATED"
+	EventTypePrizePoolCreated   = "PRIZE_POOL_CREATED"
 	EventTypeMatchCreated       = "MATCH_CREATED"
 	EventTypeMatchStarted       = "MATCH_STARTED"
 	EventTypeMatchCompleted     = "MATCH_COMPLETED"
