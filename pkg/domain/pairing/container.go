@@ -11,7 +11,9 @@ import (
 	"github.com/leet-gaming/match-making-api/pkg/domain/pairing/usecases"
 	pairing_value_objects "github.com/leet-gaming/match-making-api/pkg/domain/pairing/value-objects"
 	schedules_in_ports "github.com/leet-gaming/match-making-api/pkg/domain/schedules/ports/in"
+	"github.com/leet-gaming/match-making-api/pkg/infra/billing"
 	"github.com/leet-gaming/match-making-api/pkg/infra/cache"
+	"github.com/leet-gaming/match-making-api/pkg/infra/config"
 	"github.com/leet-gaming/match-making-api/pkg/infra/kafka"
 	"github.com/redis/go-redis/v9"
 )
@@ -25,7 +27,7 @@ type mockPoolReader struct {
 func (m *mockPoolReader) FindPool(criteria *pairing_value_objects.Criteria) (*pairing_entities.Pool, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	
+
 	// Simple implementation - create a key based on criteria
 	key := ""
 	if criteria.GameID != nil {
@@ -34,7 +36,7 @@ func (m *mockPoolReader) FindPool(criteria *pairing_value_objects.Criteria) (*pa
 	if criteria.Region != nil {
 		key += "-" + criteria.Region.Slug
 	}
-	
+
 	if pool, exists := m.pools[key]; exists {
 		return pool, nil
 	}
@@ -49,11 +51,11 @@ type mockPoolWriter struct {
 func (m *mockPoolWriter) Save(pool *pairing_entities.Pool) (*pairing_entities.Pool, error) {
 	m.reader.mu.Lock()
 	defer m.reader.mu.Unlock()
-	
+
 	if m.reader.pools == nil {
 		m.reader.pools = make(map[string]*pairing_entities.Pool)
 	}
-	
+
 	// For now, use a simple key - in real implementation this would be based on criteria
 	// Since Pool doesn't store criteria, we'll use a default key for development
 	key := "default-pool"
@@ -123,8 +125,14 @@ func Inject(c container.Container) error {
 		poolWriter pairing_out.PoolWriter,
 		aqStore pairing_out.ActiveQueueStore,
 		serverAllocEnqueuer *usecases.ServerAllocationEnqueuerImpl,
+		cfg config.Config,
+		subClient billing.SubscriptionServiceClient,
 	) *usecases.MatchmakingEventConsumer {
-		return usecases.NewMatchmakingEventConsumer(addAndFindNextPair, eventPublisher, regionReader, poolReader, poolWriter, aqStore, serverAllocEnqueuer)
+		consumer := usecases.NewMatchmakingEventConsumer(addAndFindNextPair, eventPublisher, regionReader, poolReader, poolWriter, aqStore, serverAllocEnqueuer)
+		if cfg.Api.Subscription != "" && subClient != nil {
+			consumer.SetSubscriptionLookup(billing.NewQueueSubscriptionLookup(subClient))
+		}
+		return consumer
 	}); err != nil {
 		return err
 	}

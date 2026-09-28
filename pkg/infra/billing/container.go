@@ -2,6 +2,7 @@ package billing
 
 import (
 	"log/slog"
+	"strings"
 
 	"github.com/golobby/container/v3"
 	"github.com/leet-gaming/match-making-api/pkg/infra/config"
@@ -20,7 +21,10 @@ import (
 //   - An error if the injection process encounters any issues, or nil if successful.
 func Inject(c container.Container) error {
 	c.Singleton(func(config config.Config) (SubscriptionServiceClient, error) {
-		serverAddress := config.Api.Subscription
+		serverAddress := strings.TrimSpace(config.Api.Subscription)
+		if serverAddress == "" {
+			return nil, nil
+		}
 
 		conn, err := grpc.NewClient(serverAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
 
