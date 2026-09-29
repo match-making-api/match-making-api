@@ -160,6 +160,7 @@ func NewRouter(ctx context.Context, container container.Container) http.Handler 
 			slog.Error("Failed to resolve event publisher for tournament entry fee", "error", err)
 		} else {
 			lobbyController.SetEntryFeePublisher(eventPublisher)
+			lobbyController.SetJoinPublisher(eventPublisher)
 		}
 
 		// Lobby CRUD
