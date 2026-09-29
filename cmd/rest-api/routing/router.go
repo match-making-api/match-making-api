@@ -9,6 +9,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/leet-gaming/match-making-api/cmd/rest-api/controllers"
 	"github.com/leet-gaming/match-making-api/cmd/rest-api/middlewares"
+	pairingusecases "github.com/leet-gaming/match-making-api/pkg/domain/pairing/usecases"
 	"github.com/leet-gaming/match-making-api/pkg/infra/config"
 	"github.com/leet-gaming/match-making-api/pkg/infra/kafka"
 	httpSwagger "github.com/swaggo/http-swagger"
@@ -160,6 +161,11 @@ func NewRouter(ctx context.Context, container container.Container) http.Handler 
 			slog.Error("Failed to resolve event publisher for tournament entry fee", "error", err)
 		} else {
 			lobbyController.SetEntryFeePublisher(eventPublisher)
+			var handoff *pairingusecases.ServerAllocationEnqueuerImpl
+			if err := container.Resolve(&handoff); err != nil {
+				slog.Error("Failed to resolve server allocation handoff for tournament start", "error", err)
+			}
+			lobbyController.SetTournamentStart(eventPublisher, handoff)
 		}
 
 		// Lobby CRUD
@@ -171,6 +177,7 @@ func NewRouter(ctx context.Context, container container.Container) http.Handler 
 		r.HandleFunc("/api/lobbies/{id}", lobbyController.Get(ctx)).Methods("GET", "OPTIONS")
 		r.HandleFunc("/api/lobbies/{id}", lobbyController.Delete(ctx)).Methods("DELETE", "OPTIONS")
 		r.HandleFunc("/api/lobbies/{id}/join", lobbyController.Join(ctx)).Methods("POST", "OPTIONS")
+		r.HandleFunc("/api/lobbies/{id}/start-match", lobbyController.StartTournamentMatch(ctx)).Methods("POST", "OPTIONS")
 
 		resourceContextMiddleware.RegisterOperation("/api/lobbies", "match-making:lobbies:list")
 		resourceContextMiddleware.RegisterOperation("/api/lobbies", "match-making:lobbies:create")
