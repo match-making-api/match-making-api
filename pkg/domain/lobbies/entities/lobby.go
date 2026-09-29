@@ -23,34 +23,34 @@ const (
 type LobbyVisibility string
 
 const (
-	LobbyVisibilityPublic     LobbyVisibility = "public"      // Anyone can see and join
-	LobbyVisibilityPrivate    LobbyVisibility = "private"     // Invite only, hidden from browse
+	LobbyVisibilityPublic      LobbyVisibility = "public"      // Anyone can see and join
+	LobbyVisibilityPrivate     LobbyVisibility = "private"     // Invite only, hidden from browse
 	LobbyVisibilityMatchmaking LobbyVisibility = "matchmaking" // System managed, limited info shown
-	LobbyVisibilityFriends    LobbyVisibility = "friends"     // Only friends can see/join
+	LobbyVisibilityFriends     LobbyVisibility = "friends"     // Only friends can see/join
 )
 
 // LobbyType defines the type of lobby
 type LobbyType string
 
 const (
-	LobbyTypeCustom      LobbyType = "custom"      // Player-created custom lobby
-	LobbyTypeRanked      LobbyType = "ranked"      // Ranked competitive
-	LobbyTypeCasual      LobbyType = "casual"      // Casual unranked
-	LobbyTypeTournament  LobbyType = "tournament"  // Tournament match
-	LobbyTypePractice    LobbyType = "practice"    // Practice/scrimmage
+	LobbyTypeCustom     LobbyType = "custom"     // Player-created custom lobby
+	LobbyTypeRanked     LobbyType = "ranked"     // Ranked competitive
+	LobbyTypeCasual     LobbyType = "casual"     // Casual unranked
+	LobbyTypeTournament LobbyType = "tournament" // Tournament match
+	LobbyTypePractice   LobbyType = "practice"   // Practice/scrimmage
 )
 
 // PlayerSlot represents a player position in the lobby
 type PlayerSlot struct {
-	SlotNumber  int       `json:"slot_number" bson:"slot_number"`
+	SlotNumber  int        `json:"slot_number" bson:"slot_number"`
 	PlayerID    *uuid.UUID `json:"player_id,omitempty" bson:"player_id,omitempty"`
-	PlayerName  string    `json:"player_name,omitempty" bson:"player_name,omitempty"`
-	IsReady     bool      `json:"is_ready" bson:"is_ready"`
-	JoinedAt    time.Time `json:"joined_at" bson:"joined_at"`
-	MMR         int       `json:"mmr,omitempty" bson:"mmr,omitempty"`
-	Rank        string    `json:"rank,omitempty" bson:"rank,omitempty"`
-	Team        int       `json:"team" bson:"team"` // 0=unassigned, 1=team1, 2=team2
-	IsSpectator bool      `json:"is_spectator" bson:"is_spectator"`
+	PlayerName  string     `json:"player_name,omitempty" bson:"player_name,omitempty"`
+	IsReady     bool       `json:"is_ready" bson:"is_ready"`
+	JoinedAt    time.Time  `json:"joined_at" bson:"joined_at"`
+	MMR         int        `json:"mmr,omitempty" bson:"mmr,omitempty"`
+	Rank        string     `json:"rank,omitempty" bson:"rank,omitempty"`
+	Team        int        `json:"team" bson:"team"` // 0=unassigned, 1=team1, 2=team2
+	IsSpectator bool       `json:"is_spectator" bson:"is_spectator"`
 }
 
 // SkillRange defines MMR boundaries for matchmaking
@@ -59,11 +59,18 @@ type SkillRange struct {
 	MaxMMR int `json:"max_mmr" bson:"max_mmr"`
 }
 
+// Prize pool lifecycle. Wallet still executes transfers.
+const (
+	PrizePoolStatusOpen   = "open"
+	PrizePoolStatusLocked = "locked"
+)
+
 // PrizePoolConfig holds entry fee and distribution settings
 type PrizePoolConfig struct {
 	EntryFeeCents    int    `json:"entry_fee_cents" bson:"entry_fee_cents"`
 	PrizePoolID      string `json:"prize_pool_id,omitempty" bson:"prize_pool_id,omitempty"`
 	DistributionRule string `json:"distribution_rule" bson:"distribution_rule"` // winner_takes_all, top_3, etc.
+	Status           string `json:"status,omitempty" bson:"status,omitempty"`
 }
 
 // QueueStats holds information about players waiting (for matchmaking visibility)
@@ -98,10 +105,10 @@ type Lobby struct {
 	Tags        []string        `json:"tags,omitempty" bson:"tags,omitempty"`
 
 	// Player Configuration
-	MaxPlayers        int  `json:"max_players" bson:"max_players"`
-	MinPlayers        int  `json:"min_players" bson:"min_players"`
+	MaxPlayers         int  `json:"max_players" bson:"max_players"`
+	MinPlayers         int  `json:"min_players" bson:"min_players"`
 	RequiresReadyCheck bool `json:"requires_ready_check" bson:"requires_ready_check"`
-	AllowSpectators   bool `json:"allow_spectators" bson:"allow_spectators"`
+	AllowSpectators    bool `json:"allow_spectators" bson:"allow_spectators"`
 	AllowCrossPlatform bool `json:"allow_cross_platform" bson:"allow_cross_platform"`
 
 	// Players
@@ -114,6 +121,8 @@ type Lobby struct {
 
 	// Prize Pool
 	PrizePool *PrizePoolConfig `json:"prize_pool,omitempty" bson:"prize_pool,omitempty"`
+	// Bracket is the single-elimination slate for a tournament lobby.
+	Bracket *Bracket `json:"bracket,omitempty" bson:"bracket,omitempty"`
 
 	// Status & Timing
 	Status      LobbyStatus `json:"status" bson:"status"`
@@ -124,7 +133,7 @@ type Lobby struct {
 	CompletedAt *time.Time  `json:"completed_at,omitempty" bson:"completed_at,omitempty"`
 
 	// Match Result
-	MatchID        *uuid.UUID  `json:"match_id,omitempty" bson:"match_id,omitempty"`
+	MatchID         *uuid.UUID  `json:"match_id,omitempty" bson:"match_id,omitempty"`
 	WinnerPlayerIDs []uuid.UUID `json:"winner_player_ids,omitempty" bson:"winner_player_ids,omitempty"`
 
 	// Queue Stats (for matchmaking type lobbies)
@@ -209,7 +218,7 @@ func (l *Lobby) HasPlayer(playerID uuid.UUID) bool {
 // GetPublicView returns a sanitized view for public/matchmaking lobbies
 func (l *Lobby) GetPublicView() *Lobby {
 	public := *l
-	
+
 	// For matchmaking lobbies, hide player details
 	if l.Visibility == LobbyVisibilityMatchmaking {
 		for i := range public.PlayerSlots {
@@ -217,6 +226,6 @@ func (l *Lobby) GetPublicView() *Lobby {
 			public.PlayerSlots[i].MMR = 0
 		}
 	}
-	
+
 	return &public
 }
