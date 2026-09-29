@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -17,6 +18,7 @@ import (
 	lobbyusecase "github.com/leet-gaming/match-making-api/pkg/domain/lobbies/usecase"
 	"github.com/leet-gaming/match-making-api/pkg/infra/db/mongodb"
 	"github.com/leet-gaming/match-making-api/pkg/infra/events/schemas"
+	"github.com/leet-gaming/match-making-api/pkg/infra/kafka"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -26,8 +28,8 @@ type ChargeablePublisher interface {
 }
 
 type LobbyController struct {
-	repo              *mongodb.LobbyRepository
-	entryFeePublisher ChargeablePublisher
+	repo          *mongodb.LobbyRepository
+	joinPublisher lobbyusecase.TournamentJoinPublisher
 }
 
 func NewLobbyController(mongoClient *mongo.Client, dbName string) *LobbyController {
@@ -42,6 +44,44 @@ func (c *LobbyController) SetEntryFeePublisher(publisher ChargeablePublisher) {
 		return
 	}
 	c.entryFeePublisher = publisher
+}
+
+// SetJoinPublisher attaches the Kafka publisher for PlayerJoinedTournament and the entry fee.
+func (c *LobbyController) SetJoinPublisher(publisher interface {
+	PublishChargeableOperationRequested(ctx context.Context, event *schemas.ChargeableOperationEvent) error
+	PublishLobbyEvent(ctx context.Context, event *kafka.LobbyEvent) error
+}) {
+	if c == nil || publisher == nil {
+		return
+	}
+	c.joinPublisher = joinEventAdapter{pub: publisher}
+}
+
+type joinEventAdapter struct {
+	pub interface {
+		PublishChargeableOperationRequested(ctx context.Context, event *schemas.ChargeableOperationEvent) error
+		PublishLobbyEvent(ctx context.Context, event *kafka.LobbyEvent) error
+	}
+}
+
+func (a joinEventAdapter) PublishChargeableOperationRequested(ctx context.Context, event *schemas.ChargeableOperationEvent) error {
+	return a.pub.PublishChargeableOperationRequested(ctx, event)
+}
+
+func (a joinEventAdapter) PublishPlayerJoinedTournament(ctx context.Context, notice lobbyusecase.PlayerJoinedNotice) error {
+	return a.pub.PublishLobbyEvent(ctx, &kafka.LobbyEvent{
+		LobbyID:   notice.LobbyID,
+		EventType: kafka.EventTypePlayerJoinedTournament,
+		PlayerIDs: []uuid.UUID{notice.PlayerID},
+		GameType:  notice.GameType,
+		Region:    notice.Region,
+		Metadata: map[string]string{
+			"status":            notice.Status,
+			"tenant_id":         notice.TenantID,
+			"client_id":         notice.ClientID,
+			"resource_owner_id": notice.ResourceOwnerID,
+		},
+	})
 }
 
 // CreateLobbyRequest represents the request to create a lobby
@@ -379,7 +419,8 @@ type JoinLobbyResponse struct {
 }
 
 // Join allows a player to join a lobby
-// @Summary Join a lobby
+// @Summary Join a lobby or tournament
+// Tournament lobbies publish the entry-fee event, then PlayerJoinedTournament.
 // @Tags lobbies
 // @Accept json
 // @Produce json
@@ -423,6 +464,11 @@ func (c *LobbyController) Join(ctx context.Context) http.HandlerFunc {
 				Error:   "not_found",
 				Message: "lobby not found",
 			})
+			return
+		}
+
+		if lobby.Type == entities.LobbyTypeTournament {
+			c.joinTournament(w, r, lobby.ID, playerID, req)
 			return
 		}
 
@@ -516,6 +562,59 @@ func (c *LobbyController) publishTournamentEntryFee(ctx context.Context, lobby *
 		"tournament_id", in.TournamentID,
 		"amount_cents", event.ChargeableOperationRequested.AmountCents,
 		"idempotency_key", event.ChargeableOperationRequested.IdempotencyKey)
+}
+
+// joinTournament seats a player via JoinTournamentUseCase.
+func (c *LobbyController) joinTournament(w http.ResponseWriter, r *http.Request, lobbyID, playerID uuid.UUID, req JoinLobbyRequest) {
+	caller := common.ResourceOwner{}
+	if tid, ok := r.Context().Value(common.TenantIDKey).(uuid.UUID); ok {
+		caller.TenantID = tid
+	}
+	if cid, ok := r.Context().Value(common.ClientIDKey).(uuid.UUID); ok {
+		caller.ClientID = cid
+	}
+	if uid, ok := r.Context().Value(common.UserIDKey).(uuid.UUID); ok {
+		caller.UserID = uid
+	}
+	correlationID, _ := r.Context().Value(common.RequestIDKey).(string)
+	uc := lobbyusecase.NewJoinTournamentUseCase(c.repo, c.joinPublisher)
+	lobby, slot, err := uc.Execute(r.Context(), lobbyusecase.JoinTournamentInput{
+		LobbyID:       lobbyID,
+		PlayerID:      playerID,
+		Caller:        caller,
+		PlayerMMR:     req.PlayerMMR,
+		PlayerRank:    req.PlayerRank,
+		CorrelationID: correlationID,
+	})
+	if err != nil {
+		status := http.StatusInternalServerError
+		code := "join_failed"
+		switch {
+		case errors.Is(err, lobbyusecase.ErrAlreadyJoined):
+			status = http.StatusBadRequest
+			code = "already_joined"
+		case errors.Is(err, lobbyusecase.ErrLobbyFull):
+			status = http.StatusBadRequest
+			code = "lobby_full"
+		case errors.Is(err, lobbyusecase.ErrTournamentClosed):
+			status = http.StatusBadRequest
+			code = "tournament_closed"
+		case errors.Is(err, lobbyusecase.ErrTournamentForbidden), errors.Is(err, common.ErrMissingResourceOwnership):
+			status = http.StatusForbidden
+			code = "forbidden"
+		case slot != nil:
+			status = http.StatusServiceUnavailable
+			code = "event_publish_failed"
+		default:
+			status = http.StatusServiceUnavailable
+			code = "join_failed"
+		}
+		w.WriteHeader(status)
+		json.NewEncoder(w).Encode(ErrorResponse{Error: code, Message: err.Error()})
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(JoinLobbyResponse{Lobby: lobby, AssignedSlot: slot})
 }
 
 // GetStats retrieves lobby statistics
