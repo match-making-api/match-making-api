@@ -11,23 +11,11 @@ import (
 )
 
 var (
-	// ErrNotATournament is returned when the lobby is not a tournament.
-	ErrNotATournament = errors.New("not a tournament lobby")
-	// ErrTournamentClosed is returned when the lobby is not open.
-	ErrTournamentClosed = errors.New("tournament closed")
-	// ErrTournamentForbidden is returned when the caller tenant/client does not own the lobby.
-	ErrTournamentForbidden = errors.New("tournament forbidden")
 	// ErrNotEnoughPlayers is returned when a tournament match cannot be paired.
 	ErrNotEnoughPlayers = errors.New("not enough players")
 	// ErrMatchAlreadyStarted is returned when the lobby match is already in progress.
 	ErrMatchAlreadyStarted = errors.New("match already started")
 )
-
-// TournamentLobbyStore loads and saves lobbies.
-type TournamentLobbyStore interface {
-	GetByID(ctx context.Context, id uuid.UUID) (*entities.Lobby, error)
-	Update(ctx context.Context, lobby *entities.Lobby) error
-}
 
 // PrizePoolLockedNotice is published when a tournament match locks the pool.
 type PrizePoolLockedNotice struct {
