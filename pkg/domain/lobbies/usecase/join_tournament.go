@@ -12,23 +12,11 @@ import (
 )
 
 var (
-	// ErrNotATournament is returned when join is asked for a non-tournament lobby.
-	ErrNotATournament = errors.New("not a tournament lobby")
-	// ErrTournamentClosed is returned when the lobby is not open.
-	ErrTournamentClosed = errors.New("tournament closed")
 	// ErrLobbyFull is returned when the roster has no free slot.
 	ErrLobbyFull = errors.New("lobby full")
 	// ErrAlreadyJoined is returned when the player is already seated. No events are published.
 	ErrAlreadyJoined = errors.New("already joined")
-	// ErrTournamentForbidden is returned when the caller tenant/client does not own the lobby.
-	ErrTournamentForbidden = errors.New("tournament forbidden")
 )
-
-// TournamentLobbyStore loads and saves lobbies.
-type TournamentLobbyStore interface {
-	GetByID(ctx context.Context, id uuid.UUID) (*entities.Lobby, error)
-	Update(ctx context.Context, lobby *entities.Lobby) error
-}
 
 // PlayerJoinedNotice is the PlayerJoinedTournament payload on matchmaking.lobby.events.
 type PlayerJoinedNotice struct {
