@@ -13,18 +13,18 @@ import (
 
 // Topic constants for matchmaking events
 const (
-	TopicQueueEvents        = "matchmaking.queue.events"
-	TopicLobbyEvents        = "matchmaking.lobby.events"
-	TopicPrizePoolEvents    = "matchmaking.prizepool.events"
-	TopicMatchesCreated     = "matchmaking.matches.created"
-	TopicMatchesResults     = "matchmaking.matches.results"
-	TopicPlayerStatus       = "matchmaking.player-status"
-	TopicWebSocketBroadcast = "websocket.broadcasts"
-	TopicDLQ                = "matchmaking.dlq"
-	TopicReadyCheck         = "matchmaking.ready-check"      // Ready check lifecycle events
-	TopicNotificationDelivery    = "notifications.delivery"    // Notification delivery commands
+	TopicQueueEvents             = "matchmaking.queue.events"
+	TopicLobbyEvents             = "matchmaking.lobby.events"
+	TopicPrizePoolEvents         = "matchmaking.prizepool.events"
+	TopicMatchesCreated          = "matchmaking.matches.created"
+	TopicMatchesResults          = "matchmaking.matches.results"
+	TopicPlayerStatus            = "matchmaking.player-status"
+	TopicWebSocketBroadcast      = "websocket.broadcasts"
+	TopicDLQ                     = "matchmaking.dlq"
+	TopicReadyCheck              = "matchmaking.ready-check"    // Ready check lifecycle events
+	TopicNotificationDelivery    = "notifications.delivery"     // Notification delivery commands
 	TopicNotificationDeliveryDLQ = "notifications.delivery.dlq" // Failed notification delivery
-	TopicNotificationStatus      = "notifications.status"      // Delivery status updates
+	TopicNotificationStatus      = "notifications.status"       // Delivery status updates
 
 	// TopicMatchmakingCommands is the topic for canonical protobuf/CloudEvents commands
 	// from replay-api (e.g. PlayerQueued). Consumed by match-making-api.
@@ -78,6 +78,7 @@ const (
 	EventTypeLobbyCreated       = "LOBBY_CREATED"
 	EventTypeLobbyUpdated       = "LOBBY_UPDATED"
 	EventTypePlayerJoined       = "PLAYER_JOINED"
+	EventTypeLobbyStatusChanged = "LOBBY_STATUS_CHANGED"
 	EventTypePlayerLeft         = "PLAYER_LEFT"
 	EventTypeReadyStatusChanged = "READY_STATUS_CHANGED"
 	EventTypeLobbyReady         = "LOBBY_READY"
@@ -158,15 +159,19 @@ func (p *EventPublisher) PublishQueueEvent(ctx context.Context, event *QueueEven
 
 // LobbyEvent represents a lobby lifecycle event
 type LobbyEvent struct {
-	EventID   uuid.UUID         `json:"event_id"`
-	LobbyID   uuid.UUID         `json:"lobby_id"`
-	EventType string            `json:"event_type"`
-	PlayerIDs []uuid.UUID       `json:"player_ids,omitempty"`
-	GameType  string            `json:"game_type"`
-	Region    string            `json:"region"`
-	AvgMMR    int               `json:"avg_mmr"`
-	CreatedAt int64             `json:"created_at"`
-	Metadata  map[string]string `json:"metadata,omitempty"`
+	EventID         uuid.UUID         `json:"event_id"`
+	LobbyID         uuid.UUID         `json:"lobby_id"`
+	EventType       string            `json:"event_type"`
+	PlayerIDs       []uuid.UUID       `json:"player_ids,omitempty"`
+	GameType        string            `json:"game_type"`
+	Region          string            `json:"region"`
+	AvgMMR          int               `json:"avg_mmr"`
+	Status          string            `json:"status,omitempty"`
+	ResourceOwnerID string            `json:"resource_owner_id,omitempty"`
+	TenantID        string            `json:"tenant_id,omitempty"`
+	ClientID        string            `json:"client_id,omitempty"`
+	CreatedAt       int64             `json:"created_at"`
+	Metadata        map[string]string `json:"metadata,omitempty"`
 }
 
 // PublishLobbyEvent publishes a lobby event
@@ -191,16 +196,16 @@ func (p *EventPublisher) PublishLobbyEvent(ctx context.Context, event *LobbyEven
 
 // PrizePoolEvent represents a prize pool update event
 type PrizePoolEvent struct {
-	EventID        uuid.UUID         `json:"event_id"`
-	PoolID         uuid.UUID         `json:"pool_id"`
-	LobbyID        uuid.UUID         `json:"lobby_id"`
-	EventType      string            `json:"event_type"`
-	TotalAmount    int64             `json:"total_amount"`
-	Currency       string            `json:"currency"`
-	ContributorID  *uuid.UUID        `json:"contributor_id,omitempty"`
-	ContributionAmt int64            `json:"contribution_amount,omitempty"`
-	Timestamp      int64             `json:"timestamp"`
-	Metadata       map[string]string `json:"metadata,omitempty"`
+	EventID         uuid.UUID         `json:"event_id"`
+	PoolID          uuid.UUID         `json:"pool_id"`
+	LobbyID         uuid.UUID         `json:"lobby_id"`
+	EventType       string            `json:"event_type"`
+	TotalAmount     int64             `json:"total_amount"`
+	Currency        string            `json:"currency"`
+	ContributorID   *uuid.UUID        `json:"contributor_id,omitempty"`
+	ContributionAmt int64             `json:"contribution_amount,omitempty"`
+	Timestamp       int64             `json:"timestamp"`
+	Metadata        map[string]string `json:"metadata,omitempty"`
 }
 
 // PublishPrizePoolEvent publishes a prize pool event
@@ -248,22 +253,22 @@ type TeamInfo struct {
 
 // MatchResult contains match outcome details
 type MatchResult struct {
-	WinnerTeamID  *uuid.UUID        `json:"winner_team_id,omitempty"`
-	IsDraw        bool              `json:"is_draw"`
-	Scores        map[string]int    `json:"scores"` // team_id -> score
-	Duration      int64             `json:"duration_seconds"`
-	PlayerStats   []PlayerMatchStat `json:"player_stats,omitempty"`
-	CompletedAt   int64             `json:"completed_at"`
+	WinnerTeamID *uuid.UUID        `json:"winner_team_id,omitempty"`
+	IsDraw       bool              `json:"is_draw"`
+	Scores       map[string]int    `json:"scores"` // team_id -> score
+	Duration     int64             `json:"duration_seconds"`
+	PlayerStats  []PlayerMatchStat `json:"player_stats,omitempty"`
+	CompletedAt  int64             `json:"completed_at"`
 }
 
 // PlayerMatchStat contains individual player performance
 type PlayerMatchStat struct {
-	PlayerID uuid.UUID `json:"player_id"`
-	Kills    int       `json:"kills"`
-	Deaths   int       `json:"deaths"`
-	Assists  int       `json:"assists"`
-	Score    int       `json:"score"`
-	MMRChange int      `json:"mmr_change"`
+	PlayerID  uuid.UUID `json:"player_id"`
+	Kills     int       `json:"kills"`
+	Deaths    int       `json:"deaths"`
+	Assists   int       `json:"assists"`
+	Score     int       `json:"score"`
+	MMRChange int       `json:"mmr_change"`
 }
 
 // PublishPlayerQueueConfirmed publishes a PlayerQueueConfirmed event (match-making-api → replay-api).
@@ -563,15 +568,15 @@ func (p *EventPublisher) PublishToDLQ(ctx context.Context, originalTopic string,
 
 // ReadyCheckEvent represents a readiness confirmation lifecycle event
 type ReadyCheckEvent struct {
-	EventID            uuid.UUID                                          `json:"event_id"`
-	LobbyID            uuid.UUID                                          `json:"lobby_id"`
-	PlayerID           *uuid.UUID                                         `json:"player_id,omitempty"`
-	EventType          string                                             `json:"event_type"`
-	PlayerIDs          []uuid.UUID                                        `json:"player_ids,omitempty"`
-	Summary            interface{}                                        `json:"summary,omitempty"`
-	GameConnectionInfo interface{}                                        `json:"game_connection_info,omitempty"`
-	Timestamp          int64                                              `json:"timestamp"`
-	Metadata           map[string]string                                  `json:"metadata,omitempty"`
+	EventID            uuid.UUID         `json:"event_id"`
+	LobbyID            uuid.UUID         `json:"lobby_id"`
+	PlayerID           *uuid.UUID        `json:"player_id,omitempty"`
+	EventType          string            `json:"event_type"`
+	PlayerIDs          []uuid.UUID       `json:"player_ids,omitempty"`
+	Summary            interface{}       `json:"summary,omitempty"`
+	GameConnectionInfo interface{}       `json:"game_connection_info,omitempty"`
+	Timestamp          int64             `json:"timestamp"`
+	Metadata           map[string]string `json:"metadata,omitempty"`
 }
 
 // PublishReadyCheckEvent publishes a ready check lifecycle event
