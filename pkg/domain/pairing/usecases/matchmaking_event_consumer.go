@@ -12,6 +12,7 @@ import (
 	pairing_entities "github.com/leet-gaming/match-making-api/pkg/domain/pairing/entities"
 	"github.com/leet-gaming/match-making-api/pkg/domain/pairing/mapping"
 	pairing_out "github.com/leet-gaming/match-making-api/pkg/domain/pairing/ports/out"
+	"github.com/leet-gaming/match-making-api/pkg/domain/pairing/subscription"
 	pairing_value_objects "github.com/leet-gaming/match-making-api/pkg/domain/pairing/value-objects"
 	"github.com/leet-gaming/match-making-api/pkg/infra/events/schemas"
 	"github.com/leet-gaming/match-making-api/pkg/infra/kafka"
@@ -46,6 +47,32 @@ type MatchmakingEventConsumer struct {
 	poolWriter               pairing_out.PoolWriter
 	activeQueueStore         pairing_out.ActiveQueueStore
 	serverAllocationEnqueuer ServerAllocationEnqueuer // Optional: queue for server (#queue-for-server)
+	subscriptionLookup       SubscriptionLookup       // Optional read-only subscription reader (2506-001)
+}
+
+// SubscriptionLookup reads a player's subscription. It must not update usage or execute billing.
+type SubscriptionLookup interface {
+	Lookup(ctx context.Context, userID string) (*subscription.Snapshot, error)
+}
+
+// SetSubscriptionLookup attaches a read-only subscription reader used before pool insert.
+func (c *MatchmakingEventConsumer) SetSubscriptionLookup(lookup SubscriptionLookup) {
+	if c == nil {
+		return
+	}
+	c.subscriptionLookup = lookup
+}
+
+// gateQueueJoin checks tier and usage limits. It does not update subscription usage.
+func (c *MatchmakingEventConsumer) gateQueueJoin(ctx context.Context, playerID string, priorityBoost bool) error {
+	if c == nil || c.subscriptionLookup == nil {
+		return subscription.CheckQueueJoin(nil, priorityBoost)
+	}
+	snap, err := c.subscriptionLookup.Lookup(ctx, playerID)
+	if err != nil {
+		return err
+	}
+	return subscription.CheckQueueJoin(snap, priorityBoost)
 }
 
 // NewMatchmakingEventConsumer creates a new consumer for matchmaking events
@@ -138,12 +165,12 @@ func (c *MatchmakingEventConsumer) handleQueueJoined(ctx context.Context, event 
 		return fmt.Errorf("region not found: %s", event.Region)
 	}
 	region := regions[0]
-	
+
 	payload := FindPairPayload{
 		PartyID: event.PlayerID,
 		Criteria: pairing_value_objects.Criteria{
-			GameID: &gameID,
-			Region: region,
+			GameID:   &gameID,
+			Region:   region,
 			PairSize: 2, // Default to 1v1 for now
 			SkillRange: &pairing_value_objects.SkillRange{
 				MinMMR: event.MMR - 200,
@@ -404,6 +431,15 @@ func (c *MatchmakingEventConsumer) HandlePlayerQueuedProto(ctx context.Context, 
 		return fmt.Errorf("invalid game_id: %w", err)
 	}
 
+	// Subscription tier and usage (read-only). Reject before pool insert (Refs 2506-001).
+	if err := c.gateQueueJoin(ctx, playerID.String(), payload.GetPriorityBoost() > 0); err != nil {
+		slog.WarnContext(ctx, "Queue join rejected by subscription check",
+			"player_id", playerID,
+			"error", err,
+			"event_id", envelope.GetId())
+		return err
+	}
+
 	// Lookup region by slug
 	regions, err := c.regionReader.Search(ctx, map[string]interface{}{"slug": payload.GetRegion()})
 	if err != nil {
@@ -615,13 +651,13 @@ func (c *MatchmakingEventConsumer) publishMatchCreatedProto(
 		Envelope: &schemas.EventEnvelope{
 			Id:                uuid.New().String(),
 			Type:              schemas.EventTypeMatchCreated,
-			Source:             "match-making-api",
-			Specversion:        schemas.CloudEventsSpecVersion,
-			Time:               timestamppb.Now(),
-			Subject:            pair.ID.String(),
-			ResourceOwnerId:    envelope.GetResourceOwnerId(),
-			CorrelationId:      envelope.GetCorrelationId(),
-			DataschemaVersion:  schemas.SchemaVersionV1,
+			Source:            "match-making-api",
+			Specversion:       schemas.CloudEventsSpecVersion,
+			Time:              timestamppb.Now(),
+			Subject:           pair.ID.String(),
+			ResourceOwnerId:   envelope.GetResourceOwnerId(),
+			CorrelationId:     envelope.GetCorrelationId(),
+			DataschemaVersion: schemas.SchemaVersionV1,
 		},
 		Data: &schemas.MatchmakingEvent_MatchCreated{
 			MatchCreated: &schemas.MatchCreatedPayload{
@@ -652,24 +688,24 @@ func (c *MatchmakingEventConsumer) publishPlayerQueueConfirmed(
 		Envelope: &schemas.EventEnvelope{
 			Id:                uuid.New().String(),
 			Type:              schemas.EventTypePlayerQueueConfirmed,
-			Source:             "match-making-api",
-			Specversion:        schemas.CloudEventsSpecVersion,
-			Time:               timestamppb.Now(),
-			Subject:            playerID.String(),
-			ResourceOwnerId:    envelope.GetResourceOwnerId(),
-			CorrelationId:      envelope.GetCorrelationId(),
-			DataschemaVersion:  schemas.SchemaVersionV1,
+			Source:            "match-making-api",
+			Specversion:       schemas.CloudEventsSpecVersion,
+			Time:              timestamppb.Now(),
+			Subject:           playerID.String(),
+			ResourceOwnerId:   envelope.GetResourceOwnerId(),
+			CorrelationId:     envelope.GetCorrelationId(),
+			DataschemaVersion: schemas.SchemaVersionV1,
 		},
 		Data: &schemas.MatchmakingEvent_PlayerQueueConfirmed{
 			PlayerQueueConfirmed: &schemas.PlayerQueueConfirmedPayload{
-				PlayerId:         playerID.String(),
-				GameId:           payload.GetGameId(),
-				Region:           payload.GetRegion(),
-				Position:         int32(position),
-				EtaSeconds:       etaSeconds,
-				TenantId:         payload.GetTenantId(),
-				ClientId:         payload.GetClientId(),
-				ResourceOwnerId:  envelope.GetResourceOwnerId(),
+				PlayerId:        playerID.String(),
+				GameId:          payload.GetGameId(),
+				Region:          payload.GetRegion(),
+				Position:        int32(position),
+				EtaSeconds:      etaSeconds,
+				TenantId:        payload.GetTenantId(),
+				ClientId:        payload.GetClientId(),
+				ResourceOwnerId: envelope.GetResourceOwnerId(),
 			},
 		},
 	}
