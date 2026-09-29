@@ -51,6 +51,16 @@ Amount: `PRIORITY_BOOST_AMOUNT_CENTS` env (default **100**). If `priority_boost 
 
 Headers: `ce_type=ChargeableOperationRequested`, `ce_source=match-making-api`.
 
+## When published (tournament entry)
+
+| Condition | Publish? |
+|-----------|----------|
+| Lobby type is not `tournament` | **No** |
+| Tournament `entry_fee_cents` absent or `<= 0` | **No** |
+| Tournament join saved with `entry_fee_cents > 0` | **Yes** (`operation_type=tournament_entry`) |
+
+`tournament_id` is the lobby id. Idempotency key: `tournament_entry:<player_id>:<tournament_id>`. Details: `.docs/TOURNAMENT_ENTRY_FEE.md`.
+
 ## Idempotency
 
 Wallet MUST treat `idempotency_key` as unique. Retries of the same PlayerQueued (same correlation) must not double-charge.

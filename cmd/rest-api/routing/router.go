@@ -10,6 +10,7 @@ import (
 	"github.com/leet-gaming/match-making-api/cmd/rest-api/controllers"
 	"github.com/leet-gaming/match-making-api/cmd/rest-api/middlewares"
 	"github.com/leet-gaming/match-making-api/pkg/infra/config"
+	"github.com/leet-gaming/match-making-api/pkg/infra/kafka"
 	httpSwagger "github.com/swaggo/http-swagger"
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -151,10 +152,16 @@ func NewRouter(ctx context.Context, container container.Container) http.Handler 
 	if err := container.Resolve(&cfg); err != nil {
 		slog.Error("Failed to resolve config for lobbies", "error", err)
 	}
-	
+
 	if mongoClient != nil {
 		lobbyController := controllers.NewLobbyController(mongoClient, cfg.MongoDB.DBName)
-		
+		var eventPublisher *kafka.EventPublisher
+		if err := container.Resolve(&eventPublisher); err != nil {
+			slog.Error("Failed to resolve event publisher for tournament entry fee", "error", err)
+		} else {
+			lobbyController.SetEntryFeePublisher(eventPublisher)
+		}
+
 		// Lobby CRUD
 		r.HandleFunc("/api/lobbies", lobbyController.List(ctx)).Methods("GET", "OPTIONS")
 		r.HandleFunc("/api/lobbies", lobbyController.Create(ctx)).Methods("POST", "OPTIONS")
@@ -164,7 +171,7 @@ func NewRouter(ctx context.Context, container container.Container) http.Handler 
 		r.HandleFunc("/api/lobbies/{id}", lobbyController.Get(ctx)).Methods("GET", "OPTIONS")
 		r.HandleFunc("/api/lobbies/{id}", lobbyController.Delete(ctx)).Methods("DELETE", "OPTIONS")
 		r.HandleFunc("/api/lobbies/{id}/join", lobbyController.Join(ctx)).Methods("POST", "OPTIONS")
-		
+
 		resourceContextMiddleware.RegisterOperation("/api/lobbies", "match-making:lobbies:list")
 		resourceContextMiddleware.RegisterOperation("/api/lobbies", "match-making:lobbies:create")
 		resourceContextMiddleware.RegisterOperation("/api/lobbies/featured", "match-making:lobbies:featured")
@@ -173,7 +180,7 @@ func NewRouter(ctx context.Context, container container.Container) http.Handler 
 		resourceContextMiddleware.RegisterOperation("/api/lobbies/{id}", "match-making:lobbies:get")
 		resourceContextMiddleware.RegisterOperation("/api/lobbies/{id}", "match-making:lobbies:delete")
 		resourceContextMiddleware.RegisterOperation("/api/lobbies/{id}/join", "match-making:lobbies:join")
-		
+
 		// Readiness confirmation / commitment routes
 		r.HandleFunc("/api/lobbies/{lobby_id}/commitments", commitmentController.GetCommitmentSummary(ctx)).Methods("GET", "OPTIONS")
 		r.HandleFunc("/api/lobbies/{lobby_id}/commitments/confirm", commitmentController.ConfirmReadiness(ctx)).Methods("POST", "OPTIONS")

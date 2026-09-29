@@ -15,6 +15,7 @@ type ChargeableOperationRequestedPayload struct {
 	ClientID        string `json:"client_id"`
 	GameID          string `json:"game_id"`
 	Region          string `json:"region"`
+	TournamentID    string `json:"tournament_id,omitempty"`
 	CorrelationID   string `json:"correlation_id"`
 	IdempotencyKey  string `json:"idempotency_key"`
 	RequestedAtMs   int64  `json:"requested_at_epoch_ms"`
@@ -30,14 +31,14 @@ const (
 // ChargeableOperationEvent is the CloudEvents-shaped JSON published to Kafka
 // until ChargeableOperationRequested is wired into the generated MatchmakingEvent oneof.
 type ChargeableOperationEvent struct {
-	ID                 string                              `json:"id"`
-	Type               string                              `json:"type"`
-	Source             string                              `json:"source"`
-	SpecVersion        string                              `json:"specversion"`
-	TimeUnixMs         int64                               `json:"time_unix_ms"`
-	Subject            string                              `json:"subject"`
-	ResourceOwnerID    string                              `json:"resource_owner_id"`
-	CorrelationID      string                              `json:"correlation_id"`
-	DataschemaVersion  int32                               `json:"dataschema_version"`
+	ID                           string                               `json:"id"`
+	Type                         string                               `json:"type"`
+	Source                       string                               `json:"source"`
+	SpecVersion                  string                               `json:"specversion"`
+	TimeUnixMs                   int64                                `json:"time_unix_ms"`
+	Subject                      string                               `json:"subject"`
+	ResourceOwnerID              string                               `json:"resource_owner_id"`
+	CorrelationID                string                               `json:"correlation_id"`
+	DataschemaVersion            int32                                `json:"dataschema_version"`
 	ChargeableOperationRequested *ChargeableOperationRequestedPayload `json:"chargeable_operation_requested"`
 }
