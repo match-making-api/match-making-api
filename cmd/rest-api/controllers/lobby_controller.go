@@ -14,14 +14,21 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/leet-gaming/match-making-api/pkg/common"
 	"github.com/leet-gaming/match-making-api/pkg/domain/lobbies/entities"
-	lobbyuc "github.com/leet-gaming/match-making-api/pkg/domain/lobbies/usecase"
+	lobbyusecase "github.com/leet-gaming/match-making-api/pkg/domain/lobbies/usecase"
 	"github.com/leet-gaming/match-making-api/pkg/infra/db/mongodb"
+	"github.com/leet-gaming/match-making-api/pkg/infra/events/schemas"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
+// ChargeablePublisher publishes ChargeableOperationRequested. Wallet executes the fee.
+type ChargeablePublisher interface {
+	PublishChargeableOperationRequested(ctx context.Context, event *schemas.ChargeableOperationEvent) error
+}
+
 type LobbyController struct {
-	repo   *mongodb.LobbyRepository
-	events lobbyuc.TournamentEventPublisher
+	repo              *mongodb.LobbyRepository
+	events            lobbyusecase.TournamentEventPublisher
+	entryFeePublisher ChargeablePublisher
 }
 
 func NewLobbyController(mongoClient *mongo.Client, dbName string) *LobbyController {
@@ -31,8 +38,16 @@ func NewLobbyController(mongoClient *mongo.Client, dbName string) *LobbyControll
 }
 
 // SetTournamentEvents wires Kafka publishing for tournament lobby creation (Refs 2507-001).
-func (c *LobbyController) SetTournamentEvents(events lobbyuc.TournamentEventPublisher) {
+func (c *LobbyController) SetTournamentEvents(events lobbyusecase.TournamentEventPublisher) {
 	c.events = events
+}
+
+// SetEntryFeePublisher attaches the Kafka publisher used for tournament entry fees.
+func (c *LobbyController) SetEntryFeePublisher(publisher ChargeablePublisher) {
+	if c == nil {
+		return
+	}
+	c.entryFeePublisher = publisher
 }
 
 // CreateTournamentLobbyRequest is the body for POST /api/lobbies/tournament.
@@ -85,8 +100,8 @@ func (c *LobbyController) CreateTournament(ctx context.Context) http.HandlerFunc
 			json.NewEncoder(w).Encode(ErrorResponse{Error: "unavailable", Message: "event publisher is not configured"})
 			return
 		}
-		uc := &lobbyuc.CreateTournamentLobbyUseCase{Lobbies: c.repo, Events: c.events}
-		lobby, err := uc.Execute(r.Context(), lobbyuc.CreateTournamentLobbyCommand{
+		uc := &lobbyusecase.CreateTournamentLobbyUseCase{Lobbies: c.repo, Events: c.events}
+		lobby, err := uc.Execute(r.Context(), lobbyusecase.CreateTournamentLobbyCommand{
 			TournamentID:     tournamentID,
 			Name:             req.Name,
 			GameID:           req.GameID,
@@ -115,24 +130,24 @@ func (c *LobbyController) CreateTournament(ctx context.Context) http.HandlerFunc
 
 // CreateLobbyRequest represents the request to create a lobby
 type CreateLobbyRequest struct {
-	Name               string              `json:"name"`
-	Description        string              `json:"description,omitempty"`
-	GameID             string              `json:"game_id"`
-	GameMode           string              `json:"game_mode"`
-	Region             string              `json:"region"`
-	Type               string              `json:"type"`
-	Visibility         string              `json:"visibility"`
-	MaxPlayers         int                 `json:"max_players"`
-	MinPlayers         int                 `json:"min_players,omitempty"`
-	RequiresReadyCheck bool                `json:"requires_ready_check,omitempty"`
-	AllowSpectators    bool                `json:"allow_spectators,omitempty"`
-	AllowCrossPlatform bool                `json:"allow_cross_platform,omitempty"`
-	MapPool            []string            `json:"map_pool,omitempty"`
-	Tags               []string            `json:"tags,omitempty"`
-	SkillRange         *entities.SkillRange `json:"skill_range,omitempty"`
-	MaxPing            int                 `json:"max_ping,omitempty"`
-	EntryFeeCents      int                 `json:"entry_fee_cents,omitempty"`
-	DistributionRule   string              `json:"distribution_rule,omitempty"`
+	Name               string                 `json:"name"`
+	Description        string                 `json:"description,omitempty"`
+	GameID             string                 `json:"game_id"`
+	GameMode           string                 `json:"game_mode"`
+	Region             string                 `json:"region"`
+	Type               string                 `json:"type"`
+	Visibility         string                 `json:"visibility"`
+	MaxPlayers         int                    `json:"max_players"`
+	MinPlayers         int                    `json:"min_players,omitempty"`
+	RequiresReadyCheck bool                   `json:"requires_ready_check,omitempty"`
+	AllowSpectators    bool                   `json:"allow_spectators,omitempty"`
+	AllowCrossPlatform bool                   `json:"allow_cross_platform,omitempty"`
+	MapPool            []string               `json:"map_pool,omitempty"`
+	Tags               []string               `json:"tags,omitempty"`
+	SkillRange         *entities.SkillRange   `json:"skill_range,omitempty"`
+	MaxPing            int                    `json:"max_ping,omitempty"`
+	EntryFeeCents      int                    `json:"entry_fee_cents,omitempty"`
+	DistributionRule   string                 `json:"distribution_rule,omitempty"`
 	Metadata           map[string]interface{} `json:"metadata,omitempty"`
 }
 
@@ -443,7 +458,7 @@ type JoinLobbyRequest struct {
 
 // JoinLobbyResponse represents the response after joining
 type JoinLobbyResponse struct {
-	Lobby        *entities.Lobby     `json:"lobby"`
+	Lobby        *entities.Lobby      `json:"lobby"`
 	AssignedSlot *entities.PlayerSlot `json:"assigned_slot"`
 }
 
@@ -548,12 +563,43 @@ func (c *LobbyController) Join(ctx context.Context) http.HandlerFunc {
 			return
 		}
 
+		c.publishTournamentEntryFee(r.Context(), lobby, playerID)
+
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(JoinLobbyResponse{
 			Lobby:        lobby,
 			AssignedSlot: &newSlot,
 		})
 	}
+}
+
+// publishTournamentEntryFee emits ChargeableOperationRequested for a paid tournament join.
+// Publish failures are logged. The seat is not rolled back here.
+func (c *LobbyController) publishTournamentEntryFee(ctx context.Context, lobby *entities.Lobby, playerID uuid.UUID) {
+	correlationID, _ := ctx.Value(common.RequestIDKey).(string)
+	in := lobbyusecase.EntryFeeInputFromLobby(lobby, playerID, correlationID)
+	event, ok := lobbyusecase.BuildTournamentEntryFeeEvent(in)
+	if !ok {
+		return
+	}
+	if c == nil || c.entryFeePublisher == nil {
+		slog.WarnContext(ctx, "tournament entry fee not published; publisher missing",
+			"tournament_id", in.TournamentID,
+			"player_id", playerID)
+		return
+	}
+	if err := c.entryFeePublisher.PublishChargeableOperationRequested(ctx, event); err != nil {
+		slog.ErrorContext(ctx, "failed to publish tournament entry fee",
+			"error", err,
+			"player_id", playerID,
+			"tournament_id", in.TournamentID)
+		return
+	}
+	slog.InfoContext(ctx, "published tournament entry fee",
+		"player_id", playerID,
+		"tournament_id", in.TournamentID,
+		"amount_cents", event.ChargeableOperationRequested.AmountCents,
+		"idempotency_key", event.ChargeableOperationRequested.IdempotencyKey)
 }
 
 // GetStats retrieves lobby statistics
@@ -692,18 +738,18 @@ func (c *LobbyController) SeedDemoLobbies(ctx context.Context) http.HandlerFunc 
 				Tags:        []string{"casual", "practice", "friendly"},
 			},
 			{
-				Name:        "💰 High Stakes 1v1",
-				Description: "$50 entry fee, winner takes all!",
-				GameID:      "cs2",
-				GameMode:    "duel",
-				Region:      "eu-central",
-				Type:        "ranked",
-				Visibility:  "public",
-				MaxPlayers:  2,
-				MinPlayers:  2,
-				EntryFeeCents: 5000,
+				Name:             "💰 High Stakes 1v1",
+				Description:      "$50 entry fee, winner takes all!",
+				GameID:           "cs2",
+				GameMode:         "duel",
+				Region:           "eu-central",
+				Type:             "ranked",
+				Visibility:       "public",
+				MaxPlayers:       2,
+				MinPlayers:       2,
+				EntryFeeCents:    5000,
 				DistributionRule: "winner_takes_all",
-				Tags:        []string{"1v1", "high-stakes", "duel"},
+				Tags:             []string{"1v1", "high-stakes", "duel"},
 			},
 			{
 				Name:        "🔥 Quick Match Queue",

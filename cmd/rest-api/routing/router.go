@@ -152,14 +152,15 @@ func NewRouter(ctx context.Context, container container.Container) http.Handler 
 	if err := container.Resolve(&cfg); err != nil {
 		slog.Error("Failed to resolve config for lobbies", "error", err)
 	}
-	
+
 	if mongoClient != nil {
 		lobbyController := controllers.NewLobbyController(mongoClient, cfg.MongoDB.DBName)
 		var eventPublisher *kafka.EventPublisher
 		if err := container.Resolve(&eventPublisher); err != nil {
-			slog.Warn("Kafka publisher not available for tournament lobby events", "error", err)
+			slog.Error("Failed to resolve event publisher for lobby events", "error", err)
 		} else {
 			lobbyController.SetTournamentEvents(eventPublisher)
+			lobbyController.SetEntryFeePublisher(eventPublisher)
 		}
 
 		// Lobby CRUD
@@ -172,7 +173,7 @@ func NewRouter(ctx context.Context, container container.Container) http.Handler 
 		r.HandleFunc("/api/lobbies/{id}", lobbyController.Get(ctx)).Methods("GET", "OPTIONS")
 		r.HandleFunc("/api/lobbies/{id}", lobbyController.Delete(ctx)).Methods("DELETE", "OPTIONS")
 		r.HandleFunc("/api/lobbies/{id}/join", lobbyController.Join(ctx)).Methods("POST", "OPTIONS")
-		
+
 		resourceContextMiddleware.RegisterOperation("/api/lobbies", "match-making:lobbies:list")
 		resourceContextMiddleware.RegisterOperation("/api/lobbies", "match-making:lobbies:create")
 		resourceContextMiddleware.RegisterOperation("/api/lobbies/tournament", "match-making:lobbies:create-tournament")
@@ -182,7 +183,7 @@ func NewRouter(ctx context.Context, container container.Container) http.Handler 
 		resourceContextMiddleware.RegisterOperation("/api/lobbies/{id}", "match-making:lobbies:get")
 		resourceContextMiddleware.RegisterOperation("/api/lobbies/{id}", "match-making:lobbies:delete")
 		resourceContextMiddleware.RegisterOperation("/api/lobbies/{id}/join", "match-making:lobbies:join")
-		
+
 		// Readiness confirmation / commitment routes
 		r.HandleFunc("/api/lobbies/{lobby_id}/commitments", commitmentController.GetCommitmentSummary(ctx)).Methods("GET", "OPTIONS")
 		r.HandleFunc("/api/lobbies/{lobby_id}/commitments/confirm", commitmentController.ConfirmReadiness(ctx)).Methods("POST", "OPTIONS")
