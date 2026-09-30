@@ -59,11 +59,23 @@ type SkillRange struct {
 	MaxMMR int `json:"max_mmr" bson:"max_mmr"`
 }
 
-// PrizePoolConfig holds entry fee and distribution settings
+// Prize pool lifecycle statuses (Refs 2507-001).
+const (
+	PrizePoolStatusOpen        = "open"
+	PrizePoolStatusLocked      = "locked"
+	PrizePoolStatusDistributed = "distributed"
+)
+
+// PrizePoolConfig holds prize pool amount, distribution, and optional entry fee.
 type PrizePoolConfig struct {
 	EntryFeeCents    int    `json:"entry_fee_cents" bson:"entry_fee_cents"`
 	PrizePoolID      string `json:"prize_pool_id,omitempty" bson:"prize_pool_id,omitempty"`
 	DistributionRule string `json:"distribution_rule" bson:"distribution_rule"` // winner_takes_all, top_3, etc.
+	AmountCents      int64  `json:"amount_cents,omitempty" bson:"amount_cents,omitempty"`
+	Currency         string `json:"currency,omitempty" bson:"currency,omitempty"`
+	Status           string `json:"status,omitempty" bson:"status,omitempty"`
+	TournamentID     string `json:"tournament_id,omitempty" bson:"tournament_id,omitempty"`
+	CreationFeeCents int64  `json:"creation_fee_cents,omitempty" bson:"creation_fee_cents,omitempty"`
 }
 
 // QueueStats holds information about players waiting (for matchmaking visibility)

@@ -157,14 +157,16 @@ func NewRouter(ctx context.Context, container container.Container) http.Handler 
 		lobbyController := controllers.NewLobbyController(mongoClient, cfg.MongoDB.DBName)
 		var eventPublisher *kafka.EventPublisher
 		if err := container.Resolve(&eventPublisher); err != nil {
-			slog.Error("Failed to resolve event publisher for tournament entry fee", "error", err)
+			slog.Error("Failed to resolve event publisher for lobby events", "error", err)
 		} else {
+			lobbyController.SetTournamentEvents(eventPublisher)
 			lobbyController.SetEntryFeePublisher(eventPublisher)
 		}
 
 		// Lobby CRUD
 		r.HandleFunc("/api/lobbies", lobbyController.List(ctx)).Methods("GET", "OPTIONS")
 		r.HandleFunc("/api/lobbies", lobbyController.Create(ctx)).Methods("POST", "OPTIONS")
+		r.HandleFunc("/api/lobbies/tournament", lobbyController.CreateTournament(ctx)).Methods("POST", "OPTIONS")
 		r.HandleFunc("/api/lobbies/featured", lobbyController.GetFeatured(ctx)).Methods("GET", "OPTIONS")
 		r.HandleFunc("/api/lobbies/stats", lobbyController.GetStats(ctx)).Methods("GET", "OPTIONS")
 		r.HandleFunc("/api/lobbies/seed", lobbyController.SeedDemoLobbies(ctx)).Methods("POST", "OPTIONS")
@@ -174,6 +176,7 @@ func NewRouter(ctx context.Context, container container.Container) http.Handler 
 
 		resourceContextMiddleware.RegisterOperation("/api/lobbies", "match-making:lobbies:list")
 		resourceContextMiddleware.RegisterOperation("/api/lobbies", "match-making:lobbies:create")
+		resourceContextMiddleware.RegisterOperation("/api/lobbies/tournament", "match-making:lobbies:create-tournament")
 		resourceContextMiddleware.RegisterOperation("/api/lobbies/featured", "match-making:lobbies:featured")
 		resourceContextMiddleware.RegisterOperation("/api/lobbies/stats", "match-making:lobbies:stats")
 		resourceContextMiddleware.RegisterOperation("/api/lobbies/seed", "match-making:lobbies:seed")
