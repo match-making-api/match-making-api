@@ -31,6 +31,7 @@ type LobbyController struct {
 	repo              *mongodb.LobbyRepository
 	events            lobbyusecase.TournamentEventPublisher
 	entryFeePublisher ChargeablePublisher
+	statusPublisher   lobbyStatusPublisher
 	joinPublisher     lobbyusecase.TournamentJoinPublisher
 	prizePublisher    lobbyusecase.PrizePoolPublisher
 	matchHandoff      lobbyusecase.MatchFormationHandoff
@@ -53,6 +54,26 @@ func (c *LobbyController) SetEntryFeePublisher(publisher ChargeablePublisher) {
 		return
 	}
 	c.entryFeePublisher = publisher
+}
+
+type lobbyStatusPublisher interface {
+	PublishLobbyStatus(ctx context.Context, notice lobbyusecase.LobbyStatusNotice) error
+}
+
+// SetLobbyStatusPublisher attaches Kafka publishing for lobby status changes.
+func (c *LobbyController) SetLobbyStatusPublisher(publisher interface {
+	PublishLobbyEvent(ctx context.Context, event *kafka.LobbyEvent) error
+}) {
+	if c == nil || publisher == nil {
+		return
+	}
+	c.statusPublisher = lobbyStatusAdapter{pub: publisher}
+}
+
+type lobbyStatusAdapter struct {
+	pub interface {
+		PublishLobbyEvent(ctx context.Context, event *kafka.LobbyEvent) error
+	}
 }
 
 // SetTournamentStart attaches prize-pool publishing and the match-formation handoff.
@@ -105,6 +126,35 @@ type joinEventAdapter struct {
 	pub interface {
 		PublishChargeableOperationRequested(ctx context.Context, event *schemas.ChargeableOperationEvent) error
 		PublishLobbyEvent(ctx context.Context, event *kafka.LobbyEvent) error
+	}
+}
+
+func (a lobbyStatusAdapter) PublishLobbyStatus(ctx context.Context, notice lobbyusecase.LobbyStatusNotice) error {
+	return a.pub.PublishLobbyEvent(ctx, &kafka.LobbyEvent{
+		LobbyID:         notice.LobbyID,
+		EventType:       kafka.EventTypeLobbyStatusChanged,
+		PlayerIDs:       notice.PlayerIDs,
+		GameType:        notice.GameType,
+		Region:          notice.Region,
+		Status:          notice.Status,
+		ResourceOwnerID: notice.ResourceOwnerID,
+		TenantID:        notice.TenantID,
+		ClientID:        notice.ClientID,
+		Metadata:        map[string]string{"reason": notice.Reason},
+	})
+}
+
+func (c *LobbyController) publishLobbyStatus(ctx context.Context, lobby *entities.Lobby, reason string) {
+	if c == nil || c.statusPublisher == nil || lobby == nil {
+		return
+	}
+	notice := lobbyusecase.NewLobbyStatusNotice(lobby, reason)
+	if err := c.statusPublisher.PublishLobbyStatus(ctx, notice); err != nil {
+		slog.ErrorContext(ctx, "failed to publish lobby status change",
+			"error", err,
+			"lobby_id", lobby.ID,
+			"status", lobby.Status,
+			"reason", reason)
 	}
 }
 
@@ -352,6 +402,8 @@ func (c *LobbyController) Create(ctx context.Context) http.HandlerFunc {
 			})
 			return
 		}
+
+		c.publishLobbyStatus(r.Context(), lobby, "created")
 
 		w.WriteHeader(http.StatusCreated)
 		json.NewEncoder(w).Encode(LobbyResponse{Lobby: lobby})
@@ -648,6 +700,7 @@ func (c *LobbyController) Join(ctx context.Context) http.HandlerFunc {
 		}
 
 		c.publishTournamentEntryFee(r.Context(), lobby, playerID)
+		c.publishLobbyStatus(r.Context(), lobby, "player_joined")
 
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(JoinLobbyResponse{
@@ -892,6 +945,7 @@ func (c *LobbyController) Delete(ctx context.Context) http.HandlerFunc {
 		// Update status to cancelled
 		lobby.Status = entities.LobbyStatusCancelled
 		c.repo.Update(r.Context(), lobby)
+		c.publishLobbyStatus(r.Context(), lobby, "cancelled")
 
 		w.WriteHeader(http.StatusNoContent)
 	}

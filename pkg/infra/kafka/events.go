@@ -160,15 +160,19 @@ func (p *EventPublisher) PublishQueueEvent(ctx context.Context, event *QueueEven
 
 // LobbyEvent represents a lobby lifecycle event
 type LobbyEvent struct {
-	EventID   uuid.UUID         `json:"event_id"`
-	LobbyID   uuid.UUID         `json:"lobby_id"`
-	EventType string            `json:"event_type"`
-	PlayerIDs []uuid.UUID       `json:"player_ids,omitempty"`
-	GameType  string            `json:"game_type"`
-	Region    string            `json:"region"`
-	AvgMMR    int               `json:"avg_mmr"`
-	CreatedAt int64             `json:"created_at"`
-	Metadata  map[string]string `json:"metadata,omitempty"`
+	EventID         uuid.UUID         `json:"event_id"`
+	LobbyID         uuid.UUID         `json:"lobby_id"`
+	EventType       string            `json:"event_type"`
+	PlayerIDs       []uuid.UUID       `json:"player_ids,omitempty"`
+	GameType        string            `json:"game_type"`
+	Region          string            `json:"region"`
+	AvgMMR          int               `json:"avg_mmr"`
+	Status          string            `json:"status,omitempty"`
+	ResourceOwnerID string            `json:"resource_owner_id,omitempty"`
+	TenantID        string            `json:"tenant_id,omitempty"`
+	ClientID        string            `json:"client_id,omitempty"`
+	CreatedAt       int64             `json:"created_at"`
+	Metadata        map[string]string `json:"metadata,omitempty"`
 }
 
 // PublishLobbyEvent publishes a lobby event

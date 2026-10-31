@@ -162,6 +162,7 @@ func NewRouter(ctx context.Context, container container.Container) http.Handler 
 		} else {
 			lobbyController.SetTournamentEvents(eventPublisher)
 			lobbyController.SetEntryFeePublisher(eventPublisher)
+			lobbyController.SetLobbyStatusPublisher(eventPublisher)
 			var handoff *pairingusecases.ServerAllocationEnqueuerImpl
 			if err := container.Resolve(&handoff); err != nil {
 				slog.Error("Failed to resolve server allocation handoff for tournament start", "error", err)
