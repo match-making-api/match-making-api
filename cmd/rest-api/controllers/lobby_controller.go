@@ -29,7 +29,9 @@ type ChargeablePublisher interface {
 
 type LobbyController struct {
 	repo              *mongodb.LobbyRepository
+	events            lobbyusecase.TournamentEventPublisher
 	entryFeePublisher ChargeablePublisher
+	joinPublisher     lobbyusecase.TournamentJoinPublisher
 	prizePublisher    lobbyusecase.PrizePoolPublisher
 	matchHandoff      lobbyusecase.MatchFormationHandoff
 }
@@ -38,6 +40,11 @@ func NewLobbyController(mongoClient *mongo.Client, dbName string) *LobbyControll
 	return &LobbyController{
 		repo: mongodb.NewLobbyRepository(mongoClient, dbName),
 	}
+}
+
+// SetTournamentEvents wires Kafka publishing for tournament lobby creation (Refs 2507-001).
+func (c *LobbyController) SetTournamentEvents(events lobbyusecase.TournamentEventPublisher) {
+	c.events = events
 }
 
 // SetEntryFeePublisher attaches the Kafka publisher used for tournament entry fees.
@@ -81,6 +88,122 @@ func (a prizeLockAdapter) PublishPrizePoolLocked(ctx context.Context, notice lob
 			"resource_owner_id": notice.ResourceOwnerID,
 		},
 	})
+}
+
+// SetJoinPublisher attaches the Kafka publisher for PlayerJoinedTournament and the entry fee.
+func (c *LobbyController) SetJoinPublisher(publisher interface {
+	PublishChargeableOperationRequested(ctx context.Context, event *schemas.ChargeableOperationEvent) error
+	PublishLobbyEvent(ctx context.Context, event *kafka.LobbyEvent) error
+}) {
+	if c == nil || publisher == nil {
+		return
+	}
+	c.joinPublisher = joinEventAdapter{pub: publisher}
+}
+
+type joinEventAdapter struct {
+	pub interface {
+		PublishChargeableOperationRequested(ctx context.Context, event *schemas.ChargeableOperationEvent) error
+		PublishLobbyEvent(ctx context.Context, event *kafka.LobbyEvent) error
+	}
+}
+
+func (a joinEventAdapter) PublishChargeableOperationRequested(ctx context.Context, event *schemas.ChargeableOperationEvent) error {
+	return a.pub.PublishChargeableOperationRequested(ctx, event)
+}
+
+func (a joinEventAdapter) PublishPlayerJoinedTournament(ctx context.Context, notice lobbyusecase.PlayerJoinedNotice) error {
+	return a.pub.PublishLobbyEvent(ctx, &kafka.LobbyEvent{
+		LobbyID:   notice.LobbyID,
+		EventType: kafka.EventTypePlayerJoinedTournament,
+		PlayerIDs: []uuid.UUID{notice.PlayerID},
+		GameType:  notice.GameType,
+		Region:    notice.Region,
+		Metadata: map[string]string{
+			"status":            notice.Status,
+			"tenant_id":         notice.TenantID,
+			"client_id":         notice.ClientID,
+			"resource_owner_id": notice.ResourceOwnerID,
+		},
+	})
+}
+
+// CreateTournamentLobbyRequest is the body for POST /api/lobbies/tournament.
+type CreateTournamentLobbyRequest struct {
+	TournamentID     string `json:"tournament_id"`
+	Name             string `json:"name"`
+	GameID           string `json:"game_id"`
+	Region           string `json:"region"`
+	MaxPlayers       int    `json:"max_players"`
+	DistributionRule string `json:"distribution_rule"`
+	AmountCents      int64  `json:"amount_cents"`
+	Currency         string `json:"currency,omitempty"`
+	CreationFeeCents int64  `json:"creation_fee_cents,omitempty"`
+}
+
+// CreateTournament creates a tournament lobby with a prize pool.
+// @Summary Create tournament lobby with prize pool
+// @Tags lobbies
+// @Accept json
+// @Produce json
+// @Param request body CreateTournamentLobbyRequest true "Tournament lobby"
+// @Success 201 {object} LobbyResponse
+// @Router /api/lobbies/tournament [post]
+func (c *LobbyController) CreateTournament(ctx context.Context) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		var req CreateTournamentLobbyRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(ErrorResponse{Error: "invalid_request", Message: "failed to parse request body"})
+			return
+		}
+		tournamentID, err := uuid.Parse(req.TournamentID)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(ErrorResponse{Error: "invalid_id", Message: "tournament_id must be a UUID"})
+			return
+		}
+		owner := common.GetResourceOwner(r.Context())
+		if user, ok := r.Context().Value(common.UserIDKey).(uuid.UUID); ok {
+			owner.UserID = user
+		}
+		if owner.UserID == uuid.Nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			json.NewEncoder(w).Encode(ErrorResponse{Error: "unauthorized", Message: "authentication required"})
+			return
+		}
+		if c.events == nil {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			json.NewEncoder(w).Encode(ErrorResponse{Error: "unavailable", Message: "event publisher is not configured"})
+			return
+		}
+		uc := &lobbyusecase.CreateTournamentLobbyUseCase{Lobbies: c.repo, Events: c.events}
+		lobby, err := uc.Execute(r.Context(), lobbyusecase.CreateTournamentLobbyCommand{
+			TournamentID:     tournamentID,
+			Name:             req.Name,
+			GameID:           req.GameID,
+			Region:           req.Region,
+			MaxPlayers:       req.MaxPlayers,
+			DistributionRule: req.DistributionRule,
+			AmountCents:      req.AmountCents,
+			Currency:         req.Currency,
+			CreationFeeCents: req.CreationFeeCents,
+			Owner:            owner,
+		})
+		if err != nil {
+			status := http.StatusBadRequest
+			if err == common.ErrMissingResourceOwnership {
+				status = http.StatusForbidden
+			}
+			slog.ErrorContext(r.Context(), "failed to create tournament lobby", "error", err)
+			w.WriteHeader(status)
+			json.NewEncoder(w).Encode(ErrorResponse{Error: "create_failed", Message: err.Error()})
+			return
+		}
+		w.WriteHeader(http.StatusCreated)
+		json.NewEncoder(w).Encode(LobbyResponse{Lobby: lobby})
+	}
 }
 
 // CreateLobbyRequest represents the request to create a lobby
@@ -418,7 +541,8 @@ type JoinLobbyResponse struct {
 }
 
 // Join allows a player to join a lobby
-// @Summary Join a lobby
+// @Summary Join a lobby or tournament
+// Tournament lobbies publish the entry-fee event, then PlayerJoinedTournament.
 // @Tags lobbies
 // @Accept json
 // @Produce json
@@ -462,6 +586,11 @@ func (c *LobbyController) Join(ctx context.Context) http.HandlerFunc {
 				Error:   "not_found",
 				Message: "lobby not found",
 			})
+			return
+		}
+
+		if lobby.Type == entities.LobbyTypeTournament {
+			c.joinTournament(w, r, lobby.ID, playerID, req)
 			return
 		}
 
@@ -632,6 +761,59 @@ func (c *LobbyController) StartTournamentMatch(ctx context.Context) http.Handler
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(LobbyResponse{Lobby: lobby})
 	}
+}
+
+// joinTournament seats a player via JoinTournamentUseCase.
+func (c *LobbyController) joinTournament(w http.ResponseWriter, r *http.Request, lobbyID, playerID uuid.UUID, req JoinLobbyRequest) {
+	caller := common.ResourceOwner{}
+	if tid, ok := r.Context().Value(common.TenantIDKey).(uuid.UUID); ok {
+		caller.TenantID = tid
+	}
+	if cid, ok := r.Context().Value(common.ClientIDKey).(uuid.UUID); ok {
+		caller.ClientID = cid
+	}
+	if uid, ok := r.Context().Value(common.UserIDKey).(uuid.UUID); ok {
+		caller.UserID = uid
+	}
+	correlationID, _ := r.Context().Value(common.RequestIDKey).(string)
+	uc := lobbyusecase.NewJoinTournamentUseCase(c.repo, c.joinPublisher)
+	lobby, slot, err := uc.Execute(r.Context(), lobbyusecase.JoinTournamentInput{
+		LobbyID:       lobbyID,
+		PlayerID:      playerID,
+		Caller:        caller,
+		PlayerMMR:     req.PlayerMMR,
+		PlayerRank:    req.PlayerRank,
+		CorrelationID: correlationID,
+	})
+	if err != nil {
+		status := http.StatusInternalServerError
+		code := "join_failed"
+		switch {
+		case errors.Is(err, lobbyusecase.ErrAlreadyJoined):
+			status = http.StatusBadRequest
+			code = "already_joined"
+		case errors.Is(err, lobbyusecase.ErrLobbyFull):
+			status = http.StatusBadRequest
+			code = "lobby_full"
+		case errors.Is(err, lobbyusecase.ErrTournamentClosed):
+			status = http.StatusBadRequest
+			code = "tournament_closed"
+		case errors.Is(err, lobbyusecase.ErrTournamentForbidden), errors.Is(err, common.ErrMissingResourceOwnership):
+			status = http.StatusForbidden
+			code = "forbidden"
+		case slot != nil:
+			status = http.StatusServiceUnavailable
+			code = "event_publish_failed"
+		default:
+			status = http.StatusServiceUnavailable
+			code = "join_failed"
+		}
+		w.WriteHeader(status)
+		json.NewEncoder(w).Encode(ErrorResponse{Error: code, Message: err.Error()})
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(JoinLobbyResponse{Lobby: lobby, AssignedSlot: slot})
 }
 
 // GetStats retrieves lobby statistics
