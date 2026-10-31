@@ -31,7 +31,9 @@ type LobbyController struct {
 	repo              *mongodb.LobbyRepository
 	events            lobbyusecase.TournamentEventPublisher
 	entryFeePublisher ChargeablePublisher
-	joinPublisher lobbyusecase.TournamentJoinPublisher
+	joinPublisher     lobbyusecase.TournamentJoinPublisher
+	prizePublisher    lobbyusecase.PrizePoolPublisher
+	matchHandoff      lobbyusecase.MatchFormationHandoff
 }
 
 func NewLobbyController(mongoClient *mongo.Client, dbName string) *LobbyController {
@@ -51,6 +53,41 @@ func (c *LobbyController) SetEntryFeePublisher(publisher ChargeablePublisher) {
 		return
 	}
 	c.entryFeePublisher = publisher
+}
+
+// SetTournamentStart attaches prize-pool publishing and the match-formation handoff.
+func (c *LobbyController) SetTournamentStart(prizes interface {
+	PublishPrizePoolEvent(ctx context.Context, event *kafka.PrizePoolEvent) error
+}, handoff lobbyusecase.MatchFormationHandoff) {
+	if c == nil {
+		return
+	}
+	if prizes != nil {
+		c.prizePublisher = prizeLockAdapter{pub: prizes}
+	}
+	c.matchHandoff = handoff
+}
+
+type prizeLockAdapter struct {
+	pub interface {
+		PublishPrizePoolEvent(ctx context.Context, event *kafka.PrizePoolEvent) error
+	}
+}
+
+func (a prizeLockAdapter) PublishPrizePoolLocked(ctx context.Context, notice lobbyusecase.PrizePoolLockedNotice) error {
+	return a.pub.PublishPrizePoolEvent(ctx, &kafka.PrizePoolEvent{
+		PoolID:      notice.PoolID,
+		LobbyID:     notice.LobbyID,
+		EventType:   kafka.EventTypePrizePoolUpdated,
+		TotalAmount: notice.TotalAmount,
+		Currency:    notice.Currency,
+		Metadata: map[string]string{
+			"status":            entities.PrizePoolStatusLocked,
+			"tenant_id":         notice.TenantID,
+			"client_id":         notice.ClientID,
+			"resource_owner_id": notice.ResourceOwnerID,
+		},
+	})
 }
 
 // SetJoinPublisher attaches the Kafka publisher for PlayerJoinedTournament and the entry fee.
@@ -647,6 +684,83 @@ func (c *LobbyController) publishTournamentEntryFee(ctx context.Context, lobby *
 		"tournament_id", in.TournamentID,
 		"amount_cents", event.ChargeableOperationRequested.AmountCents,
 		"idempotency_key", event.ChargeableOperationRequested.IdempotencyKey)
+}
+
+// StartTournamentMatch starts the first pending bracket match and locks the prize pool.
+// @Summary Start a tournament match
+// @Tags lobbies
+// @Accept json
+// @Produce json
+// @Param id path string true "Lobby ID"
+// @Success 200 {object} LobbyResponse
+// @Router /api/lobbies/{id}/start-match [post]
+func (c *LobbyController) StartTournamentMatch(ctx context.Context) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		vars := mux.Vars(r)
+		lobbyID, err := uuid.Parse(vars["id"])
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(ErrorResponse{Error: "invalid_id", Message: "invalid lobby ID format"})
+			return
+		}
+		userID, ok := r.Context().Value(common.UserIDKey).(uuid.UUID)
+		if !ok || userID == uuid.Nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			json.NewEncoder(w).Encode(ErrorResponse{Error: "unauthorized", Message: "authentication required"})
+			return
+		}
+		caller := common.ResourceOwner{UserID: userID}
+		if tid, ok := r.Context().Value(common.TenantIDKey).(uuid.UUID); ok {
+			caller.TenantID = tid
+		}
+		if cid, ok := r.Context().Value(common.ClientIDKey).(uuid.UUID); ok {
+			caller.ClientID = cid
+		}
+		var body struct {
+			MatchID string `json:"match_id,omitempty"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		matchID := uuid.Nil
+		if body.MatchID != "" {
+			matchID, err = uuid.Parse(body.MatchID)
+			if err != nil {
+				w.WriteHeader(http.StatusBadRequest)
+				json.NewEncoder(w).Encode(ErrorResponse{Error: "invalid_match_id", Message: "invalid match ID format"})
+				return
+			}
+		}
+		uc := lobbyusecase.NewStartTournamentMatchUseCase(c.repo, c.prizePublisher, c.matchHandoff)
+		lobby, err := uc.Execute(r.Context(), lobbyusecase.StartTournamentMatchInput{
+			LobbyID: lobbyID,
+			MatchID: matchID,
+			Caller:  caller,
+		})
+		if err != nil {
+			status := http.StatusBadRequest
+			code := "start_failed"
+			switch {
+			case errors.Is(err, lobbyusecase.ErrTournamentForbidden), errors.Is(err, common.ErrMissingResourceOwnership):
+				status = http.StatusForbidden
+				code = "forbidden"
+			case errors.Is(err, lobbyusecase.ErrMatchAlreadyStarted):
+				code = "match_already_started"
+			case errors.Is(err, lobbyusecase.ErrNotEnoughPlayers):
+				code = "not_enough_players"
+			case errors.Is(err, lobbyusecase.ErrTournamentClosed):
+				code = "tournament_closed"
+			case errors.Is(err, lobbyusecase.ErrNotATournament):
+				code = "not_a_tournament"
+			default:
+				status = http.StatusInternalServerError
+			}
+			w.WriteHeader(status)
+			json.NewEncoder(w).Encode(ErrorResponse{Error: code, Message: err.Error()})
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(LobbyResponse{Lobby: lobby})
+	}
 }
 
 // joinTournament seats a player via JoinTournamentUseCase.
