@@ -161,6 +161,7 @@ func NewRouter(ctx context.Context, container container.Container) http.Handler 
 		} else {
 			lobbyController.SetTournamentEvents(eventPublisher)
 			lobbyController.SetEntryFeePublisher(eventPublisher)
+			lobbyController.SetJoinPublisher(eventPublisher)
 		}
 
 		// Lobby CRUD
