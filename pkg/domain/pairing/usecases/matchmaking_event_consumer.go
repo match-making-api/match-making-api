@@ -323,15 +323,22 @@ func (c *MatchmakingEventConsumer) HandlePlayerLeftQueueProto(ctx context.Contex
 		return fmt.Errorf("invalid game_id: %w", err)
 	}
 
+	// Session → Party mapping (Refs 2508-003). Leave removes by player_id; mapping aligns ownership + party.
+	leaveMap := mapping.MapQueueJoin(
+		playerID, gameID,
+		payload.GetRegion(), payload.GetTenantId(), payload.GetClientId(),
+		envelope.GetResourceOwnerId(), payload.GetPartyId(),
+	)
+
 	// Lookup region by slug
-	regions, err := c.regionReader.Search(ctx, map[string]interface{}{"slug": payload.GetRegion()})
+	regions, err := c.regionReader.Search(ctx, map[string]interface{}{"slug": leaveMap.RegionSlug})
 	if err != nil {
-		slog.ErrorContext(ctx, "Failed to lookup region", "region_slug", payload.GetRegion(), "error", err)
-		return fmt.Errorf("failed to lookup region %s: %w", payload.GetRegion(), err)
+		slog.ErrorContext(ctx, "Failed to lookup region", "region_slug", leaveMap.RegionSlug, "error", err)
+		return fmt.Errorf("failed to lookup region %s: %w", leaveMap.RegionSlug, err)
 	}
 	if len(regions) == 0 {
-		slog.ErrorContext(ctx, "Region not found", "region_slug", payload.GetRegion())
-		return fmt.Errorf("region not found: %s", payload.GetRegion())
+		slog.ErrorContext(ctx, "Region not found", "region_slug", leaveMap.RegionSlug)
+		return fmt.Errorf("region not found: %s", leaveMap.RegionSlug)
 	}
 	region := regions[0]
 
@@ -346,7 +353,7 @@ func (c *MatchmakingEventConsumer) HandlePlayerLeftQueueProto(ctx context.Contex
 	pool, err := c.poolReader.FindPool(&criteria)
 	if err != nil {
 		slog.ErrorContext(ctx, "Failed to find pool for removal",
-			"error", err, "player_id", playerID, "event_id", envelope.GetId())
+			"error", err, "player_id", playerID, "party_id", leaveMap.PartyID, "event_id", envelope.GetId())
 		return err
 	}
 
@@ -356,6 +363,7 @@ func (c *MatchmakingEventConsumer) HandlePlayerLeftQueueProto(ctx context.Contex
 		if err != nil {
 			slog.WarnContext(ctx, "Player not found in pool (idempotent no-op)",
 				"player_id", playerID,
+				"party_id", leaveMap.PartyID,
 				"event_id", envelope.GetId(),
 				"error", err)
 			// Not a fatal error — player may have already been removed or matched
@@ -370,6 +378,7 @@ func (c *MatchmakingEventConsumer) HandlePlayerLeftQueueProto(ctx context.Contex
 	} else {
 		slog.WarnContext(ctx, "Pool not found for player removal (idempotent no-op)",
 			"player_id", playerID,
+			"party_id", leaveMap.PartyID,
 			"event_id", envelope.GetId())
 	}
 
@@ -384,8 +393,11 @@ func (c *MatchmakingEventConsumer) HandlePlayerLeftQueueProto(ctx context.Contex
 
 	slog.InfoContext(ctx, "Player removed from matchmaking queue",
 		"player_id", playerID,
+		"party_id", leaveMap.PartyID,
 		"game_id", gameID,
-		"region", payload.GetRegion(),
+		"region", leaveMap.RegionSlug,
+		"tenant_id", leaveMap.TenantID,
+		"client_id", leaveMap.ClientID,
 		"reason", payload.GetReason(),
 		"event_id", envelope.GetId())
 
@@ -483,12 +495,11 @@ func (c *MatchmakingEventConsumer) HandlePlayerQueuedProto(ctx context.Context, 
 		criteria.PriorityBoost = *pb > 0
 	}
 
-	// Session → Party mapping (Refs 2508-003). Proto party_id not yet on PlayerQueuedPayload;
-	// ResolvePartyID defaults to solo (party_id = player_id) until producers send it.
+	// Session → Party mapping (Refs 2508-003). Empty/invalid party_id => solo (party_id = player_id).
 	joinMap := mapping.MapQueueJoin(
 		playerID, gameID,
 		payload.GetRegion(), payload.GetTenantId(), payload.GetClientId(),
-		envelope.GetResourceOwnerId(), "",
+		envelope.GetResourceOwnerId(), payload.GetPartyId(),
 	)
 
 	findPairPayload := FindPairPayload{
