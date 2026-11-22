@@ -68,6 +68,7 @@ Emitted when a player joins the queue.
 - `priority_boost` (optional): queue priority
 - `tenant_id`, `client_id` (required)
 - `resource_permissions` (optional): e.g. `["read", "write"]`
+- `party_id` (optional): shared party for team queue; empty/absent => solo (`party_id = player_id`)
 
 ### PlayerLeftQueue (replay-api → match-making-api)
 
@@ -77,6 +78,7 @@ Emitted when a player leaves (cancels) the queue. Inverse of `PlayerQueued`. Con
 - `player_id`, `game_id`, `region` (required)
 - `tenant_id`, `client_id` (required)
 - `reason` (optional): leave reason, e.g. `"user_cancelled"`, `"timeout"`, `"disconnect"`
+- `party_id` (optional): same party used on join; empty => solo default
 
 **Consumer behavior:**
 - Validates resource ownership (envelope + payload)

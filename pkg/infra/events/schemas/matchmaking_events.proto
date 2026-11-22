@@ -111,6 +111,7 @@ message PlayerQueuedPayload {
   string tenant_id = 6;
   string client_id = 7;
   repeated string resource_permissions = 8;  // Optional: e.g. ["read", "write"].
+  string party_id = 9;  // Optional: shared party for team queue; empty/absent => solo (party_id = player_id).
 }
 
 message SkillRange {
@@ -129,6 +130,7 @@ message PlayerLeftQueuePayload {
   string tenant_id = 4;
   string client_id = 5;
   string reason = 6;  // Optional: e.g. "user_cancelled", "timeout", "disconnect"
+  string party_id = 7;  // Optional: same party_id used on join; empty => solo default.
 }
 
 // --- MatchCreated (match-making-api → replay-api) ---
@@ -244,6 +246,8 @@ message PlayerRatingDelta {
 // Wallet API consumes and executes billing. Match-making does NOT deduct balances.
 // Note: until codegen includes this in MatchmakingEvent oneof, producers publish
 // CloudEvents JSON (see chargeable_operation.go) to matchmaking.billing.chargeable.
+// IMPORTANT: do not run protoc against this message while chargeable_operation.go owns the Go type
+// (omit from codegen / strip generated type after regen).
 
 message ChargeableOperationRequestedPayload {
   string operation_type = 1;       // e.g. "queue_priority_boost"

@@ -34,3 +34,21 @@ func TestMapQueueJoin(t *testing.T) {
 		t.Fatalf("unexpected mapping: %+v", m)
 	}
 }
+
+func TestMapQueueJoin_SharedPartyAndLeaveParity(t *testing.T) {
+	t.Parallel()
+	player := uuid.MustParse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
+	game := uuid.MustParse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")
+	party := "cccccccc-cccc-cccc-cccc-cccccccccccc"
+	join := MapQueueJoin(player, game, "br", "t1", "c1", "ro1", party)
+	leave := MapQueueJoin(player, game, "br", "t1", "c1", "ro1", party)
+	if join.Solo || leave.Solo {
+		t.Fatalf("expected shared party on join/leave")
+	}
+	if join.PartyID != leave.PartyID || join.PartyID.String() != party {
+		t.Fatalf("join/leave party mismatch: join=%s leave=%s", join.PartyID, leave.PartyID)
+	}
+	if join.TenantID != leave.TenantID || join.ClientID != leave.ClientID || join.ResourceOwnerID != leave.ResourceOwnerID {
+		t.Fatalf("ownership mismatch on leave mapping")
+	}
+}
