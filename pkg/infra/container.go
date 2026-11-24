@@ -34,6 +34,7 @@ func Inject(c container.Container) error {
 		mongodb.InjectMatchResultRepository,
 		mongodb.InjectPlayerRatingRepository,
 		mongodb.InjectRatingsProcessedStore,
+		mongodb.InjectLegacySessionsRepository,
 		squad.Inject,
 		billing.Inject,
 		iam.Inject,

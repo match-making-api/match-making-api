@@ -20,6 +20,9 @@ Operational guide for matchmaking Kafka metrics, dashboards, and alerts.
 | `matchmaking_kafka_consumer_errors_total` | Consumer fetch/process failures |
 | `matchmaking_kafka_producer_errors_total` | Producer publish failures |
 | `matchmaking_kafka_message_processing_seconds` | Handler latency histogram |
+| `matchmaking_consistency_checks_total` | Consistency check runs by outcome (2509-002) |
+| `matchmaking_consistency_drift_current` | Latest drift count by kind |
+| `matchmaking_consistency_last_check_timestamp_seconds` | Last consistency check time |
 
 ## Alerts
 
@@ -31,6 +34,9 @@ Rules live in `deploy/monitoring/prometheus-alerts.yaml`.
 | `MatchmakingConsumerGroupDown` | 0 members for 2m | Verify group name regex |
 | `MatchmakingProducerErrorRateHigh` | > 0.1/s for 5m | Adjust rate window |
 | `MatchmakingConsumerErrorRateHigh` | > 0.1/s for 5m | Adjust rate window |
+| `MatchmakingConsistencyDrift` | drift gauge > 0 for 5m | Raise threshold during known lag |
+| `MatchmakingConsistencyCheckFailed` | error rate > 0 for 5m | Fix Mongo/Redis connectivity |
+| `MatchmakingConsistencyCheckStale` | last check older than 5m | Restart consistency-check worker |
 
 Route alerts via Alertmanager to Slack/PagerDuty (team channel: `#matchmaking-ops`).
 
@@ -42,7 +48,8 @@ The Grafana JSON includes:
 2. Produce/consume throughput (rates from app + exporter)
 3. Error rates (producer/consumer)
 4. Processing latency p50/p95/p99
+5. Consistency drift gauges and last-check age (2509-002)
 
 ## Runbooks
 
-See `.docs/runbooks/` for response steps when alerts fire.
+See `.docs/runbooks/` for response steps when alerts fire. Consistency: [consistency-alert.md](./runbooks/consistency-alert.md).

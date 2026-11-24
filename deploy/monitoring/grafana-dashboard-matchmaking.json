@@ -1,10 +1,10 @@
 {
   "title": "Matchmaking Kafka",
   "uid": "matchmaking-kafka-2505",
-  "tags": ["matchmaking", "kafka", "2505-001"],
+  "tags": ["matchmaking", "kafka", "2505-001", "2509-002", "consistency"],
   "timezone": "browser",
   "schemaVersion": 39,
-  "version": 1,
+  "version": 2,
   "panels": [
     {
       "id": 1,
@@ -71,6 +71,34 @@
         {
           "expr": "histogram_quantile(0.95, sum(rate(matchmaking_kafka_message_processing_seconds_bucket[5m])) by (le, topic))",
           "legendFormat": "p95 {{topic}}"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Consistency Drift (current)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "targets": [
+        {
+          "expr": "matchmaking_consistency_drift_current",
+          "legendFormat": "{{kind}}"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Consistency Checks / Last Check Age",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "targets": [
+        {
+          "expr": "sum(rate(matchmaking_consistency_checks_total[5m])) by (outcome)",
+          "legendFormat": "checks {{outcome}}/s"
+        },
+        {
+          "expr": "time() - matchmaking_consistency_last_check_timestamp_seconds",
+          "legendFormat": "seconds since last check"
         }
       ]
     }

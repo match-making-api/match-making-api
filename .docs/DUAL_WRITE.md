@@ -26,7 +26,7 @@ Producer enable flag (replay-api): `KAFKA_MATCHMAKING_PRODUCER_ENABLED` (default
 - **Match create:** pair is persisted first; `MatchCreated` is the new-path signal to replay-api. With `legacy_only_and_alert`, a produce failure leaves an unmatched pair that may need reconciliation (2509-002).
 - **Ordering:** commands share `matchmaking.commands`; consumers process in offset order per partition.
 
-Monitoring of drift between legacy sessions and pool state is **out of scope** here (2509-002).
+Monitoring of drift between legacy sessions and pool/active-queue state: see `.docs/DATA_CONSISTENCY.md` (2509-002).
 
 ## Rollback
 
