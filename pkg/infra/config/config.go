@@ -23,10 +23,11 @@ type MongoDBConfig struct {
 
 // Config contains the entire configuration for the application.
 type Config struct {
-	Auth    AuthConfig
-	MongoDB MongoDBConfig
-	Kafka   KafkaConfig
-	Api     ApiConfig
+	Auth      AuthConfig
+	MongoDB   MongoDBConfig
+	Kafka     KafkaConfig
+	Api       ApiConfig
+	DualWrite DualWriteConfig
 }
 
 // KafkaConfig contains the necessary configuration for connecting to the Kafka service.

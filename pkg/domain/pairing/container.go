@@ -129,6 +129,7 @@ func Inject(c container.Container) error {
 		subClient billing.SubscriptionServiceClient,
 	) *usecases.MatchmakingEventConsumer {
 		consumer := usecases.NewMatchmakingEventConsumer(addAndFindNextPair, eventPublisher, regionReader, poolReader, poolWriter, aqStore, serverAllocEnqueuer)
+		consumer.SetDualWrite(cfg.DualWrite)
 		if cfg.Api.Subscription != "" && subClient != nil {
 			consumer.SetSubscriptionLookup(billing.NewQueueSubscriptionLookup(subClient))
 		}

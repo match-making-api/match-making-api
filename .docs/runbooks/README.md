@@ -7,6 +7,7 @@ On-call runbooks for matchmaking Kafka and queue operations.
 | [Consumer lag spike](./consumer-lag-spike.md) | `MatchmakingConsumerLagHigh`, lag > 1000 |
 | [DLQ filling up](./dlq-filling-up.md) | Messages in `matchmaking.dlq`, DLQ depth > 0 |
 | [Queue depth threshold](./queue-depth-threshold.md) | Pool size / Redis queue depth above SLO |
+| [Dual-write rollback](./dual-write-rollback.md) | Phase 2 dual-write divergence / planned rollback (2509-001) |
 
 ## Ownership
 

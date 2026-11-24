@@ -42,7 +42,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	slog.Info("Starting PlayerQueuedConsumer for matchmaking.commands topic")
+	envCfg, _ := ioc.EnvironmentConfig()
+	slog.Info("Starting PlayerQueuedConsumer for matchmaking.commands topic",
+		"dual_write_enabled", envCfg.DualWrite.Enabled,
+		"dual_write_failure_policy", envCfg.DualWrite.FailurePolicy,
+		"dual_write_operations", envCfg.DualWrite.Operations())
 	if err := consumer.Start(ctx); err != nil {
 		slog.Error("PlayerQueuedConsumer stopped with error", "error", err)
 		os.Exit(1)
