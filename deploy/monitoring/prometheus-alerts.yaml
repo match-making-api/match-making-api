@@ -42,3 +42,35 @@ groups:
         annotations:
           summary: "Elevated Kafka consumer error rate"
           description: "Topic {{ $labels.topic }} group {{ $labels.group_id }} errors are spiking."
+
+  - name: matchmaking-consistency
+    rules:
+      - alert: MatchmakingConsistencyDrift
+        expr: sum(matchmaking_consistency_drift_current) > 0
+        for: 5m
+        labels:
+          severity: warning
+          team: matchmaking
+        annotations:
+          summary: "Legacy vs new-path consistency drift detected"
+          description: "Drift gauge is {{ $value }}. See runbook: consistency-alert."
+
+      - alert: MatchmakingConsistencyCheckFailed
+        expr: rate(matchmaking_consistency_checks_total{outcome="error"}[5m]) > 0
+        for: 5m
+        labels:
+          severity: critical
+          team: matchmaking
+        annotations:
+          summary: "Consistency check failing"
+          description: "Consistency worker cannot complete checks. See runbook: consistency-alert."
+
+      - alert: MatchmakingConsistencyCheckStale
+        expr: time() - matchmaking_consistency_last_check_timestamp_seconds > 300
+        for: 2m
+        labels:
+          severity: critical
+          team: matchmaking
+        annotations:
+          summary: "Consistency check has not run recently"
+          description: "Last check was more than 5m ago. Restart consistency-check worker."

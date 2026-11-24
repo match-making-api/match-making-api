@@ -168,6 +168,25 @@ func Inject(c container.Container) error {
 		return err
 	}
 
+	// Register ConsistencyChecker / ConsistencyTicker — legacy vs new-path drift monitor (2509-002)
+	if err := c.Singleton(func(
+		legacy pairing_out.LegacySessionReader,
+		aqStore pairing_out.ActiveQueueStore,
+		cfg config.Config,
+	) *usecases.ConsistencyChecker {
+		return usecases.NewConsistencyChecker(legacy, aqStore, cfg.Consistency.DriftAlertThreshold)
+	}); err != nil {
+		return err
+	}
+	if err := c.Singleton(func(
+		checker *usecases.ConsistencyChecker,
+		cfg config.Config,
+	) *usecases.ConsistencyTicker {
+		return usecases.NewConsistencyTicker(checker, cfg.Consistency)
+	}); err != nil {
+		return err
+	}
+
 	// Register ServerAllocatedHandler — processes ServerAllocated, broadcasts MatchReady (#26)
 	if err := c.Singleton(func(eventPublisher *kafka.EventPublisher) *usecases.ServerAllocatedHandler {
 		return usecases.NewServerAllocatedHandler(eventPublisher) // EventPublisher implements WebSocketBroadcastPublisher
