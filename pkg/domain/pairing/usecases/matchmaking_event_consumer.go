@@ -14,6 +14,7 @@ import (
 	pairing_out "github.com/leet-gaming/match-making-api/pkg/domain/pairing/ports/out"
 	"github.com/leet-gaming/match-making-api/pkg/domain/pairing/subscription"
 	pairing_value_objects "github.com/leet-gaming/match-making-api/pkg/domain/pairing/value-objects"
+	"github.com/leet-gaming/match-making-api/pkg/infra/config"
 	"github.com/leet-gaming/match-making-api/pkg/infra/events/schemas"
 	"github.com/leet-gaming/match-making-api/pkg/infra/kafka"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -48,6 +49,7 @@ type MatchmakingEventConsumer struct {
 	activeQueueStore         pairing_out.ActiveQueueStore
 	serverAllocationEnqueuer ServerAllocationEnqueuer // Optional: queue for server (#queue-for-server)
 	subscriptionLookup       SubscriptionLookup       // Optional read-only subscription reader (2506-001)
+	dualWrite                config.DualWriteConfig   // Phase 2 dual-write gate (2509-001)
 }
 
 // SubscriptionLookup reads a player's subscription. It must not update usage or execute billing.
@@ -61,6 +63,22 @@ func (c *MatchmakingEventConsumer) SetSubscriptionLookup(lookup SubscriptionLook
 		return
 	}
 	c.subscriptionLookup = lookup
+}
+
+// SetDualWrite configures Phase 2 dual-write / new-path enablement (2509-001).
+func (c *MatchmakingEventConsumer) SetDualWrite(cfg config.DualWriteConfig) {
+	if c == nil {
+		return
+	}
+	c.dualWrite = cfg
+}
+
+// DualWriteEnabled reports whether the Kafka / match-making new path is active.
+func (c *MatchmakingEventConsumer) DualWriteEnabled() bool {
+	if c == nil {
+		return false
+	}
+	return c.dualWrite.Enabled
 }
 
 // gateQueueJoin checks tier and usage limits. It does not update subscription usage.
@@ -93,6 +111,7 @@ func NewMatchmakingEventConsumer(
 		poolWriter:               poolWriter,
 		activeQueueStore:         activeQueueStore,
 		serverAllocationEnqueuer: serverAllocationEnqueuer,
+		dualWrite:                config.DefaultDualWriteConfig(),
 	}
 }
 
@@ -294,6 +313,13 @@ func (c *MatchmakingEventConsumer) handleQueueLeft(ctx context.Context, event *k
 //
 // Idempotency: if the player is not in the pool or active queue, the operation is a no-op.
 func (c *MatchmakingEventConsumer) HandlePlayerLeftQueueProto(ctx context.Context, envelope *schemas.EventEnvelope, payload *schemas.PlayerLeftQueuePayload) error {
+	if !c.DualWriteEnabled() {
+		slog.WarnContext(ctx, "Dual-write new path disabled; skipping PlayerLeftQueue",
+			"event_id", envelope.GetId(),
+			"player_id", payload.GetPlayerId())
+		return nil
+	}
+
 	slog.InfoContext(ctx, "Processing PlayerLeftQueue proto event",
 		"event_id", envelope.GetId(),
 		"player_id", payload.GetPlayerId(),
@@ -415,6 +441,13 @@ func (c *MatchmakingEventConsumer) HandlePlayerLeftQueueProto(ctx context.Contex
 //  5. Add player to pool via AddAndFindNextPair
 //  6. If a pair is found, publish MatchCreated event
 func (c *MatchmakingEventConsumer) HandlePlayerQueuedProto(ctx context.Context, envelope *schemas.EventEnvelope, payload *schemas.PlayerQueuedPayload) error {
+	if !c.DualWriteEnabled() {
+		slog.WarnContext(ctx, "Dual-write new path disabled; skipping PlayerQueued",
+			"event_id", envelope.GetId(),
+			"player_id", payload.GetPlayerId())
+		return nil
+	}
+
 	slog.InfoContext(ctx, "Processing PlayerQueued proto event",
 		"event_id", envelope.GetId(),
 		"player_id", payload.GetPlayerId(),
@@ -561,11 +594,16 @@ func (c *MatchmakingEventConsumer) HandlePlayerQueuedProto(ctx context.Context, 
 			// No orphaned state: pair remains, replay-api won't allocate until MatchCreated.
 			// Consider reconciliation job for unpaired matches.
 		} else if err := c.publishMatchCreatedProto(ctx, envelope, payload, pair); err != nil {
-			slog.ErrorContext(ctx, "Failed to publish MatchCreated event",
+			// Dual-write failure policy (2509-001): local pair exists; Kafka is the new path.
+			slog.ErrorContext(ctx, "Failed to publish MatchCreated event (dual-write new path)",
 				"error", err,
 				"pair_id", pair.ID,
-				"event_id", envelope.GetId())
-			// Non-fatal: match exists, notification failed. Replay-api may need reconciliation.
+				"event_id", envelope.GetId(),
+				"failure_policy", c.dualWrite.FailurePolicy)
+			if c.dualWrite.FailurePolicy == config.DualWriteFailRequest {
+				return fmt.Errorf("dual-write MatchCreated produce failed: %w", err)
+			}
+			// Default legacy_only_and_alert: keep pair, alert via log; reconciliation may be needed.
 		} else if c.serverAllocationEnqueuer != nil {
 			// Enqueue for server allocation and broadcast WaitingForServer (#queue-for-server)
 			playerIDs := make([]uuid.UUID, 0, len(pair.Match))

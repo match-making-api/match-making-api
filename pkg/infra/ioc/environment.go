@@ -38,6 +38,7 @@ func EnvironmentConfig() (config.Config, error) {
 			PlayerProfile: os.Getenv("PLAYER_PROFILE_SERVICE_URL"),
 			Subscription:  os.Getenv("SUBSCRIPTION_SERVICE_URL"),
 		},
+		DualWrite: config.DualWriteConfigFromEnv(),
 	}
 
 	return config, nil
