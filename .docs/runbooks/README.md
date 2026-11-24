@@ -9,6 +9,7 @@ On-call runbooks for matchmaking Kafka and queue operations.
 | [Queue depth threshold](./queue-depth-threshold.md) | Pool size / Redis queue depth above SLO |
 | [Dual-write rollback](./dual-write-rollback.md) | Phase 2 dual-write divergence / planned rollback (2509-001) |
 | [Consistency alert](./consistency-alert.md) | Legacy vs new-path drift / check failure (2509-002) |
+| [Traffic migration rollout](./traffic-migration-rollout.md) | Phase 3 gradual % / A/B / rollback to 0% (2509-003) |
 
 ## Ownership
 

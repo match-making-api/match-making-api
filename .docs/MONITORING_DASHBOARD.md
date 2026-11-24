@@ -23,6 +23,8 @@ Operational guide for matchmaking Kafka metrics, dashboards, and alerts.
 | `matchmaking_consistency_checks_total` | Consistency check runs by outcome (2509-002) |
 | `matchmaking_consistency_drift_current` | Latest drift count by kind |
 | `matchmaking_consistency_last_check_timestamp_seconds` | Last consistency check time |
+| `matchmaking_traffic_new_path_percent` | Configured Phase-3 rollout percent (2509-003) |
+| `matchmaking_traffic_route_decisions_total` | Route decisions by path `new`/`legacy` (2509-003) |
 
 ## Alerts
 
@@ -49,7 +51,8 @@ The Grafana JSON includes:
 3. Error rates (producer/consumer)
 4. Processing latency p50/p95/p99
 5. Consistency drift gauges and last-check age (2509-002)
+6. Traffic migration percent and route decisions (2509-003)
 
 ## Runbooks
 
-See `.docs/runbooks/` for response steps when alerts fire. Consistency: [consistency-alert.md](./runbooks/consistency-alert.md).
+See `.docs/runbooks/` for response steps when alerts fire. Consistency: [consistency-alert.md](./runbooks/consistency-alert.md). Traffic: [traffic-migration-rollout.md](./runbooks/traffic-migration-rollout.md).

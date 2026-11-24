@@ -101,6 +101,22 @@
           "legendFormat": "seconds since last check"
         }
       ]
+    },
+    {
+      "id": 7,
+      "title": "Traffic Migration Percent / Route Decisions",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },
+      "targets": [
+        {
+          "expr": "matchmaking_traffic_new_path_percent",
+          "legendFormat": "new path %"
+        },
+        {
+          "expr": "sum(rate(matchmaking_traffic_route_decisions_total[5m])) by (path)",
+          "legendFormat": "decisions {{path}}/s"
+        }
+      ]
     }
   ]
 }

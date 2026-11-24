@@ -28,6 +28,8 @@ Producer enable flag (replay-api): `KAFKA_MATCHMAKING_PRODUCER_ENABLED` (default
 
 Monitoring of drift between legacy sessions and pool/active-queue state: see `.docs/DATA_CONSISTENCY.md` (2509-002).
 
+Gradual traffic cutover after dual-write: see `.docs/TRAFFIC_MIGRATION.md` (2509-003).
+
 ## Rollback
 
 See [runbooks/dual-write-rollback.md](./runbooks/dual-write-rollback.md).
@@ -37,3 +39,4 @@ See [runbooks/dual-write-rollback.md](./runbooks/dual-write-rollback.md).
 - Epic: Strimzi Migration Phase 2
 - Consumer: `cmd/consumers/matchmaking-commands`
 - Config: `pkg/infra/config/dual_write.go`
+- Traffic: `.docs/TRAFFIC_MIGRATION.md` (2509-003)
