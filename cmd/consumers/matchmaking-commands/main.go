@@ -46,12 +46,15 @@ func main() {
 	envCfg, _ := ioc.EnvironmentConfig()
 	traffic.SyncConfiguredPercentGauge(envCfg.TrafficMigration)
 	slog.Info("Starting PlayerQueuedConsumer for matchmaking.commands topic",
-		"dual_write_enabled", envCfg.DualWrite.Enabled,
-		"dual_write_failure_policy", envCfg.DualWrite.FailurePolicy,
-		"dual_write_operations", envCfg.DualWrite.Operations(),
+		"new_path_enabled", envCfg.DualWrite.Enabled,
+		"new_path_failure_policy", envCfg.DualWrite.FailurePolicy,
+		"new_path_only", envCfg.DualWrite.IsNewPathOnly(),
+		"new_path_operations", envCfg.DualWrite.Operations(),
 		"traffic_new_path_percent", envCfg.TrafficMigration.NewPathPercent,
 		"traffic_strategy", envCfg.TrafficMigration.Strategy,
-		"traffic_region_allowlist", envCfg.TrafficMigration.RegionAllowlist)
+		"traffic_region_allowlist", envCfg.TrafficMigration.RegionAllowlist,
+		"legacy_routing_retired", envCfg.TrafficMigration.IsLegacyRoutingRetired(),
+		"consistency_check_enabled", envCfg.Consistency.Enabled)
 	if err := consumer.Start(ctx); err != nil {
 		slog.Error("PlayerQueuedConsumer stopped with error", "error", err)
 		os.Exit(1)

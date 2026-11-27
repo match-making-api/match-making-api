@@ -2,6 +2,8 @@
 
 During Strimzi Migration Phase 2 dual-write, this service periodically compares **legacy** matchmaking sessions (replay-api Mongo `matchmaking_sessions`) with the **new** path active queue (`ActiveQueueStore` / Redis).
 
+> **Phase 4 (2509-004):** Consistency check is **disabled by default**. Re-enable only during emergency dual-path rollback windows. See `.docs/LEGACY_DECOMMISSION.md`.
+
 ## What is compared
 
 | Entity | Legacy source | New source | Drift kinds |
@@ -21,7 +23,7 @@ Runs `ConsistencyTicker` on a fixed interval (default 60s). Metrics are exposed 
 
 | Env | Default | Effect |
 |-----|---------|--------|
-| `MATCHMAKING_CONSISTENCY_CHECK_ENABLED` | `true` | When `false`, ticker no-ops. |
+| `MATCHMAKING_CONSISTENCY_CHECK_ENABLED` | `false` | Phase 4 default off; when `true`, ticker runs legacy vs new comparison. |
 | `MATCHMAKING_CONSISTENCY_CHECK_INTERVAL` | `60s` | Check period (Go duration). |
 | `MATCHMAKING_CONSISTENCY_DRIFT_ALERT_THRESHOLD` | `1` | Drift count that escalates alert log level. |
 | `MATCHMAKING_LEGACY_SESSIONS_COLLECTION` | `matchmaking_sessions` | Legacy Mongo collection. |

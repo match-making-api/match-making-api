@@ -49,7 +49,7 @@ type MatchmakingEventConsumer struct {
 	activeQueueStore         pairing_out.ActiveQueueStore
 	serverAllocationEnqueuer ServerAllocationEnqueuer // Optional: queue for server (#queue-for-server)
 	subscriptionLookup       SubscriptionLookup       // Optional read-only subscription reader (2506-001)
-	dualWrite                config.DualWriteConfig   // Phase 2 dual-write gate (2509-001)
+	dualWrite                config.DualWriteConfig   // New-path gate; Phase 4 default = on + fail_request (2509-004)
 }
 
 // SubscriptionLookup reads a player's subscription. It must not update usage or execute billing.
@@ -65,7 +65,7 @@ func (c *MatchmakingEventConsumer) SetSubscriptionLookup(lookup SubscriptionLook
 	c.subscriptionLookup = lookup
 }
 
-// SetDualWrite configures Phase 2 dual-write / new-path enablement (2509-001).
+// SetDualWrite configures new-path enablement and MatchCreated failure policy (2509-001/004).
 func (c *MatchmakingEventConsumer) SetDualWrite(cfg config.DualWriteConfig) {
 	if c == nil {
 		return
@@ -74,6 +74,7 @@ func (c *MatchmakingEventConsumer) SetDualWrite(cfg config.DualWriteConfig) {
 }
 
 // DualWriteEnabled reports whether the Kafka / match-making new path is active.
+// After Phase 4 this is normally always true; false is emergency rollback only.
 func (c *MatchmakingEventConsumer) DualWriteEnabled() bool {
 	if c == nil {
 		return false
@@ -594,16 +595,16 @@ func (c *MatchmakingEventConsumer) HandlePlayerQueuedProto(ctx context.Context, 
 			// No orphaned state: pair remains, replay-api won't allocate until MatchCreated.
 			// Consider reconciliation job for unpaired matches.
 		} else if err := c.publishMatchCreatedProto(ctx, envelope, payload, pair); err != nil {
-			// Dual-write failure policy (2509-001): local pair exists; Kafka is the new path.
-			slog.ErrorContext(ctx, "Failed to publish MatchCreated event (dual-write new path)",
+			// New-path failure policy (2509-004 default fail_request): local pair exists; Kafka is authoritative.
+			slog.ErrorContext(ctx, "Failed to publish MatchCreated event (new path)",
 				"error", err,
 				"pair_id", pair.ID,
 				"event_id", envelope.GetId(),
 				"failure_policy", c.dualWrite.FailurePolicy)
 			if c.dualWrite.FailurePolicy == config.DualWriteFailRequest {
-				return fmt.Errorf("dual-write MatchCreated produce failed: %w", err)
+				return fmt.Errorf("MatchCreated produce failed: %w", err)
 			}
-			// Default legacy_only_and_alert: keep pair, alert via log; reconciliation may be needed.
+			// legacy_only_and_alert (emergency only): keep pair, alert via log.
 		} else if c.serverAllocationEnqueuer != nil {
 			// Enqueue for server allocation and broadcast WaitingForServer (#queue-for-server)
 			playerIDs := make([]uuid.UUID, 0, len(pair.Match))

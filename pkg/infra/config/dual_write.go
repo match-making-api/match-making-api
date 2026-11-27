@@ -6,46 +6,47 @@ import (
 	"strings"
 )
 
-// DualWriteFailurePolicy defines behaviour when the Kafka (new) path fails
-// after the legacy / local write succeeded during Strimzi Migration Phase 2.
+// DualWriteFailurePolicy defines behaviour when MatchCreated (new path) fails
+// after local pool/pair state was already updated.
 type DualWriteFailurePolicy string
 
 const (
-	// DualWriteFailLegacyOnlyAndAlert keeps the local/legacy write and logs/alerts
-	// when Kafka produce (or new-path side effects) fail. Request is not failed.
+	// DualWriteFailLegacyOnlyAndAlert keeps the local write and logs/alerts
+	// when Kafka produce fails. Retained for emergency rollback only after Phase 4.
 	DualWriteFailLegacyOnlyAndAlert DualWriteFailurePolicy = "legacy_only_and_alert"
 
 	// DualWriteFailRequest fails the operation when the new path fails (strict).
+	// Phase 4 (2509-004) default: new path is authoritative; dual-write soft-fail retired.
 	DualWriteFailRequest DualWriteFailurePolicy = "fail_request"
 )
 
-// DualWriteConfig controls event-path participation during dual-write migration (2509-001).
+// DualWriteConfig gates new-path consumer handlers after Strimzi migration.
 //
-// Producer-side dual-write (replay-api → legacy session + Kafka PlayerQueued/LeftQueue)
-// is gated by KAFKA_MATCHMAKING_PRODUCER_ENABLED on replay-api.
-// This config gates the match-making-api consumer / match-creation side of the new path.
+// Phase 4 (2509-004) decommissioned dual-write as the operating mode: the Kafka /
+// match-making-api path is the only active path. Enabled=false remains an emergency
+// kill switch (see .docs/LEGACY_DECOMMISSION.md). Producer-side Kafka produce on
+// replay-api is gated by KAFKA_MATCHMAKING_PRODUCER_ENABLED.
 type DualWriteConfig struct {
-	// Enabled when true: process PlayerQueued / PlayerLeftQueue and publish MatchCreated
-	// (new path active alongside legacy). When false: skip new-path handlers (rollback).
+	// Enabled when true: process PlayerQueued / PlayerLeftQueue and publish MatchCreated.
+	// When false: skip new-path handlers (emergency rollback only after Phase 4).
 	Enabled bool
 
-	// FailurePolicy applies when MatchCreated (or other dual-write publishes) fail
-	// after local pool/pair state was already updated.
+	// FailurePolicy applies when MatchCreated publish fails after local pool/pair update.
 	FailurePolicy DualWriteFailurePolicy
 }
 
-// DefaultDualWriteConfig returns Phase-2 defaults: dual-write on, legacy-only-and-alert on produce failure.
+// DefaultDualWriteConfig returns Phase-4 defaults: new path on, fail_request on produce failure.
 func DefaultDualWriteConfig() DualWriteConfig {
 	return DualWriteConfig{
 		Enabled:       true,
-		FailurePolicy: DualWriteFailLegacyOnlyAndAlert,
+		FailurePolicy: DualWriteFailRequest,
 	}
 }
 
-// DualWriteConfigFromEnv loads dual-write settings from environment.
+// DualWriteConfigFromEnv loads new-path settings from environment.
 //
-//	MATCHMAKING_DUAL_WRITE_ENABLED — default true
-//	MATCHMAKING_DUAL_WRITE_FAILURE_POLICY — "legacy_only_and_alert" (default) | "fail_request"
+//	MATCHMAKING_DUAL_WRITE_ENABLED — default true (emergency false = new path off)
+//	MATCHMAKING_DUAL_WRITE_FAILURE_POLICY — "fail_request" (default) | "legacy_only_and_alert"
 func DualWriteConfigFromEnv() DualWriteConfig {
 	cfg := DefaultDualWriteConfig()
 	if v := os.Getenv("MATCHMAKING_DUAL_WRITE_ENABLED"); v != "" {
@@ -62,7 +63,12 @@ func DualWriteConfigFromEnv() DualWriteConfig {
 	return cfg
 }
 
-// Operations lists matchmaking ops covered by dual-write during Phase 2.
+// Operations lists matchmaking ops on the new path (post-decommission sole path).
 func (c DualWriteConfig) Operations() []string {
 	return []string{"queue_join", "queue_leave", "match_create"}
+}
+
+// IsNewPathOnly reports Phase-4 operating mode: handlers on and strict produce failure.
+func (c DualWriteConfig) IsNewPathOnly() bool {
+	return c.Enabled && c.FailurePolicy == DualWriteFailRequest
 }
