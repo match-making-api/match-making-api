@@ -16,11 +16,11 @@ const (
 	TrafficStrategyRegion TrafficStrategy = "region"
 )
 
-// TrafficMigrationConfig controls Phase 3 gradual rollout / A/B traffic split (2509-003).
+// TrafficMigrationConfig mirrors Phase 3 gradual rollout knobs (2509-003).
 //
-// Producer-side enforcement lives on replay-api
-// (KAFKA_MATCHMAKING_TRAFFIC_NEW_PATH_PERCENT and related). This config mirrors the
-// same knobs so match-making-api can log expected rollout and expose metrics.
+// Phase 4 (2509-004) locks steady-state at 100% new path. Percent < 100 remains
+// available only for emergency rollback. Producer-side enforcement lives on
+// replay-api (KAFKA_MATCHMAKING_TRAFFIC_*). This service mirrors for ops/metrics.
 type TrafficMigrationConfig struct {
 	// NewPathPercent is 0–100. 0 = full rollback (legacy only); 100 = all eligible traffic on new path.
 	NewPathPercent int
@@ -32,8 +32,7 @@ type TrafficMigrationConfig struct {
 	RegionAllowlist []string
 }
 
-// DefaultTrafficMigrationConfig returns Phase-3 defaults: 100% new path, percent strategy.
-// Ops lower NewPathPercent for gradual rollout (e.g. 10 → 50 → 100).
+// DefaultTrafficMigrationConfig returns Phase-4 defaults: 100% new path, percent strategy.
 func DefaultTrafficMigrationConfig() TrafficMigrationConfig {
 	return TrafficMigrationConfig{
 		NewPathPercent:  100,
@@ -91,4 +90,9 @@ func (c TrafficMigrationConfig) IsFullRollback() bool {
 // IsFullRollout reports whether all eligible traffic targets the new path (100%).
 func (c TrafficMigrationConfig) IsFullRollout() bool {
 	return c.NewPathPercent >= 100 && c.Strategy == TrafficStrategyPercent
+}
+
+// IsLegacyRoutingRetired reports Phase-4 steady state: full percent rollout (no legacy cohort).
+func (c TrafficMigrationConfig) IsLegacyRoutingRetired() bool {
+	return c.IsFullRollout()
 }

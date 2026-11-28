@@ -2,6 +2,8 @@
 
 Strimzi Migration **Phase 3**: route a configurable **percentage** of matchmaking traffic to the **new** Kafka + match-making-api path vs **legacy** (replay-api sessions only), support **A/B** assignment, and **roll back** by setting percent to `0`.
 
+> **Phase 4 (2509-004):** Steady state is **100% new path**. Percent knobs remain for emergency rollback only. See `.docs/LEGACY_DECOMMISSION.md`.
+
 ## Routing ownership
 
 | Layer | Role |

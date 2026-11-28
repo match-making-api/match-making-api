@@ -14,6 +14,10 @@ const (
 )
 
 // ConsistencyCheckConfig controls periodic legacy-vs-new consistency monitoring (2509-002).
+//
+// Phase 4 (2509-004) disables this by default: dual-write is retired and legacy session
+// comparison is no longer part of the steady-state path. Re-enable only during emergency
+// rollback windows (see .docs/LEGACY_DECOMMISSION.md).
 type ConsistencyCheckConfig struct {
 	Enabled             bool
 	Interval            time.Duration
@@ -22,10 +26,10 @@ type ConsistencyCheckConfig struct {
 	LegacyDBName        string // empty => use Config.MongoDB.DBName
 }
 
-// DefaultConsistencyCheckConfig returns Phase-2 defaults for consistency monitoring.
+// DefaultConsistencyCheckConfig returns Phase-4 defaults: consistency check off.
 func DefaultConsistencyCheckConfig() ConsistencyCheckConfig {
 	return ConsistencyCheckConfig{
-		Enabled:             true,
+		Enabled:             false,
 		Interval:            defaultConsistencyInterval,
 		DriftAlertThreshold: defaultConsistencyDriftAlert,
 		LegacyCollection:    defaultLegacySessionsCollection,
@@ -34,7 +38,7 @@ func DefaultConsistencyCheckConfig() ConsistencyCheckConfig {
 
 // ConsistencyCheckConfigFromEnv loads consistency-check settings from environment.
 //
-//	MATCHMAKING_CONSISTENCY_CHECK_ENABLED — default true
+//	MATCHMAKING_CONSISTENCY_CHECK_ENABLED — default false (Phase 4)
 //	MATCHMAKING_CONSISTENCY_CHECK_INTERVAL — Go duration, default 60s
 //	MATCHMAKING_CONSISTENCY_DRIFT_ALERT_THRESHOLD — default 1
 //	MATCHMAKING_LEGACY_SESSIONS_COLLECTION — default matchmaking_sessions

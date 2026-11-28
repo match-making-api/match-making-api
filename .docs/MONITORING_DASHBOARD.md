@@ -55,4 +55,4 @@ The Grafana JSON includes:
 
 ## Runbooks
 
-See `.docs/runbooks/` for response steps when alerts fire. Consistency: [consistency-alert.md](./runbooks/consistency-alert.md). Traffic: [traffic-migration-rollout.md](./runbooks/traffic-migration-rollout.md).
+See `.docs/runbooks/` for response steps when alerts fire. Consistency: [consistency-alert.md](./runbooks/consistency-alert.md). Traffic: [traffic-migration-rollout.md](./runbooks/traffic-migration-rollout.md). Phase 4 decommission rollback: [legacy-decommission-rollback.md](./runbooks/legacy-decommission-rollback.md) (2509-004; consistency off by default).

@@ -2,6 +2,8 @@
 
 Strimzi Migration **Phase 2**: the same logical operation updates the **legacy** path and the **Kafka + match-making-api** path so traffic can cut over and roll back without data loss.
 
+> **Phase 4 (2509-004):** Dual-write is **retired** as the operating mode. Steady state is new path only (`fail_request`, traffic 100%). See `.docs/LEGACY_DECOMMISSION.md`.
+
 ## Operations
 
 | Operation | Legacy path | New path | Dual-write owner |
@@ -16,8 +18,8 @@ Producer enable flag (replay-api): `KAFKA_MATCHMAKING_PRODUCER_ENABLED` (default
 
 | Env | Default | Effect |
 |-----|---------|--------|
-| `MATCHMAKING_DUAL_WRITE_ENABLED` | `true` | When `false`, `PlayerQueued` / `PlayerLeftQueue` handlers no-op (new path off — rollback). |
-| `MATCHMAKING_DUAL_WRITE_FAILURE_POLICY` | `legacy_only_and_alert` | `legacy_only_and_alert`: keep local pair, log/alert if `MatchCreated` produce fails. `fail_request`: return error and fail the consumer handler. |
+| `MATCHMAKING_DUAL_WRITE_ENABLED` | `true` | When `false`, `PlayerQueued` / `PlayerLeftQueue` handlers no-op (emergency rollback after Phase 4). |
+| `MATCHMAKING_DUAL_WRITE_FAILURE_POLICY` | `fail_request` | Phase 4 default: fail consumer on `MatchCreated` produce failure. `legacy_only_and_alert` kept for emergency only. |
 
 ## Consistency model
 
@@ -30,13 +32,16 @@ Monitoring of drift between legacy sessions and pool/active-queue state: see `.d
 
 Gradual traffic cutover after dual-write: see `.docs/TRAFFIC_MIGRATION.md` (2509-003).
 
+Phase 4 decommission: see `.docs/LEGACY_DECOMMISSION.md` (2509-004).
+
 ## Rollback
 
-See [runbooks/dual-write-rollback.md](./runbooks/dual-write-rollback.md).
+See [runbooks/dual-write-rollback.md](./runbooks/dual-write-rollback.md) and [runbooks/legacy-decommission-rollback.md](./runbooks/legacy-decommission-rollback.md).
 
 ## Related
 
-- Epic: Strimzi Migration Phase 2
+- Epic: Strimzi Migration Phase 2 / Phase 4
 - Consumer: `cmd/consumers/matchmaking-commands`
 - Config: `pkg/infra/config/dual_write.go`
 - Traffic: `.docs/TRAFFIC_MIGRATION.md` (2509-003)
+- Decommission: `.docs/LEGACY_DECOMMISSION.md` (2509-004)

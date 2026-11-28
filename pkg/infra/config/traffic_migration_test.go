@@ -12,6 +12,7 @@ func TestDefaultTrafficMigrationConfig(t *testing.T) {
 	assert.Equal(t, 100, cfg.NewPathPercent)
 	assert.Equal(t, TrafficStrategyPercent, cfg.Strategy)
 	assert.True(t, cfg.IsFullRollout())
+	assert.True(t, cfg.IsLegacyRoutingRetired())
 	assert.False(t, cfg.IsFullRollback())
 }
 
